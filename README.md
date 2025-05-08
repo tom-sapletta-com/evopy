@@ -106,18 +106,13 @@ evopy/
 Pobierz wygenerowany plik `evo.py`, zainstaluj podstawowe wymagania (`pip install httpx readline`) i uruchom go. Asystent sam przeprowadzi Cię przez proces instalacji i konfiguracji, a następnie będzie ewoluował w miarę Twoich potrzeb.
 
 
-# Instrukcja instalacji i użytkowania Ewolucyjnego Asystenta
-
-## Opis
-
-Ewolucyjny Asystent to samorozwijający się system konwersacyjny, który ewoluuje wraz z twoimi projektami. Zaczyna jako prosty skrypt Python, a z czasem rozbudowuje się o złożone funkcjonalności, takie jak zarządzanie środowiskami Docker Compose, konwersją kodu z języka naturalnego i wieloma projektami.
-
-![Diagram ewolucji asystenta](evolution_diagram)
+# Instrukcja instalacji i użytkowania
 
 ## Wymagania systemowe
 
 - Python 3.8 lub nowszy
-- Docker oraz Docker Compose
+- Docker oraz Docker Compose (opcjonalnie, instalowane automatycznie jeśli brakuje)
+- Ollama (opcjonalnie, instalowane automatycznie jeśli brakuje)
 - Minimum 8GB RAM
 - Zalecane: karta graficzna NVIDIA (dla przyśpieszenia inferencji modelu)
 - Dostęp do internetu (do pobierania zależności i modeli)
@@ -176,6 +171,24 @@ python -m evopy.evo
 # Lub użyj skryptu wejściowego (po instalacji)
 evopy
 ```
+
+### Opcja 3: Instalacja z użyciem skryptu instalacyjnego
+
+Możesz również użyć dołączonego skryptu instalacyjnego, który przeprowadzi Cię przez proces konfiguracji:
+
+```bash
+# Nadaj uprawnienia wykonywania
+chmod +x install.sh
+
+# Uruchom skrypt instalacyjny
+./install.sh
+```
+
+Skrypt instalacyjny:
+- Sprawdzi wymagania systemowe
+- Utworzy potrzebne katalogi
+- Zainstaluje zależności Python
+- Skonfiguruje skrypty uruchomieniowe
 
 Przy pierwszym uruchomieniu asystent:
 1. Sprawdzi wymagane zależności (Docker, Ollama)
@@ -242,16 +255,63 @@ Asystent ewoluuje w następujących fazach:
 
 Za każdym razem, gdy asystent identyfikuje nowy wzorzec lub potrzebę, rozwija odpowiednią funkcjonalność.
 
-## Struktura katalogów
+## Struktura katalogów danych
+
+Po instalacji i pierwszym uruchomieniu, evopy tworzy następującą strukturę katalogów w katalogu domowym użytkownika:
 
 ```
-~/.evopy/
+~/.evo-assistant/
 ├── cache/              # Pliki tymczasowe
 ├── history/            # Historia konwersacji
 ├── models/             # Dane modeli
 ├── projects/           # Projekty użytkownika
 │   └── [project-id]/   # Katalog konkretnego projektu
 └── config.json         # Plik konfiguracyjny
+```
+
+## Rozwój i kontrybucja
+
+### Rozwijanie pakietu
+
+Jeśli chcesz rozwijać pakiet evopy, zalecamy użycie trybu deweloperskiego:
+
+```bash
+# Klonowanie repozytorium
+git clone https://github.com/tom-sapletta-com/evopy.git
+cd evopy
+
+# Tworzenie środowiska deweloperskiego
+conda env create -f environment.yml
+conda activate evopy
+
+# Instalacja w trybie deweloperskim
+pip install -e .
+```
+
+### Testowanie
+
+Możesz uruchomić testy za pomocą skryptu test.sh:
+
+```bash
+./test.sh
+```
+
+Lub bezpośrednio za pomocą pytest:
+
+```bash
+python -m pytest
+```
+
+### Debugowanie
+
+Do debugowania możesz użyć skryptu debug.sh lub bezpośrednio modułu monitor.py:
+
+```bash
+# Za pomocą skryptu
+./debug.sh
+
+# Lub bezpośrednio
+python -m evopy.monitor --script ./evopy/evo.py
 ```
 
 ## Rozwiązywanie problemów
