@@ -212,7 +212,7 @@ else
 fi
 
 # Uruchom asystenta
-\$PYTHON_CMD "\$SCRIPT_DIR/evo_assistant.py" \$@
+\$PYTHON_CMD "\$SCRIPT_DIR/evo.py" \$@
 EOL
 
 chmod +x "$SCRIPT_DIR/run.sh"
@@ -239,7 +239,7 @@ else
 fi
 
 # Uruchom monitor debugowania
-\$PYTHON_CMD "\$SCRIPT_DIR/debug_monitor.py" --script "\$SCRIPT_DIR/evo_assistant.py" \$@
+\$PYTHON_CMD "\$SCRIPT_DIR/monitor.py" --script "\$SCRIPT_DIR/evo.py" \$@
 EOL
 
 chmod +x "$SCRIPT_DIR/debug.sh"

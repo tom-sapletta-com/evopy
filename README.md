@@ -170,6 +170,9 @@ python -m evopy.evo
 
 # Lub użyj skryptu wejściowego (po instalacji)
 evopy
+
+# Z automatycznym akceptowaniem wszystkich pytań (przydatne w środowiskach nieinteraktywnych)
+python -m evopy.evo --auto-accept
 ```
 
 ### Opcja 3: Instalacja z użyciem skryptu instalacyjnego

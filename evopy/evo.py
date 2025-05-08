@@ -196,7 +196,9 @@ class EvoAssistant:
                 logger.warning(f"Model {model} nie jest pobrany")
                 dependencies_ok = False
                 if self.config.get("auto_install_dependencies", True):
-                    self._pull_model(model)
+                    # Jeśli model został pobrany, zaktualizuj status zależności
+                    if self._pull_model(model):
+                        dependencies_ok = True
         
         return dependencies_ok
     
@@ -212,10 +214,18 @@ class EvoAssistant:
         """Instaluje Docker"""
         system = platform.system().lower()
         
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
         if system == "linux":
             # Instrukcje dla Linux
-            print(f"{Colors.YELLOW}Docker nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Docker nie jest zainstalowany. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Docker nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Dockera...{Colors.END}")
                 os.system("curl -fsSL https://get.docker.com -o get-docker.sh")
@@ -240,9 +250,17 @@ class EvoAssistant:
         """Instaluje Docker Compose"""
         system = platform.system().lower()
         
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
         if system == "linux":
-            print(f"{Colors.YELLOW}Docker Compose nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Docker Compose nie jest zainstalowany. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Docker Compose nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Docker Compose...{Colors.END}")
                 os.system("sudo curl -L https://github.com/docker/compose/releases/download/v2.5.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose")
@@ -258,9 +276,17 @@ class EvoAssistant:
         """Instaluje Ollama"""
         system = platform.system().lower()
         
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
         if system == "linux":
-            print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Ollama...{Colors.END}")
                 os.system("curl -fsSL https://ollama.com/install.sh | sh")
@@ -269,8 +295,13 @@ class EvoAssistant:
                 print(f"{Colors.YELLOW}Instalacja Ollama pominięta. Asystent będzie używać Ollama w kontenerze Docker.{Colors.END}")
         
         elif system == "darwin":  # macOS
-            print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Ollama...{Colors.END}")
                 os.system("curl -fsSL https://ollama.com/install.sh | sh")
@@ -294,10 +325,22 @@ class EvoAssistant:
             logger.error(f"Błąd podczas sprawdzania modelu: {e}")
             return False
     
-    def _pull_model(self, model: str):
-        """Pobiera model Ollama"""
-        print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Czy chcesz go pobrać? (t/N):{Colors.END} ", end="")
-        choice = input().lower()
+    def _pull_model(self, model: str) -> bool:
+        """Pobiera model Ollama
+        
+        Returns:
+            bool: True jeśli model został pobrany, False w przeciwnym razie
+        """
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
+        if auto_accept:
+            print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Automatycznie akceptuję pobieranie.{Colors.END}")
+            choice = 't'
+        else:
+            print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Czy chcesz go pobrać? (t/N):{Colors.END} ", end="")
+            choice = input().lower()
+            
         if choice == 't':
             print(f"{Colors.BLUE}Pobieranie modelu {model}...{Colors.END}")
             process = subprocess.Popen(["ollama", "pull", model], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -310,8 +353,10 @@ class EvoAssistant:
                 time.sleep(0.1)
             
             print(f"\n{Colors.GREEN}Model {model} został pobrany.{Colors.END}")
+            return True
         else:
             print(f"{Colors.YELLOW}Pobieranie modelu pominięte. Asystent może nie działać poprawnie.{Colors.END}")
+            return False
     
     def _start_ollama_server(self):
         """Uruchamia serwer Ollama"""
@@ -604,10 +649,15 @@ def main():
     parser = argparse.ArgumentParser(description="Ewolucyjny Asystent - system konwersacyjny")
     parser.add_argument("--config", type=str, help="Ścieżka do pliku konfiguracyjnego")
     parser.add_argument("--debug", action="store_true", help="Włącza tryb debugowania")
+    parser.add_argument("--auto-accept", action="store_true", help="Automatycznie akceptuje wszystkie pytania")
     args = parser.parse_args()
     
     if args.debug:
         logging.basicConfig(level=logging.DEBUG)
+    
+    # Jeśli auto-accept jest włączone, ustawiamy zmienną środowiskową
+    if args.auto_accept:
+        os.environ["EVOPY_AUTO_ACCEPT"] = "1"
     
     config_path = Path(args.config) if args.config else CONFIG_FILE
     assistant = EvoAssistant(config_path=config_path)
