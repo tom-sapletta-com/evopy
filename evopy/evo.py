@@ -597,3 +597,22 @@ class EvoAssistant:
             created_at = datetime.fromisoformat(conv.get("created_at", "")).strftime("%Y-%m-%d %H:%M")
             is_current = " (aktualna)" if conv.get("id") == self.current_conversation_id else ""
             print(f"{Colors.BLUE}{i}. {conv.get('title', 'Bez tytułu')} - {created_at}{is_current}{Colors.END}")
+
+
+def main():
+    """Entry point for the evopy package"""
+    parser = argparse.ArgumentParser(description="Ewolucyjny Asystent - system konwersacyjny")
+    parser.add_argument("--config", type=str, help="Ścieżka do pliku konfiguracyjnego")
+    parser.add_argument("--debug", action="store_true", help="Włącza tryb debugowania")
+    args = parser.parse_args()
+    
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    
+    config_path = Path(args.config) if args.config else CONFIG_FILE
+    assistant = EvoAssistant(config_path=config_path)
+    assistant.start()
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,13 @@
+name: evopy
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python>=3.8
+  - pip
+  - httpx
+  - pexpect
+  - psutil
+  - docker-py
+  - pip:
+    - -e .

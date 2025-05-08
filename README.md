@@ -1,17 +1,18 @@
-# evopy - ewolucyjny Asystent dla konwersji text2python
+# evopy - Ewolucyjny Asystent dla konwersji text2python
 
-Stworzyłem kompleksowy, ale minimalny system asystenta, który jest w stanie ewoluować z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker. Ten system spełnia wszystkie Twoje wymagania:
+Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewoluować z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker. Asystent wspiera konwersję tekstu na kod Python i zarządzanie projektami w kontenerach Docker.
 
-## 1. Pojedynczy plik Python na start
+## Funkcjonalności
 
-Cały asystent zaczyna jako **jeden plik Python** (`evo.py`), który:
-- Automatycznie sprawdza i instaluje wymagane zależności (Docker, Ollama, model DeepSeek)
-- Uruchamia interaktywny chat w konsoli
-- Potrafi wykrywać i obsługiwać kod generowany przez model
+- **Automatyczna konfiguracja** - sprawdza i instaluje wymagane zależności (Docker, Ollama, model DeepSeek)
+- **Interaktywny chat w konsoli** - prosty i intuicyjny interfejs użytkownika
+- **Wykrywanie kodu** - automatycznie identyfikuje i obsługuje kod generowany przez model
+- **Zarządzanie projektami** - tworzy i zarządza projektami w kontenerach Docker
+- **Ewolucyjny rozwój** - rozbudowuje swoje możliwości w trakcie użytkowania
 
-## 2. Ewolucyjna architektura
+## Architektura
 
-System został zaprojektowany tak, aby ewoluował w miarę używania:
+System został zaprojektowany w oparciu o architekturę ewolucyjną, która rozwija się w miarę użytkowania:
 
 ![Diagram ewolucji asystenta](evolution_diagram)
 
@@ -104,7 +105,9 @@ Ewolucyjny Asystent to samorozwijający się system konwersacyjny, który ewoluu
 
 ## Instalacja
 
-### Krok 1: Pobierz skrypt
+### Opcja 1: Standardowa instalacja
+
+#### Krok 1: Pobierz skrypt
 
 Najpierw zapisz kod asystenta do pliku `evo.py`:
 
@@ -114,16 +117,45 @@ curl -o evo.py https://raw.githubusercontent.com/tom-sapletta-com/evopy/main/evo
 # lub skopiuj kod z artefaktu evopy
 ```
 
-### Krok 2: Zainstaluj wymagane pakiety Python
+#### Krok 2: Zainstaluj wymagane pakiety Python
 
 ```bash
 pip install httpx readline
 ```
 
-### Krok 3: Uruchom skrypt
+#### Krok 3: Uruchom skrypt
 
 ```bash
 python evo.py
+```
+
+### Opcja 2: Instalacja jako pakiet z Miniconda
+
+#### Krok 1: Sklonuj repozytorium
+
+```bash
+git clone https://github.com/tom-sapletta-com/evopy.git
+cd evopy
+```
+
+#### Krok 2: Utwórz środowisko Conda i zainstaluj pakiet
+
+```bash
+# Utwórz środowisko z pliku environment.yml
+conda env create -f environment.yml
+
+# Aktywuj środowisko
+conda activate evopy
+```
+
+#### Krok 3: Uruchom asystenta
+
+```bash
+# Uruchom bezpośrednio jako moduł
+python -m evopy.evo
+
+# Lub użyj skryptu wejściowego (po instalacji)
+evopy
 ```
 
 Przy pierwszym uruchomieniu asystent:
