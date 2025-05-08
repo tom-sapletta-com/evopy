@@ -18,23 +18,23 @@ System został zaprojektowany tak, aby ewoluował w miarę używania:
 ```mermaid
 flowchart TB
     subgraph "Faza 1: Start"
-        SinglePython["Pojedynczy skrypt Python"] --> |"Instalacja i sprawdzenie\nzależności"| ModelInit["Inicjalizacja modelu\nDeepSeek w Ollama"]
+        SinglePython["Pojedynczy skrypt Python"] --> |"Instalacja i sprawdzenie zależności"| ModelInit["Inicjalizacja modelu DeepSeek w Ollama"]
     end
     
     subgraph "Faza 2: Rozwój podstawowych funkcji"
-        ModelInit --> |"Interakcja z użytkownikiem"| ConversationManagement["Zarządzanie konwersacjami\n(historia, wątki)"]
-        ConversationManagement --> |"Wykrywanie wzorców w\nodpowiedziach modelu"| CodeExtraction["Ekstrakcja i zarządzanie\nkodem (Python, YAML)"]
+        ModelInit --> |"Interakcja z użytkownikiem"| ConversationManagement["Zarządzanie konwersacjami (historia, wątki)"]
+        ConversationManagement --> |"Wykrywanie wzorców w odpowiedziach modelu"| CodeExtraction["Ekstrakcja i zarządzanie kodem (Python, YAML)"]
     end
     
     subgraph "Faza 3: Integracja z Dockerem"
-        CodeExtraction --> |"Generowanie plików\nDocker Compose"| DockerProjects["Zarządzanie projektami\nDocker Compose"]
-        DockerProjects --> |"Uruchamianie i zarządzanie\nkontenerami"| SandboxEnvironments["Środowiska piaskownicowe\ndla projektów"]
+        CodeExtraction --> |"Generowanie plików Docker Compose"| DockerProjects["Zarządzanie projektami Docker Compose"]
+        DockerProjects --> |"Uruchamianie i zarządzanie kontenerami"| SandboxEnvironments["Środowiska piaskownicowe dla projektów"]
     end
     
     subgraph "Faza 4: Automatyzacja i ewolucja"
-        SandboxEnvironments --> |"Uczenie się na podstawie\ninterakcji z użytkownikiem"| SkillAcquisition["Nabywanie nowych\numiejętności"]
-        SkillAcquisition --> |"Rozbudowa infrastruktury"| MultipleSandboxes["Wiele niezależnych piaskownic\ndla różnych wątków konwersacji"]
-        MultipleSandboxes --> |"Integracja z\nzewnętrznymi API"| APIIntegration["Integracja z zewnętrznymi\nusługami i API"]
+        SandboxEnvironments --> |"Uczenie się na podstawie interakcji z użytkownikiem"| SkillAcquisition["Nabywanie nowych umiejętności"]
+        SkillAcquisition --> |"Rozbudowa infrastruktury"| MultipleSandboxes["Wiele niezależnych piaskownic dla różnych wątków konwersacji"]
+        MultipleSandboxes --> |"Integracja z zewnętrznymi API"| APIIntegration["Integracja z zewnętrznymi usługami i API"]
     end
     
     SinglePython -.-> SkillAcquisition
