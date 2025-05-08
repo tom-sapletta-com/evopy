@@ -56,7 +56,26 @@ flowchart TB
 3. **Integracja z Dockerem**: Tworzenie i zarządzanie projektami Docker Compose
 4. **Automatyzacja i rozszerzenia**: Nabywanie nowych umiejętności i integracje z API
 
-## 3. Kluczowe funkcjonalności
+## Struktura projektu
+
+Evopy jest dostępny zarówno jako pojedynczy skrypt, jak i jako pełnoprawny pakiet Python:
+
+```
+evopy/
+├── evopy/             # Katalog pakietu Python
+│   ├── __init__.py    # Inicjalizacja pakietu
+│   ├── evo.py         # Główny moduł asystenta
+│   └── monitor.py     # Moduł monitorowania i debugowania
+├── pyproject.toml    # Konfiguracja pakietu
+├── environment.yml   # Konfiguracja środowiska Conda
+├── requirements.txt  # Zależności Python
+├── install.sh        # Skrypt instalacyjny
+├── run.sh            # Skrypt uruchomieniowy
+├── debug.sh          # Skrypt debugowania
+└── test.sh           # Skrypt testowy
+```
+
+## Kluczowe funkcjonalności
 
 - **Zarządzanie konwersacjami**: Każda konwersacja jest osobnym wątkiem z własną historią
 - **Wykrywanie kodu w odpowiedziach**: Automatyczne wykrywanie bloków kodu Python i Docker Compose
