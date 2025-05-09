@@ -1,0 +1,31 @@
+{
+  "total": 3,
+  "passed": 1,
+  "failed": 2,
+  "details": [
+    {
+      "name": "Proste zapytanie tekstowe",
+      "status": "PASSED",
+      "reason": "Kod zawiera wszystkie oczekiwane elementy",
+      "query": "Wyświetl aktualną datę i godzinę",
+      "code": "from datetime import datetime\n\ndef execute():\n    now = datetime.now()\n    return f\"Current date and time: {now.strftime('%Y-%m-%d %H:%M:%S')}\"",
+      "explanation": "Witaj! Chętnie wyjaśnię, co robi ten kod Python.\n\nTen kod tworzy funkcję `execute`, która zwraca informację o bieżącej dacie i godzinie. To, co robi:\n\n1. Pobiera bieżącą datę i godzinę za pomocą biblioteki `datetime`. Ta biblioteka pozwala na manipulację datami i czasem w Pythonie.\n2. Używa metody `now()` z biblioteki `datetime` do pobrania bieżącej daty i godziny.\n3. Konwertuje otrzymane wartości datetime do formatu stringa, który przedstawia datę w formacie YYYY-MM-DD oraz godzinę w formacie HH:MM:SS. To robi za pomocą metody `strftime`, która konwertuje datetime do formatu stringa.\n4. Zwraca wartość jako stringa, która jest przypisana do zmiennej `now`. Ten string przedstawia bieżącą datę i godzinę w formacie YYYY-MM-DD HH:MM:SS.\n\nCel kodu? Otrzymać informację o bieżącej dacie i godzinie! To pozwala na różne zastosowania, np. rejestrowanie czasu wykonania operacji, wyświetlanie informacji o bieżącym czasie w aplikacji itp.\n\nCzy to jest to, czego oczekiwałeś?"
+    },
+    {
+      "name": "Zapytanie matematyczne",
+      "status": "FAILED",
+      "reason": "Kod nie zawiera oczekiwanych elementów: 5050",
+      "query": "Oblicz sumę liczb od 1 do 100",
+      "code": "def execute():\n    return sum(range(1, 101))",
+      "explanation": "I'd be happy to explain what this code does!\n\nThe given code is a simple Python function named `execute`. When you run this function, it calculates the sum of all numbers from 1 to 100 (inclusive) and returns that result.\n\nIn more detail:\n\n- `range(1, 101)` generates a sequence of numbers from 1 to 100.\n- The `sum` function then adds up all these numbers, giving us the total sum.\n- This sum is returned by the `execute` function when it's called.\n\nThe purpose of this code is likely to demonstrate how to use Python's built-in functions like `range` and `sum`, which make working with sequences of numbers easy."
+    },
+    {
+      "name": "Zapytanie z przetwarzaniem tekstu",
+      "status": "FAILED",
+      "reason": "Kod nie zawiera oczekiwanych elementów: re.findall, aeiou, oeiaa",
+      "query": "Znajdź wszystkie samogłoski w tekście 'Python jest wspaniały'",
+      "code": "def execute():\n    text = \"Python jest wspaniały\"\n    vowels = ['a', 'e', 'i', 'o', 'u']\n    result = [char for char in text.lower() if char in vowels]\n    return ''.join(result)",
+      "explanation": "I'd be happy to explain this code in simple terms!\n\nThis Python code defines a function called `execute()` that takes some text as input, processes it, and returns a new string. Let's break it down step by step:\n\n1. The first line, `text = \"Python jest wspaniały\"`, sets the variable `text` to a string with a sentence written in Polish (don't worry if you don't understand the language!).\n2. The next line, `vowels = ['a', 'e', 'i', 'o', 'u']`, creates a list of five vowels.\n3. The third line uses a technique called \"list comprehension\" to create a new list (`result`) containing only the characters from the original text that are also in the `vowels` list. Here's how it works:\n\t* `for char in text.lower()`: This loop iterates over each character in the original text, converting all letters to lowercase using the `lower()` method.\n\t* `if char in vowels`: For each character, the code checks if it's present in the `vowels` list. If it is, the character gets added to the `result` list.\n4. Finally, the line `return ''.join(result)` takes the `result` list and combines its elements into a single string using the `join()` method with an empty string (`''`) as the separator.\n\nSo, what does this code do? It takes a sentence in Polish, extracts only the vowels (the letters 'a', 'e', 'i', 'o', or 'u'), and returns them as a new string. The resulting string will contain all the vowels from the original text, in lowercase.\n\nThe problems this code solves are:\n\n* Extracting specific characters (vowels) from a larger text\n* Converting text to lowercase for easier processing\n\nThe goal of this code is to demonstrate how to use list comprehension and string manipulation techniques in Python."
+    }
+  ]
+}

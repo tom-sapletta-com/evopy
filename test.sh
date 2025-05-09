@@ -16,5 +16,31 @@ else
     fi
 fi
 
-# Uruchom testy
-$PYTHON_CMD "$SCRIPT_DIR/test_script.py" $@
+# Wyświetl informację o uruchamianych testach
+echo "=== Uruchamianie testów Evopy ==="
+echo "Wersja Python: $($PYTHON_CMD --version)"
+echo
+
+# Uruchom testy podstawowych zapytań
+echo "1. Testy podstawowych zapytań:"
+$PYTHON_CMD "$SCRIPT_DIR/test_queries.py"
+QUERIES_RESULT=$?
+
+# Uruchom pozostałe testy, jeśli istnieją
+if [ -f "$SCRIPT_DIR/test_script.py" ]; then
+    echo "\n2. Testy ogólne systemu:"
+    $PYTHON_CMD "$SCRIPT_DIR/test_script.py" $@
+    GENERAL_RESULT=$?
+else
+    GENERAL_RESULT=0
+fi
+
+# Podsumowanie testów
+echo "\n=== Podsumowanie testów ==="
+if [ $QUERIES_RESULT -eq 0 ] && [ $GENERAL_RESULT -eq 0 ]; then
+    echo "✓ Wszystkie testy zakończone pomyślnie"
+    exit 0
+else
+    echo "✗ Niektóre testy nie powiodły się"
+    exit 1
+fi

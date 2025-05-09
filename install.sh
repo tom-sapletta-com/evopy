@@ -1,11 +1,9 @@
 #!/bin/bash
+# install.sh - Cross-platform installation script for Evopy Assistant
+# Author: Claude
+# Date: 09.05.2025
 
-#!/bin/bash
-# setup.sh - Skrypt do instalacji i konfiguracji Ewolucyjnego Asystenta
-# Autor: Claude
-# Data: 08.05.2024
-
-# Kolory dla terminala
+# Terminal colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[0;33m'
@@ -19,18 +17,36 @@ BOLD='\033[1m'
 echo -e "${MAGENTA}${BOLD}"
 echo "╔════════════════════════════════════════════════════════════════╗"
 echo "║                                                                ║"
-echo "║              EWOLUCYJNY ASYSTENT - INSTALACJA                 ║"
+echo "║              EVOPY ASSISTANT - INSTALLATION                    ║"
 echo "║                                                                ║"
 echo "╚════════════════════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
-# Sprawdź czy skrypt jest uruchamiany z odpowiednimi uprawnieniami
-if [ "$EUID" -eq 0 ]; then
-    echo -e "${RED}Błąd: Ten skrypt nie powinien być uruchamiany jako root.${NC}"
+# Detect OS
+OS="unknown"
+if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+    OS="linux"
+elif [[ "$OSTYPE" == "darwin"* ]]; then
+    OS="macos"
+elif [[ "$OSTYPE" == "cygwin" ]]; then
+    OS="windows"
+elif [[ "$OSTYPE" == "msys" ]]; then
+    OS="windows"
+elif [[ "$OSTYPE" == "win32" ]]; then
+    OS="windows"
+elif [[ -f "/proc/version" ]] && grep -q "Microsoft" "/proc/version"; then
+    OS="wsl"
+fi
+
+echo -e "${BLUE}Detected operating system: ${YELLOW}${OS}${NC}"
+
+# Check if running with appropriate permissions
+if [[ "$OS" == "linux" || "$OS" == "wsl" ]] && [ "$EUID" -eq 0 ]; then
+    echo -e "${RED}Error: This script should not be run as root.${NC}"
     exit 1
 fi
 
-# Funkcje pomocnicze
+# Helper functions
 check_command() {
     command -v $1 >/dev/null 2>&1
 }
@@ -38,172 +54,179 @@ check_command() {
 create_directory() {
     mkdir -p "$1"
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✓ Utworzono katalog: $1${NC}"
+        echo -e "${GREEN}✓ Created directory: $1${NC}"
     else
-        echo -e "${RED}✗ Nie udało się utworzyć katalogu: $1${NC}"
+        echo -e "${RED}✗ Failed to create directory: $1${NC}"
         exit 1
     fi
 }
 
-# Konfiguracja i zmienne
+# Configuration and variables
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="$HOME/.evo-assistant"
 LOG_DIR="$SCRIPT_DIR/logs"
-DEBUG_DIR="$SCRIPT_DIR/debug_logs"
+VENV_DIR="$SCRIPT_DIR/.venv"
+PYTHON_CMD=""
 
-# Utworzenie potrzebnych katalogów
-echo -e "${BLUE}Tworzenie katalogów...${NC}"
+# Create necessary directories
+echo -e "${BLUE}Creating necessary directories...${NC}"
 create_directory "$INSTALL_DIR"
+create_directory "$INSTALL_DIR/history"
+create_directory "$INSTALL_DIR/projects"
+create_directory "$INSTALL_DIR/sandbox"
+create_directory "$INSTALL_DIR/code"
 create_directory "$LOG_DIR"
-create_directory "$DEBUG_DIR"
 
-# Sprawdzenie wymagań
-echo -e "${BLUE}Sprawdzanie wymagań systemowych...${NC}"
-
-# Python 3.8+
+# Determine Python command
+echo -e "${BLUE}Checking for Python...${NC}"
 if check_command python3; then
     PYTHON_CMD="python3"
 elif check_command python; then
     PYTHON_CMD="python"
 else
-    echo -e "${RED}✗ Python nie został znaleziony. Proszę zainstalować Python 3.8 lub nowszy.${NC}"
-    exit 1
-fi
-
-PYTHON_VERSION=$($PYTHON_CMD -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-PYTHON_VERSION_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
-PYTHON_VERSION_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
-
-if [ $PYTHON_VERSION_MAJOR -lt 3 ] || ([ $PYTHON_VERSION_MAJOR -eq 3 ] && [ $PYTHON_VERSION_MINOR -lt 8 ]); then
-    echo -e "${RED}✗ Wymagany jest Python 3.8 lub nowszy. Znaleziono Python $PYTHON_VERSION.${NC}"
-    exit 1
-else
-    echo -e "${GREEN}✓ Python $PYTHON_VERSION znaleziony.${NC}"
-fi
-
-# Docker
-if check_command docker; then
-    echo -e "${GREEN}✓ Docker znaleziony.${NC}"
-else
-    echo -e "${YELLOW}⚠ Docker nie został znaleziony.${NC}"
-    echo -e "${YELLOW}Asystent spróbuje zainstalować Docker automatycznie przy pierwszym uruchomieniu.${NC}"
-fi
-
-# Docker Compose
-if check_command docker-compose || docker compose >/dev/null 2>&1; then
-    echo -e "${GREEN}✓ Docker Compose znaleziony.${NC}"
-else
-    echo -e "${YELLOW}⚠ Docker Compose nie został znaleziony.${NC}"
-    echo -e "${YELLOW}Asystent spróbuje zainstalować Docker Compose automatycznie przy pierwszym uruchomieniu.${NC}"
-fi
-
-# Ollama
-if check_command ollama; then
-    echo -e "${GREEN}✓ Ollama znaleziona.${NC}"
-else
-    echo -e "${YELLOW}⚠ Ollama nie została znaleziona.${NC}"
-    echo -e "${YELLOW}Asystent spróbuje zainstalować Ollama automatycznie przy pierwszym uruchomieniu.${NC}"
-fi
-
-# Instalacja zależności Python
-echo -e "${BLUE}Instalacja zależności Python...${NC}"
-
-# Sprawdź czy pip jest zainstalowany
-if check_command pip3; then
-    PIP_CMD="pip3"
-elif check_command pip; then
-    PIP_CMD="pip"
-else
-    echo -e "${RED}✗ pip nie został znaleziony. Proszę zainstalować pip.${NC}"
-    exit 1
-fi
-
-# Opcjonalna instalacja virtualenv
-if [ "$1" == "--venv" ]; then
-    echo -e "${BLUE}Tworzenie wirtualnego środowiska...${NC}"
+    echo -e "${RED}Error: Python is not installed. Please install Python 3.8 or newer.${NC}"
     
-    # Sprawdź czy virtualenv jest zainstalowany
-    if ! check_command virtualenv; then
-        echo -e "${YELLOW}⚠ Instalacja virtualenv...${NC}"
-        $PIP_CMD install virtualenv
+    if [[ "$OS" == "linux" ]]; then
+        echo -e "${YELLOW}You can install Python on Linux with:${NC}"
+        echo -e "  sudo apt-get update && sudo apt-get install -y python3 python3-pip python3-venv"
+    elif [[ "$OS" == "macos" ]]; then
+        echo -e "${YELLOW}You can install Python on macOS with:${NC}"
+        echo -e "  brew install python"
+        echo -e "  or download from https://www.python.org/downloads/"
+    elif [[ "$OS" == "windows" || "$OS" == "wsl" ]]; then
+        echo -e "${YELLOW}You can install Python on Windows by:${NC}"
+        echo -e "  Downloading from https://www.python.org/downloads/"
+        echo -e "  or using Windows Store"
     fi
     
-    # Tworzenie wirtualnego środowiska
-    VENV_DIR="$SCRIPT_DIR/venv"
-    virtualenv "$VENV_DIR"
-    
-    # Aktywacja wirtualnego środowiska
+    exit 1
+fi
+
+# Check Python version
+PYTHON_VERSION=$($PYTHON_CMD --version | cut -d " " -f 2)
+PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d. -f1)
+PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d. -f2)
+
+echo -e "${GREEN}✓ Found Python $PYTHON_VERSION${NC}"
+
+if [ "$PYTHON_MAJOR" -lt 3 ] || ([ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -lt 8 ]); then
+    echo -e "${RED}Error: Python 3.8 or newer is required. Found Python $PYTHON_VERSION${NC}"
+    exit 1
+fi
+
+# Create virtual environment
+echo -e "${BLUE}Setting up virtual environment...${NC}"
+if [ ! -d "$VENV_DIR" ]; then
+    $PYTHON_CMD -m venv "$VENV_DIR"
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}Failed to create virtual environment. Installing venv package...${NC}"
+        
+        if [[ "$OS" == "linux" || "$OS" == "wsl" ]]; then
+            sudo apt-get update && sudo apt-get install -y python3-venv
+        elif [[ "$OS" == "macos" ]]; then
+            pip3 install virtualenv
+        fi
+        
+        $PYTHON_CMD -m venv "$VENV_DIR"
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Error: Failed to create virtual environment.${NC}"
+            exit 1
+        fi
+    fi
+    echo -e "${GREEN}✓ Created virtual environment${NC}"
+else
+    echo -e "${GREEN}✓ Virtual environment already exists${NC}"
+fi
+
+# Activate virtual environment
+if [[ "$OS" == "windows" ]]; then
+    source "$VENV_DIR/Scripts/activate"
+else
     source "$VENV_DIR/bin/activate"
-    
-    PIP_CMD="$VENV_DIR/bin/pip"
-    PYTHON_CMD="$VENV_DIR/bin/python"
-    
-    echo -e "${GREEN}✓ Wirtualne środowisko aktywowane.${NC}"
 fi
 
-# Instalacja zależności z requirements.txt
-if [ -f "$SCRIPT_DIR/requirements.txt" ]; then
-    echo -e "${BLUE}Instalacja zależności z pliku requirements.txt...${NC}"
-    $PIP_CMD install -r "$SCRIPT_DIR/requirements.txt"
+# Install dependencies
+echo -e "${BLUE}Installing Python dependencies...${NC}"
+pip install --upgrade pip
+pip install -r "$SCRIPT_DIR/requirements.txt"
+
+if [ $? -ne 0 ]; then
+    echo -e "${RED}Error: Failed to install dependencies.${NC}"
+    exit 1
+fi
+echo -e "${GREEN}✓ Installed Python dependencies${NC}"
+
+# Check for Docker
+echo -e "${BLUE}Checking for Docker...${NC}"
+if check_command docker; then
+    echo -e "${GREEN}✓ Docker is installed${NC}"
+    
+    # Check if Docker is running
+    if docker info >/dev/null 2>&1; then
+        echo -e "${GREEN}✓ Docker is running${NC}"
+    else
+        echo -e "${YELLOW}⚠ Docker is installed but not running${NC}"
+        
+        if [[ "$OS" == "linux" ]]; then
+            echo -e "${YELLOW}You can start Docker with:${NC}"
+            echo -e "  sudo systemctl start docker"
+        elif [[ "$OS" == "macos" || "$OS" == "windows" ]]; then
+            echo -e "${YELLOW}Please start Docker Desktop application${NC}"
+        fi
+    fi
 else
-    echo -e "${YELLOW}⚠ Plik requirements.txt nie został znaleziony. Instalacja podstawowych zależności...${NC}"
-    $PIP_CMD install httpx
+    echo -e "${YELLOW}⚠ Docker is not installed${NC}"
+    echo -e "${YELLOW}Docker is recommended but not required for full functionality.${NC}"
     
-    # Instalacja readline w zależności od systemu operacyjnego
-    if [[ "$OSTYPE" == "darwin"* ]]; then
-        $PIP_CMD install readline
-    elif [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]]; then
-        $PIP_CMD install pyreadline3
-    fi
-    
-    # Zależności dla narzędzi testowych i debugowania
-    $PIP_CMD install pexpect psutil docker
-    
-    # Instalacja pyshark jeśli nie jest to ARM64
-    ARCH=$(uname -m)
-    if [ "$ARCH" != "arm64" ] && [ "$ARCH" != "aarch64" ]; then
-        $PIP_CMD install pyshark || echo -e "${YELLOW}⚠ Nie udało się zainstalować pyshark. Monitor debugowania będzie miał ograniczoną funkcjonalność.${NC}"
+    if [[ "$OS" == "linux" ]]; then
+        echo -e "${YELLOW}You can install Docker on Linux with:${NC}"
+        echo -e "  curl -fsSL https://get.docker.com -o get-docker.sh"
+        echo -e "  sudo sh get-docker.sh"
+    elif [[ "$OS" == "macos" ]]; then
+        echo -e "${YELLOW}You can install Docker on macOS by downloading Docker Desktop:${NC}"
+        echo -e "  https://www.docker.com/products/docker-desktop"
+    elif [[ "$OS" == "windows" || "$OS" == "wsl" ]]; then
+        echo -e "${YELLOW}You can install Docker on Windows by downloading Docker Desktop:${NC}"
+        echo -e "  https://www.docker.com/products/docker-desktop"
     fi
 fi
 
-# Kopiowanie plików
-echo -e "${BLUE}Kopiowanie plików...${NC}"
-
-# Kopiowanie pliku evo_assistant.py jeśli istnieje
-if [ -f "$SCRIPT_DIR/evolutionary_assistant.py" ]; then
-    cp "$SCRIPT_DIR/evolutionary_assistant.py" "$SCRIPT_DIR/evo_assistant.py"
-    chmod +x "$SCRIPT_DIR/evo_assistant.py"
-    echo -e "${GREEN}✓ Skopiowano evolutionary_assistant.py do evo_assistant.py${NC}"
+# Check for Ollama
+echo -e "${BLUE}Checking for Ollama...${NC}"
+if check_command ollama; then
+    echo -e "${GREEN}✓ Ollama is installed${NC}"
+else
+    echo -e "${YELLOW}⚠ Ollama is not installed${NC}"
+    
+    if [[ "$OS" == "linux" ]]; then
+        echo -e "${YELLOW}You can install Ollama on Linux with:${NC}"
+        echo -e "  curl -fsSL https://ollama.com/install.sh | sh"
+    elif [[ "$OS" == "macos" ]]; then
+        echo -e "${YELLOW}You can install Ollama on macOS by downloading:${NC}"
+        echo -e "  https://ollama.com/download/Ollama-darwin.zip"
+    elif [[ "$OS" == "windows" ]]; then
+        echo -e "${YELLOW}You can install Ollama on Windows by downloading:${NC}"
+        echo -e "  https://ollama.com/download/OllamaSetup.exe"
+    fi
 fi
 
-# Kopiowanie pliku test_script.py jeśli istnieje
-if [ -f "$SCRIPT_DIR/test_script.py" ]; then
-    chmod +x "$SCRIPT_DIR/test_script.py"
-    echo -e "${GREEN}✓ Ustawiono uprawnienia wykonywania dla test_script.py${NC}"
-fi
+# Create run scripts for different platforms
+echo -e "${BLUE}Creating platform-specific run scripts...${NC}"
 
-# Kopiowanie pliku debug_monitor.py jeśli istnieje
-if [ -f "$SCRIPT_DIR/debug_monitor.py" ]; then
-    chmod +x "$SCRIPT_DIR/debug_monitor.py"
-    echo -e "${GREEN}✓ Ustawiono uprawnienia wykonywania dla debug_monitor.py${NC}"
-fi
-
-# Tworzenie plików uruchomieniowych
-echo -e "${BLUE}Tworzenie skryptów uruchomieniowych...${NC}"
-
-# Plik run.sh do uruchamiania asystenta
-cat > "$SCRIPT_DIR/run.sh" << EOL
+# Linux/macOS run script
+cat > "$SCRIPT_DIR/run.sh" << 'EOFSH'
 #!/bin/bash
-# Skrypt uruchamiający Ewolucyjnego Asystenta
+# Run script for Evopy Assistant on Linux/macOS
 
-SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+VENV_DIR="$SCRIPT_DIR/.venv"
 
-# Aktywacja wirtualnego środowiska, jeśli istnieje
-if [ -d "\$SCRIPT_DIR/venv" ]; then
-    source "\$SCRIPT_DIR/venv/bin/activate"
-    PYTHON_CMD="\$SCRIPT_DIR/venv/bin/python"
+# Activate virtual environment
+if [ -d "$VENV_DIR" ]; then
+    source "$VENV_DIR/bin/activate"
+    PYTHON_CMD="python"
 else
-    # Wybierz dostępną komendę Python
+    # Choose available Python command
     if command -v python3 >/dev/null 2>&1; then
         PYTHON_CMD="python3"
     else
@@ -211,139 +234,102 @@ else
     fi
 fi
 
-# Uruchom asystenta
-\$PYTHON_CMD "\$SCRIPT_DIR/evo.py" \$@
-EOL
+# Run assistant
+$PYTHON_CMD "$SCRIPT_DIR/evo.py" "$@"
+EOFSH
 
 chmod +x "$SCRIPT_DIR/run.sh"
-echo -e "${GREEN}✓ Utworzono skrypt run.sh${NC}"
+echo -e "${GREEN}✓ Created run.sh script${NC}"
 
-# Plik debug.sh do uruchamiania monitora debugowania
-cat > "$SCRIPT_DIR/debug.sh" << EOL
-#!/bin/bash
-# Skrypt uruchamiający monitor debugowania
+# Windows run script
+cat > "$SCRIPT_DIR/run.bat" << 'EOFBAT'
+@echo off
+:: Run script for Evopy Assistant on Windows
 
-SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+set SCRIPT_DIR=%~dp0
+set VENV_DIR=%SCRIPT_DIR%.venv
 
-# Aktywacja wirtualnego środowiska, jeśli istnieje
-if [ -d "\$SCRIPT_DIR/venv" ]; then
-    source "\$SCRIPT_DIR/venv/bin/activate"
-    PYTHON_CMD="\$SCRIPT_DIR/venv/bin/python"
-else
-    # Wybierz dostępną komendę Python
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_CMD="python3"
+:: Activate virtual environment
+if exist "%VENV_DIR%\Scripts\activate.bat" (
+    call "%VENV_DIR%\Scripts\activate.bat"
+    set PYTHON_CMD=python
+) else (
+    :: Choose available Python command
+    where python > nul 2>&1
+    if %ERRORLEVEL% equ 0 (
+        set PYTHON_CMD=python
+    ) else (
+        where python3 > nul 2>&1
+        if %ERRORLEVEL% equ 0 (
+            set PYTHON_CMD=python3
+        ) else (
+            echo Python not found. Please install Python 3.8 or newer.
+            exit /b 1
+        )
+    )
+)
+
+:: Run assistant
+%PYTHON_CMD% "%SCRIPT_DIR%evo.py" %*
+EOFBAT
+
+echo -e "${GREEN}✓ Created run.bat script${NC}"
+
+# PowerShell run script
+cat > "$SCRIPT_DIR/run.ps1" << 'EOFPS'
+# Run script for Evopy Assistant on Windows (PowerShell)
+
+$SCRIPT_DIR = Split-Path -Parent $MyInvocation.MyCommand.Path
+$VENV_DIR = Join-Path $SCRIPT_DIR ".venv"
+
+# Activate virtual environment
+if (Test-Path (Join-Path $VENV_DIR "Scripts\Activate.ps1")) {
+    & (Join-Path $VENV_DIR "Scripts\Activate.ps1")
+    $PYTHON_CMD = "python"
+} else {
+    # Choose available Python command
+    try {
+        Get-Command python -ErrorAction Stop
+        $PYTHON_CMD = "python"
+    } catch {
+        try {
+            Get-Command python3 -ErrorAction Stop
+            $PYTHON_CMD = "python3"
+        } catch {
+            Write-Host "Python not found. Please install Python 3.8 or newer."
+            exit 1
+        }
+    }
+}
+
+# Run assistant
+& $PYTHON_CMD (Join-Path $SCRIPT_DIR "evo.py") $args
+EOFPS
+
+echo -e "${GREEN}✓ Created run.ps1 script${NC}"
+
+# Set permissions
+chmod +x "$SCRIPT_DIR/run.sh"
+chmod +x "$SCRIPT_DIR/evo.py"
+
+echo -e "${GREEN}${BOLD}Installation completed successfully!${NC}"
+echo -e "${BLUE}You can now run Evopy Assistant using:${NC}"
+echo -e "  ${GREEN}On Linux/macOS:${NC} ./run.sh"
+echo -e "  ${GREEN}On Windows:${NC} run.bat or powershell -ExecutionPolicy Bypass -File run.ps1"
+echo
+
+# Ask to run the assistant
+echo -e "${BLUE}Would you like to run Evopy Assistant now? (y/N)${NC}"
+read -n 1 -r choice
+echo
+
+if [[ "$choice" == "y" ]] || [[ "$choice" == "Y" ]]; then
+    echo -e "${BLUE}Starting Evopy Assistant...${NC}"
+    if [[ "$OS" == "windows" ]]; then
+        cmd.exe /c "$SCRIPT_DIR/run.bat"
     else
-        PYTHON_CMD="python"
+        "$SCRIPT_DIR/run.sh"
     fi
-fi
-
-# Uruchom monitor debugowania
-\$PYTHON_CMD "\$SCRIPT_DIR/monitor.py" --script "\$SCRIPT_DIR/evo.py" \$@
-EOL
-
-chmod +x "$SCRIPT_DIR/debug.sh"
-echo -e "${GREEN}✓ Utworzono skrypt debug.sh${NC}"
-
-# Plik test.sh do uruchamiania skryptu testującego
-cat > "$SCRIPT_DIR/test.sh" << EOL
-#!/bin/bash
-# Skrypt uruchamiający testy
-
-SCRIPT_DIR="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
-
-# Aktywacja wirtualnego środowiska, jeśli istnieje
-if [ -d "\$SCRIPT_DIR/venv" ]; then
-    source "\$SCRIPT_DIR/venv/bin/activate"
-    PYTHON_CMD="\$SCRIPT_DIR/venv/bin/python"
 else
-    # Wybierz dostępną komendę Python
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_CMD="python3"
-    else
-        PYTHON_CMD="python"
-    fi
-fi
-
-# Uruchom testy
-\$PYTHON_CMD "\$SCRIPT_DIR/test_script.py" \$@
-EOL
-
-chmod +x "$SCRIPT_DIR/test.sh"
-echo -e "${GREEN}✓ Utworzono skrypt test.sh${NC}"
-
-# Tworzenie skrótów dla Windows
-if [[ "$OSTYPE" == "win32" ]] || [[ "$OSTYPE" == "cygwin" ]] || [[ "$OSTYPE" == "msys" ]]; then
-    echo -e "${BLUE}Tworzenie skrótów dla Windows...${NC}"
-    
-    # Plik run.bat
-    cat > "$SCRIPT_DIR/run.bat" << EOL
-@echo off
-cd "%~dp0"
-if exist venv\Scripts\activate.bat (
-    call venv\Scripts\activate.bat
-    python evo_assistant.py %*
-) else (
-    python evo_assistant.py %*
-)
-EOL
-    echo -e "${GREEN}✓ Utworzono skrypt run.bat${NC}"
-    
-    # Plik debug.bat
-    cat > "$SCRIPT_DIR/debug.bat" << EOL
-@echo off
-cd "%~dp0"
-if exist venv\Scripts\activate.bat (
-    call venv\Scripts\activate.bat
-    python debug_monitor.py --script evo_assistant.py %*
-) else (
-    python debug_monitor.py --script evo_assistant.py %*
-)
-EOL
-    echo -e "${GREEN}✓ Utworzono skrypt debug.bat${NC}"
-    
-    # Plik test.bat
-    cat > "$SCRIPT_DIR/test.bat" << EOL
-@echo off
-cd "%~dp0"
-if exist venv\Scripts\activate.bat (
-    call venv\Scripts\activate.bat
-    python test_script.py %*
-) else (
-    python test_script.py %*
-)
-EOL
-    echo -e "${GREEN}✓ Utworzono skrypt test.bat${NC}"
-fi
-
-# Podsumowanie
-echo -e "${MAGENTA}${BOLD}"
-echo "╔════════════════════════════════════════════════════════════════╗"
-echo "║                                                                ║"
-echo "║              INSTALACJA ZAKOŃCZONA POMYŚLNIE!                 ║"
-echo "║                                                                ║"
-echo "╚════════════════════════════════════════════════════════════════╝"
-echo -e "${NC}"
-
-echo -e "${CYAN}Aby uruchomić asystenta, użyj:${NC}"
-echo -e "${GREEN}  ${SCRIPT_DIR}/run.sh${NC}"
-echo -e "${CYAN}Aby uruchomić monitor debugowania, użyj:${NC}"
-echo -e "${GREEN}  ${SCRIPT_DIR}/debug.sh${NC}"
-echo -e "${CYAN}Aby uruchomić testy, użyj:${NC}"
-echo -e "${GREEN}  ${SCRIPT_DIR}/test.sh${NC}"
-
-echo ""
-echo -e "${YELLOW}Uwaga: Przy pierwszym uruchomieniu asystent sprawdzi i zainstaluje brakujące zależności,${NC}"
-echo -e "${YELLOW}       takie jak Docker, Docker Compose czy Ollama, jeśli ich nie znaleziono.${NC}"
-echo ""
-
-# Pytanie o uruchomienie asystenta
-echo -e "${BLUE}Czy chcesz uruchomić asystenta teraz? (t/N)${NC}"
-read -r choice
-
-if [[ "$choice" == "t" ]] || [[ "$choice" == "T" ]]; then
-    echo -e "${BLUE}Uruchamianie asystenta...${NC}"
-    "${SCRIPT_DIR}/run.sh"
-else
-    echo -e "${BLUE}Możesz uruchomić asystenta później za pomocą ${GREEN}${SCRIPT_DIR}/run.sh${NC}"
+    echo -e "${BLUE}You can run Evopy Assistant later using the appropriate script for your platform.${NC}"
 fi

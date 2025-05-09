@@ -31,6 +31,16 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union, Tuple
 
+# Import modułów lokalnych
+try:
+    from text2python import Text2Python
+    from docker_sandbox import DockerSandbox
+except ImportError:
+    # Jeśli moduły nie są dostępne, dodaj katalog projektu do ścieżki
+    sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+    from text2python import Text2Python
+    from docker_sandbox import DockerSandbox
+
 # Konfiguracja logowania
 logging.basicConfig(
     level=logging.INFO,
@@ -49,6 +59,8 @@ class Colors:
     GREEN = '\033[92m'
     YELLOW = '\033[93m'
     RED = '\033[91m'
+    CYAN = '\033[96m'
+    MAGENTA = '\033[95m'
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
     END = '\033[0m'
@@ -59,8 +71,10 @@ HISTORY_DIR = APP_DIR / "history"
 PROJECTS_DIR = APP_DIR / "projects"
 CACHE_DIR = APP_DIR / "cache"
 MODELS_DIR = APP_DIR / "models"
+SANDBOX_DIR = APP_DIR / "sandbox"  # Katalog dla piaskownic Docker
+CODE_DIR = APP_DIR / "code"  # Katalog dla generowanego kodu
 CONFIG_FILE = APP_DIR / "config.json"
-DEFAULT_MODEL = "deepseek-coder:instruct-6.7b"
+DEFAULT_MODEL = "llama3"
 VERSION = "0.1.0"
 
 # Domyślna konfiguracja
@@ -73,6 +87,9 @@ DEFAULT_CONFIG = {
     "version": VERSION,
     "skills": [],
     "conversation_context": 2048,
+    "sandbox_image": "python:3.9-slim",  # Obraz bazowy dla piaskownic
+    "sandbox_timeout": 30,  # Limit czasu wykonania kodu w sekundach
+    "max_code_size": 10240,  # Maksymalny rozmiar kodu w bajtach
 }
 
 class EvoAssistant:
@@ -90,6 +107,12 @@ class EvoAssistant:
         
         # Inicjalizacja katalogów
         self._initialize_directories()
+        
+        # Inicjalizacja modułów
+        self.text2python = Text2Python(
+            model_name=self.config.get("model", DEFAULT_MODEL),
+            code_dir=CODE_DIR
+        )
         
         # Rejestracja obsługi sygnałów
         signal.signal(signal.SIGINT, self._handle_interrupt)
@@ -127,7 +150,7 @@ class EvoAssistant:
     
     def _initialize_directories(self):
         """Tworzy wymagane katalogi"""
-        for directory in [APP_DIR, HISTORY_DIR, PROJECTS_DIR, CACHE_DIR, MODELS_DIR]:
+        for directory in [APP_DIR, HISTORY_DIR, PROJECTS_DIR, CACHE_DIR, MODELS_DIR, SANDBOX_DIR, CODE_DIR]:
             os.makedirs(directory, exist_ok=True)
     
     def _handle_interrupt(self, signum, frame):
@@ -196,7 +219,9 @@ class EvoAssistant:
                 logger.warning(f"Model {model} nie jest pobrany")
                 dependencies_ok = False
                 if self.config.get("auto_install_dependencies", True):
-                    self._pull_model(model)
+                    # Jeśli model został pobrany, zaktualizuj status zależności
+                    if self._pull_model(model):
+                        dependencies_ok = True
         
         return dependencies_ok
     
@@ -212,10 +237,18 @@ class EvoAssistant:
         """Instaluje Docker"""
         system = platform.system().lower()
         
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
         if system == "linux":
             # Instrukcje dla Linux
-            print(f"{Colors.YELLOW}Docker nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Docker nie jest zainstalowany. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Docker nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Dockera...{Colors.END}")
                 os.system("curl -fsSL https://get.docker.com -o get-docker.sh")
@@ -240,9 +273,17 @@ class EvoAssistant:
         """Instaluje Docker Compose"""
         system = platform.system().lower()
         
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
         if system == "linux":
-            print(f"{Colors.YELLOW}Docker Compose nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Docker Compose nie jest zainstalowany. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Docker Compose nie jest zainstalowany. Czy chcesz go zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Docker Compose...{Colors.END}")
                 os.system("sudo curl -L https://github.com/docker/compose/releases/download/v2.5.0/docker-compose-$(uname -s)-$(uname -m) -o /usr/local/bin/docker-compose")
@@ -258,9 +299,17 @@ class EvoAssistant:
         """Instaluje Ollama"""
         system = platform.system().lower()
         
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
         if system == "linux":
-            print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Ollama...{Colors.END}")
                 os.system("curl -fsSL https://ollama.com/install.sh | sh")
@@ -269,8 +318,13 @@ class EvoAssistant:
                 print(f"{Colors.YELLOW}Instalacja Ollama pominięta. Asystent będzie używać Ollama w kontenerze Docker.{Colors.END}")
         
         elif system == "darwin":  # macOS
-            print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
+            if auto_accept:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Automatycznie akceptuję instalację.{Colors.END}")
+                choice = 't'
+            else:
+                print(f"{Colors.YELLOW}Ollama nie jest zainstalowana. Czy chcesz ją zainstalować? (t/N):{Colors.END} ", end="")
+                choice = input().lower()
+                
             if choice == 't':
                 print(f"{Colors.BLUE}Instalowanie Ollama...{Colors.END}")
                 os.system("curl -fsSL https://ollama.com/install.sh | sh")
@@ -294,28 +348,127 @@ class EvoAssistant:
             logger.error(f"Błąd podczas sprawdzania modelu: {e}")
             return False
     
-    def _pull_model(self, model: str):
-        """Pobiera model Ollama"""
-        print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Czy chcesz go pobrać? (t/N):{Colors.END} ", end="")
-        choice = input().lower()
+    def _pull_model(self, model: str) -> bool:
+        """Pobiera model Ollama
+        
+        Returns:
+            bool: True jeśli model został pobrany, False w przeciwnym razie
+        """
+        # Sprawdź czy auto-accept jest włączone
+        auto_accept = os.environ.get("EVOPY_AUTO_ACCEPT", "0") == "1"
+        
+        if auto_accept:
+            print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Automatycznie akceptuję pobieranie.{Colors.END}")
+            choice = 't'
+        else:
+            print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Czy chcesz go pobrać? (t/N):{Colors.END} ", end="")
+            choice = input().lower()
+            
         if choice == 't':
             print(f"{Colors.BLUE}Pobieranie modelu {model}...{Colors.END}")
+            start_time = time.time()
             process = subprocess.Popen(["ollama", "pull", model], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            
+            # Zmienne do śledzenia postępu
+            total_size = None
+            downloaded = 0
+            last_percentage = 0
+            estimated_time = "obliczanie..."
             
             # Wyświetlanie postępu
             while process.poll() is None:
                 output = process.stdout.readline().strip()
                 if output:
-                    print(f"\r{Colors.BLUE}{output}{Colors.END}", end="")
+                    # Próba wyodrębnienia informacji o postępie
+                    if "downloading" in output.lower():
+                        try:
+                            # Przykładowy format: "downloading: 45.54 MiB / 4.07 GiB (1.09%)"
+                            parts = output.split()
+                            if len(parts) >= 5 and parts[2] == "/":
+                                # Pobierz informacje o rozmiarze
+                                current_size_str = parts[1]
+                                total_size_str = parts[3]
+                                percentage_str = parts[4].strip("()%")
+                                
+                                # Konwersja na bajty dla dokładniejszych obliczeń
+                                current_size = float(current_size_str)
+                                current_unit = parts[1].split()[-1] if len(parts[1].split()) > 1 else "B"
+                                total_size_value = float(total_size_str)
+                                total_unit = parts[3].split()[-1] if len(parts[3].split()) > 1 else "B"
+                                
+                                # Konwersja jednostek na bajty
+                                unit_multipliers = {"B": 1, "KiB": 1024, "MiB": 1024**2, "GiB": 1024**3, "TiB": 1024**4}
+                                downloaded = current_size * unit_multipliers.get(current_unit, 1)
+                                if total_size is None:
+                                    total_size = total_size_value * unit_multipliers.get(total_unit, 1)
+                                
+                                # Obliczanie czasu pozostałego
+                                percentage = float(percentage_str)
+                                if percentage > 0:
+                                    elapsed_time = time.time() - start_time
+                                    estimated_total_time = elapsed_time / (percentage / 100)
+                                    remaining_time = estimated_total_time - elapsed_time
+                                    
+                                    # Formatowanie czasu pozostałego
+                                    if remaining_time < 60:
+                                        estimated_time = f"{int(remaining_time)} sekund"
+                                    elif remaining_time < 3600:
+                                        estimated_time = f"{int(remaining_time / 60)} minut {int(remaining_time % 60)} sekund"
+                                    else:
+                                        estimated_time = f"{int(remaining_time / 3600)} godzin {int((remaining_time % 3600) / 60)} minut"
+                                
+                                # Tworzenie paska postępu
+                                bar_length = 30
+                                filled_length = int(bar_length * percentage / 100)
+                                bar = '█' * filled_length + '░' * (bar_length - filled_length)
+                                
+                                # Wyświetlanie paska postępu i informacji
+                                progress_info = f"[{bar}] {percentage:.2f}% | Pozostało: {estimated_time}"
+                                print(f"\r{Colors.BLUE}{progress_info}{Colors.END}", end="")
+                                last_percentage = percentage
+                        except Exception as e:
+                            # W przypadku błędu parsowania, wyświetl oryginalny output
+                            print(f"\r{Colors.BLUE}{output}{Colors.END}", end="")
+                    else:
+                        print(f"\r{Colors.BLUE}{output}{Colors.END}", end="")
                 time.sleep(0.1)
             
+            # Po zakończeniu pobierania
+            if last_percentage > 0:
+                bar_length = 30
+                bar = '█' * bar_length
+                print(f"\r{Colors.BLUE}[{bar}] 100.00% | Zakończono!{Colors.END}")
+            
             print(f"\n{Colors.GREEN}Model {model} został pobrany.{Colors.END}")
+            return True
         else:
             print(f"{Colors.YELLOW}Pobieranie modelu pominięte. Asystent może nie działać poprawnie.{Colors.END}")
+            return False
+    
+    def _ensure_model_downloaded(self) -> bool:
+        """Upewnia się, że model jest pobrany lokalnie przed uruchomieniem Dockera"""
+        model = self.config.get("model", DEFAULT_MODEL)
+        
+        # Sprawdź czy ollama jest zainstalowana
+        ollama_installed = shutil.which("ollama") is not None
+        if not ollama_installed:
+            logger.warning("Ollama nie jest zainstalowana. Nie można pobrać modelu lokalnie.")
+            return False
+            
+        # Sprawdź czy model jest już pobrany
+        if self._check_model_exists(model):
+            logger.info(f"Model {model} jest już pobrany lokalnie.")
+            print(f"{Colors.GREEN}Model {model} jest już pobrany lokalnie.{Colors.END}")
+            return True
+            
+        # Pobierz model
+        logger.info(f"Pobieranie modelu {model} lokalnie przed uruchomieniem Dockera...")
+        return self._pull_model(model)
     
     def _start_ollama_server(self):
         """Uruchamia serwer Ollama"""
         logger.info("Uruchamianie serwera Ollama...")
+        model = self.config.get("model", DEFAULT_MODEL)
         
         # Sprawdź czy Ollama jest już uruchomiona
         try:
@@ -335,16 +488,39 @@ class EvoAssistant:
                 # Próba uruchomienia Ollama w kontenerze Docker
                 logger.info("Próba uruchomienia Ollama w kontenerze Docker...")
                 try:
+                    # Określ ścieżkę do katalogu z modelami Ollama
+                    ollama_models_dir = Path.home() / ".ollama" / "models"
+                    docker_models_volume = "ollama-data:/root/.ollama"
+                    
+                    # Sprawdź czy model został pobrany lokalnie
+                    model_downloaded = self._check_model_exists(model)
+                    
+                    # Jeśli model został pobrany lokalnie, użyj bindowania woluminu
+                    if model_downloaded and ollama_models_dir.exists():
+                        docker_models_volume = f"{ollama_models_dir}:/root/.ollama/models"
+                        logger.info(f"Używanie lokalnie pobranych modeli: {docker_models_volume}")
+                    
+                    # Uruchom kontener Ollama z podpiętym woluminem modeli
                     subprocess.run(["docker", "run", "-d", "--name", "evo-assistant-ollama", "-p", "11434:11434", 
-                                    "-v", "ollama-data:/root/.ollama", "ollama/ollama"], 
+                                    "-v", docker_models_volume, "ollama/ollama"], 
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
                     logger.info("Ollama została uruchomiona w kontenerze Docker")
                     
-                    # Pobieranie modelu
-                    model = self.config.get("model", DEFAULT_MODEL)
-                    logger.info(f"Pobieranie modelu {model} w kontenerze Docker...")
-                    subprocess.run(["docker", "exec", "evo-assistant-ollama", "ollama", "pull", model], 
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                    # Jeśli model nie został pobrany lokalnie, pobierz go w kontenerze
+                    if not model_downloaded:
+                        logger.info(f"Pobieranie modelu {model} w kontenerze Docker...")
+                        print(f"{Colors.BLUE}Pobieranie modelu {model} w kontenerze Docker...{Colors.END}")
+                        process = subprocess.Popen(["docker", "exec", "evo-assistant-ollama", "ollama", "pull", model], 
+                                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                        
+                        # Wyświetlanie postępu
+                        while process.poll() is None:
+                            output = process.stdout.readline().strip()
+                            if output:
+                                print(f"\r{Colors.BLUE}{output}{Colors.END}", end="")
+                            time.sleep(0.1)
+                        
+                        print(f"\n{Colors.GREEN}Model {model} został pobrany w kontenerze Docker.{Colors.END}")
                     
                     return True
                 except subprocess.CalledProcessError as e:
@@ -363,6 +539,11 @@ class EvoAssistant:
             if choice != 't':
                 print(f"{Colors.RED}Kończenie pracy.{Colors.END}")
                 return
+        
+        # Upewnij się, że model jest pobrany lokalnie przed uruchomieniem Dockera
+        model = self.config.get("model", DEFAULT_MODEL)
+        print(f"{Colors.BLUE}Upewnianie się, że model {model} jest pobrany lokalnie...{Colors.END}")
+        model_downloaded = self._ensure_model_downloaded()
         
         print(f"{Colors.BLUE}Uruchamianie serwera modelu językowego...{Colors.END}")
         if not self._start_ollama_server():
@@ -435,6 +616,245 @@ class EvoAssistant:
         conversations.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
         
         return conversations
+    
+    def _handle_query(self, query: str):
+        """Obsługuje zapytanie użytkownika"""
+        try:
+            logger.info(f"Rozpoczęcie obsługi zapytania: '{query}'")
+            
+            if not self.current_conversation_id or self.current_conversation_id not in self.conversations:
+                logger.debug("Brak aktywnej konwersacji, tworzenie nowej")
+                self._create_new_conversation()
+            
+            # Dodaj wiadomość użytkownika do historii
+            self.conversations[self.current_conversation_id]["messages"].append({
+                "role": "user",
+                "content": query,
+                "timestamp": datetime.now().isoformat()
+            })
+            
+            # Aktualizacja czasu ostatniej modyfikacji
+            self.conversations[self.current_conversation_id]["updated_at"] = datetime.now().isoformat()
+            
+            # Zapisz konwersację
+            self._save_conversation(self.current_conversation_id)
+            logger.debug(f"Zapisano konwersację: {self.current_conversation_id}")
+            
+            # Konwertuj zapytanie użytkownika na kod Python i weryfikuj intencje
+            print(f"{Colors.BLUE}Konwertowanie zapytania na kod Python...{Colors.END}")
+            code_result = self.text2python.generate_code(query)
+            
+            # Sprawdź wynik generowania kodu
+            if not code_result["success"]:
+                error_msg = code_result.get('error', 'Nieznany błąd')
+                logger.warning(f"Nie udało się wygenerować kodu: {error_msg}")
+                
+                # Jeśli mamy kod mimo błędu (np. dla nieprawidłowego zapytania), wyświetl go
+                if code_result.get("code"):
+                    print(f"{Colors.GREEN}Wygenerowano kod Python:{Colors.END}")
+                    print(f"{Colors.CYAN}{code_result['code']}{Colors.END}")
+                    
+                    # Dodaj informację o analizie zapytania
+                    if code_result.get("analysis"):
+                        print(f"{Colors.YELLOW}Analiza zapytania: {code_result['analysis']}{Colors.END}")
+                    
+                    # Zapytaj użytkownika czy chce uruchomić kod mimo błędu
+                    print(f"{Colors.YELLOW}Czy chcesz uruchomić ten kod w piaskownicy Docker? (t/N):{Colors.END} ", end="")
+                    choice = input().lower()
+                    
+                    if choice == 't':
+                        # Kontynuuj z uruchomieniem kodu
+                        code = code_result["code"]
+                    else:
+                        print(f"{Colors.YELLOW}Pominięto uruchomienie kodu.{Colors.END}")
+                        return
+                else:
+                    print(f"{Colors.RED}Nie udało się wygenerować kodu: {error_msg}{Colors.END}")
+                    return
+            else:
+                # Pokaż wygenerowany kod
+                code = code_result["code"]
+                logger.info("Kod został pomyślnie wygenerowany")
+                print(f"{Colors.GREEN}Wygenerowano kod Python:{Colors.END}")
+                print(f"{Colors.CYAN}{code}{Colors.END}")
+                
+                # Pokaż wyjaśnienie kodu
+                if code_result.get("explanation"):
+                    print(f"{Colors.MAGENTA}Wyjaśnienie kodu:{Colors.END}")
+                    print(f"{Colors.YELLOW}{code_result['explanation']}{Colors.END}")
+                
+                # Pokaż analizę kodu
+                if code_result.get("analysis"):
+                    print(f"{Colors.MAGENTA}Analiza kodu:{Colors.END}")
+                    print(f"{Colors.YELLOW}{code_result['analysis']}{Colors.END}")
+                    
+                    # Jeśli są sugestie, pokaż je
+                    if code_result.get("suggestions") and len(code_result["suggestions"]) > 0:
+                        print(f"{Colors.MAGENTA}Sugestie:{Colors.END}")
+                        for i, suggestion in enumerate(code_result["suggestions"], 1):
+                            print(f"{Colors.YELLOW}{i}. {suggestion}{Colors.END}")
+                
+                # Zapytaj użytkownika czy to jest to, czego oczekiwał
+                print(f"{Colors.BLUE}Czy to jest to, czego oczekiwałeś? (t/n/e):{Colors.END} ", end="")
+                intent_choice = input().lower()
+                
+                if intent_choice == 'n':
+                    print(f"{Colors.YELLOW}Co dokładnie nie działa zgodnie z oczekiwaniami?{Colors.END} ", end="")
+                    feedback = input()
+                    print(f"{Colors.YELLOW}Dziękuję za informację. Spróbuję poprawić kod w przyszłości.{Colors.END}")
+                    
+                    # Zapisz informację o niezgodności z intencją użytkownika
+                    self.conversations[self.current_conversation_id]["messages"].append({
+                        "role": "system",
+                        "content": f"Użytkownik zaznaczył, że kod nie spełnia jego oczekiwań. Feedback: {feedback}",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    self._save_conversation(self.current_conversation_id)
+                    return
+                elif intent_choice == 'e':
+                    print(f"{Colors.YELLOW}Podaj dodatkowe wyjaśnienia lub modyfikacje:{Colors.END} ", end="")
+                    modifications = input()
+                    
+                    # Zapisz informację o modyfikacjach
+                    self.conversations[self.current_conversation_id]["messages"].append({
+                        "role": "user",
+                        "content": f"Modyfikacje do kodu: {modifications}",
+                        "timestamp": datetime.now().isoformat()
+                    })
+                    self._save_conversation(self.current_conversation_id)
+                    
+                    # Tutaj można byłoby dodać logikę do modyfikacji kodu, ale to wykracza poza zakres obecnej implementacji
+                    print(f"{Colors.YELLOW}Dziękuję za informację. Czy chcesz uruchomić obecny kod mimo to? (t/N):{Colors.END} ", end="")
+                    choice = input().lower()
+                else:
+                    # Użytkownik zatwierdził kod (t) lub nie podał odpowiedzi
+                    print(f"{Colors.YELLOW}Czy chcesz uruchomić ten kod w piaskownicy Docker? (t/N):{Colors.END} ", end="")
+                    choice = input().lower()
+            
+            if choice != 't':
+                print(f"{Colors.YELLOW}Pominięto uruchomienie kodu.{Colors.END}")
+                return
+                
+            # Uruchom kod w piaskownicy Docker
+            print(f"{Colors.BLUE}Uruchamianie kodu w piaskownicy Docker...{Colors.END}")
+            sandbox_result = self._run_code_in_sandbox(code)
+            
+            # Zapisz wynik uruchomienia kodu
+            self._save_code_execution_result(query, code, sandbox_result)
+            
+        except Exception as e:
+            logger.error(f"Błąd w pętli interaktywnej: {str(e)}")
+            print(f"{Colors.RED}Wystąpił błąd: {str(e)}{Colors.END}")
+            return
+        
+        # Kontynuuj tylko jeśli kod został pomyślnie wykonany
+        if not sandbox_result.get("success", False):
+            print(f"{Colors.RED}Wystąpił błąd podczas wykonywania kodu:{Colors.END}")
+            print(f"{Colors.RED}{sandbox_result.get('error', 'Nieznany błąd')}{Colors.END}")
+            return
+        
+        # Wygeneruj wyjaśnienie kodu
+        if sandbox_result["success"]:
+            print(f"{Colors.GREEN}Kod został wykonany pomyślnie!{Colors.END}")
+            print(f"{Colors.BLUE}Wynik wykonania:{Colors.END}")
+            print(f"{Colors.CYAN}{sandbox_result['output']}{Colors.END}")
+            
+            # Wygeneruj wyjaśnienie kodu
+            print(f"{Colors.BLUE}Generowanie wyjaśnienia kodu...{Colors.END}")
+            explanation = self.text2python.explain_code(code)
+            print(f"{Colors.MAGENTA}Wyjaśnienie kodu:{Colors.END}")
+            print(f"{Colors.CYAN}{explanation}{Colors.END}")
+            
+            # Zapytaj użytkownika czy to jest to czego oczekiwał
+            print(f"{Colors.YELLOW}Czy to jest to czego oczekiwałeś? (t/N):{Colors.END} ", end="")
+            feedback = input().lower()
+            
+            if feedback == 't':
+                print(f"{Colors.GREEN}Doskonale! Zadanie zostało wykonane pomyślnie.{Colors.END}")
+            else:
+                print(f"{Colors.YELLOW}Rozumiem. Co powinienem poprawić?{Colors.END}")
+        else:
+            print(f"{Colors.RED}Wystąpił błąd podczas wykonywania kodu:{Colors.END}")
+            print(f"{Colors.RED}{sandbox_result.get('error', 'Nieznany błąd')}{Colors.END}")
+    
+    def _run_code_in_sandbox(self, code: str) -> Dict[str, Any]:
+        """Uruchamia kod w piaskownicy Docker
+        
+        Args:
+            code: Kod Python do uruchomienia
+            
+        Returns:
+            Dict: Wynik wykonania kodu
+        """
+        try:
+            # Utwórz piaskownicę Docker
+            sandbox = DockerSandbox(
+                base_dir=SANDBOX_DIR,
+                docker_image=self.config.get("sandbox_image", "python:3.9-slim"),
+                timeout=self.config.get("sandbox_timeout", 30)
+            )
+            
+            # Uruchom kod w piaskownicy
+            result = sandbox.run(code)
+            
+            # Wyczyść piaskownicę
+            sandbox.cleanup()
+            
+            return result
+        except Exception as e:
+            logger.error(f"Błąd podczas uruchamiania kodu w piaskownicy: {e}")
+            return {
+                "success": False,
+                "output": "",
+                "error": f"Błąd piaskownicy: {str(e)}",
+                "execution_time": 0
+            }
+    
+    def _save_code_execution_result(self, query: str, code: str, result: Dict[str, Any]):
+        """Zapisuje wynik wykonania kodu
+        
+        Args:
+            query: Zapytanie użytkownika
+            code: Wygenerowany kod Python
+            result: Wynik wykonania kodu
+        """
+        if not self.current_conversation_id or self.current_conversation_id not in self.conversations:
+            return
+        
+        # Dodaj wynik wykonania kodu do historii konwersacji
+        execution_record = {
+            "query": query,
+            "code": code,
+            "result": result,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        # Dodaj do historii konwersacji
+        if "code_executions" not in self.conversations[self.current_conversation_id]:
+            self.conversations[self.current_conversation_id]["code_executions"] = []
+        
+        self.conversations[self.current_conversation_id]["code_executions"].append(execution_record)
+        
+        # Aktualizacja czasu ostatniej modyfikacji
+        self.conversations[self.current_conversation_id]["updated_at"] = datetime.now().isoformat()
+        
+        # Zapisz konwersację
+        self._save_conversation(self.current_conversation_id)
+        
+        # Dodaj wiadomość asystenta z wynikiem wykonania kodu
+        if result["success"]:
+            message = f"Kod został wykonany pomyślnie. Wynik:\n\n```\n{result['output']}\n```"
+        else:
+            message = f"Wystąpił błąd podczas wykonywania kodu:\n\n```\n{result.get('error', 'Nieznany błąd')}\n```"
+        
+        self.conversations[self.current_conversation_id]["messages"].append({
+            "role": "assistant",
+            "content": message,
+            "timestamp": datetime.now().isoformat()
+        })
+        
+        # Zapisz konwersację
+        self._save_conversation(self.current_conversation_id)
     
     def _interactive_loop(self):
         """Główna pętla interaktywna asystenta"""
@@ -597,3 +1017,27 @@ class EvoAssistant:
             created_at = datetime.fromisoformat(conv.get("created_at", "")).strftime("%Y-%m-%d %H:%M")
             is_current = " (aktualna)" if conv.get("id") == self.current_conversation_id else ""
             print(f"{Colors.BLUE}{i}. {conv.get('title', 'Bez tytułu')} - {created_at}{is_current}{Colors.END}")
+
+
+def main():
+    """Entry point for the evopy package"""
+    parser = argparse.ArgumentParser(description="Ewolucyjny Asystent - system konwersacyjny")
+    parser.add_argument("--config", type=str, help="Ścieżka do pliku konfiguracyjnego")
+    parser.add_argument("--debug", action="store_true", help="Włącza tryb debugowania")
+    parser.add_argument("--auto-accept", action="store_true", help="Automatycznie akceptuje wszystkie pytania")
+    args = parser.parse_args()
+    
+    if args.debug:
+        logging.basicConfig(level=logging.DEBUG)
+    
+    # Jeśli auto-accept jest włączone, ustawiamy zmienną środowiskową
+    if args.auto_accept:
+        os.environ["EVOPY_AUTO_ACCEPT"] = "1"
+    
+    config_path = Path(args.config) if args.config else CONFIG_FILE
+    assistant = EvoAssistant(config_path=config_path)
+    assistant.start()
+
+
+if __name__ == "__main__":
+    main()
