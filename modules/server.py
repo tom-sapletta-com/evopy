@@ -231,6 +231,20 @@ def register_docker_task():
         return jsonify({"error": "Brak identyfikatora kontenera"}), 400
     
     try:
+        # Sprawdź, czy kontener istnieje
+        container_exists = True
+        try:
+            result = subprocess.run(
+                ["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.ID}}"],
+                capture_output=True,
+                text=True
+            )
+            if not result.stdout.strip():
+                container_exists = False
+                logger.warning(f"Kontener {container_id} nie istnieje, ale zadanie zostanie zarejestrowane")
+        except Exception as e:
+            logger.error(f"Błąd podczas sprawdzania istnienia kontenera: {e}")
+        
         # Zarejestruj kontener Docker dla zadania
         task_info = {
             "container_id": container_id,
@@ -241,20 +255,31 @@ def register_docker_task():
             "service_url": service_url,
             "service_name": service_name,
             "user_prompt": user_prompt,
-            "agent_explanation": agent_explanation
+            "agent_explanation": agent_explanation,
+            "container_exists": container_exists
         }
         
         # Zapisz zadanie w słowniku
         DOCKER_TASKS[task_id] = task_info
         
-        # Jeśli to serwis webowy, dodaj go również do słownika serwisów
-        if is_service and service_url:
-            web_services[task_id] = {
+        # Jeśli to serwis webowy, dodaj go również do słownika serwisów niezależnie od tego, czy kontener istnieje
+        if is_service:
+            service_info = {
                 "container_id": container_id,
                 "timestamp": datetime.now().isoformat(),
-                "service_url": service_url,
-                "service_name": service_name or f"Service {task_id[:8]}"
+                "container_exists": container_exists
             }
+            
+            if service_url:
+                service_info["service_url"] = service_url
+                logger.info(f"Zarejestrowano URL serwisu: {service_url} dla zadania {task_id}")
+            
+            if service_name:
+                service_info["service_name"] = service_name
+            else:
+                service_info["service_name"] = f"Serwis {task_id[:8]}"
+                
+            web_services[task_id] = service_info
         
         # Zapisz zadania do pliku
         try:
@@ -270,7 +295,8 @@ def register_docker_task():
                 service_url=service_url,
                 service_name=service_name,
                 user_prompt=user_prompt,
-                agent_explanation=agent_explanation
+                agent_explanation=agent_explanation,
+                container_exists=container_exists
             )
         except Exception as e:
             logger.error(f"Błąd podczas zapisywania zadań Docker: {e}")
@@ -536,68 +562,70 @@ def docker_task_details(task_id):
     if not task_info:
         return "Zadanie nie istnieje", 404
     
-    # Sprawdzamy format zadania i dostosowujemy go do nowego formatu, jeśli potrzeba
-    if 'status' not in task_info:
-        # Pobierz status kontenera
-        container_id = task_info.get('container_id')
-        container_exists = False
-        container_status = "Nieznany"
-        
-        if container_id:
-            try:
-                result = subprocess.run(
+    # Pobierz podstawowe informacje o zadaniu
+    container_id = task_info.get('container_id')
+    container_exists = False
+    container_status = "Kontener został usunięty po wykonaniu zadania"
+    
+    # Sprawdź, czy kontener nadal istnieje
+    if container_id:
+        try:
+            result = subprocess.run(
+                ["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.ID}}"],
+                capture_output=True,
+                text=True
+            )
+            
+            if result.stdout.strip():
+                container_exists = True
+                # Pobierz status kontenera
+                status_result = subprocess.run(
                     ["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
                     capture_output=True,
                     text=True
                 )
-                if result.stdout.strip():
-                    container_exists = True
-                    container_status = result.stdout.strip()
-                    task_info['status'] = container_status
-                else:
-                    task_info['status'] = "Kontener nie jest aktywny"
-            except Exception as e:
-                logger.error(f"Błąd podczas sprawdzania statusu kontenera: {e}")
-                task_info['status'] = f"Błąd: {str(e)}"
-        
-        # Dodajemy informacje o kontenerze do kontekstu szablonu dla kompatybilności wstecznej
-        return render_template(
-            'docker_task.html', 
-            task_id=task_id, 
-            task_info=task_info, 
-            container_exists=container_exists,
-            container_status=container_status
-        )
-    else:
-        # Nowy format zadania, sprawdzamy czy to serwis
-        container_id = task_info.get('container_id')
-        if container_id:
-            try:
-                # Sprawdzamy aktualny status kontenera
-                result = subprocess.run(
-                    ["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
-                    capture_output=True,
-                    text=True
-                )
-                status = result.stdout.strip() or "Kontener nie jest aktywny"
-                task_info['status'] = status
-                
-                # Jeśli to serwis, pobierz dodatkowe informacje
-                if task_info.get('is_service'):
-                    # Pobierz logi kontenera
-                    try:
-                        logs_result = subprocess.run(
-                            ["docker", "logs", "--tail", "50", container_id],
-                            capture_output=True,
-                            text=True
-                        )
-                        task_info['logs'] = logs_result.stdout
-                    except Exception as e:
-                        task_info['logs'] = f"Błąd podczas pobierania logów: {str(e)}"
-            except Exception as e:
-                task_info['status'] = f"Błąd podczas pobierania statusu: {str(e)}"
-        
-        return render_template('docker_task.html', task_id=task_id, task_info=task_info)
+                container_status = status_result.stdout.strip() or "Status nieznany"
+            else:
+                logger.info(f"Kontener {container_id} nie istnieje już")
+        except Exception as e:
+            logger.error(f"Błąd podczas sprawdzania statusu kontenera: {e}")
+            container_status = f"Błąd: {str(e)}"
+    
+    # Pobierz dodatkowe informacje o kontenerze, jeśli istnieje
+    if container_exists:
+        try:
+            # Pobierz logi kontenera
+            logs_result = subprocess.run(
+                ["docker", "logs", "--tail", "50", container_id],
+                capture_output=True,
+                text=True
+            )
+            task_info['logs'] = logs_result.stdout
+        except Exception as e:
+            logger.error(f"Błąd podczas pobierania logów: {e}")
+            task_info['logs'] = f"Błąd podczas pobierania logów: {str(e)}"
+    
+    # Przygotuj kontekst dla szablonu
+    context = {
+        'task_id': task_id,
+        'task_info': task_info,
+        'container_exists': container_exists,
+        'container_status': container_status,
+        'execution_result': task_info.get('output', 'Brak wyniku wykonania'),
+        'code': task_info.get('code', 'Brak kodu'),
+        'timestamp': task_info.get('timestamp', 'Nieznany czas'),
+        'is_service': task_info.get('is_service', False)
+    }
+    
+    # Jeśli to serwis, dodaj informacje o URL serwisu niezależnie od tego, czy kontener istnieje
+    if task_info.get('is_service'):
+        service_url = task_info.get('service_url')
+        if service_url:
+            context['service_url'] = service_url
+            context['service_name'] = task_info.get('service_name', f"Serwis {task_id[:8]}")
+            logger.info(f"URL serwisu dla zadania {task_id}: {service_url}")
+    
+    return render_template('docker_task.html', **context)
 
 @app.route('/api/docker_task/<string:task_id>')
 def api_docker_task(task_id):
@@ -651,39 +679,69 @@ def service_details(task_id):
     
     # Pobierz szczegółowe informacje o kontenerze
     container_id = service_info.get('container_id')
+    container_exists = False
+    container_status = "Kontener został usunięty po wykonaniu zadania"
+    service_logs = ""
+    service_ports = ""
+    service_error = ""
+    
     if container_id:
         try:
-            # Status kontenera
-            status_result = subprocess.run(
-                ["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            service_info['status'] = status_result.stdout.strip() or "Nieaktywny"
-            
-            # Logi kontenera
-            logs_result = subprocess.run(
-                ["docker", "logs", "--tail", "50", container_id],
+            # Sprawdź, czy kontener istnieje
+            exists_result = subprocess.run(
+                ["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.ID}}"],
                 capture_output=True,
                 text=True
             )
-            service_info['logs'] = logs_result.stdout
             
-            # Pobierz informacje o portach
-            ports_result = subprocess.run(
-                ["docker", "port", container_id],
-                capture_output=True,
-                text=True
-            )
-            service_info['ports'] = ports_result.stdout
+            if exists_result.stdout.strip():
+                container_exists = True
+                
+                # Status kontenera
+                status_result = subprocess.run(
+                    ["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
+                    capture_output=True,
+                    text=True
+                )
+                container_status = status_result.stdout.strip() or "Nieaktywny"
+                
+                # Logi kontenera
+                logs_result = subprocess.run(
+                    ["docker", "logs", "--tail", "50", container_id],
+                    capture_output=True,
+                    text=True
+                )
+                service_logs = logs_result.stdout
+                
+                # Pobierz informacje o portach
+                ports_result = subprocess.run(
+                    ["docker", "port", container_id],
+                    capture_output=True,
+                    text=True
+                )
+                service_ports = ports_result.stdout
         except Exception as e:
-            service_info['error'] = str(e)
+            service_error = str(e)
+            logger.error(f"Błąd podczas pobierania informacji o kontenerze: {e}")
     
     # Pobierz informacje o zadaniu Docker
     task_info = docker_tasks.get(task_id, {})
     
-    return render_template('service_details.html', task_id=task_id, service_info=service_info, task_info=task_info)
+    # Przygotuj kontekst dla szablonu
+    context = {
+        'task_id': task_id,
+        'service_info': service_info,
+        'task_info': task_info,
+        'container_exists': container_exists,
+        'container_status': container_status,
+        'service_logs': service_logs,
+        'service_ports': service_ports,
+        'service_error': service_error,
+        'service_url': service_info.get('service_url', ''),
+        'service_name': service_info.get('service_name', f"Serwis {task_id[:8]}")
+    }
+    
+    return render_template('service_details.html', **context)
 
 @app.route('/service/stop/<string:task_id>', methods=['POST'])
 def stop_service(task_id):

@@ -1,13 +1,27 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+Moduł SQL2TEXT - Konwersja zapytań SQL na opisy tekstowe
+
+Ten plik jest wrapperem dla nowej implementacji w sql2text_new.py,
+zapewniającym kompatybilność wsteczną z istniejącym API.
+"""
+
 import os
 import re
 import sys
 import json
 import logging
-import subprocess
+from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple, Union
+
+# Dodaj katalog główny projektu do ścieżki Pythona
+PROJECT_ROOT = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
+
+# Importuj nową implementację
+from modules.sql2text.sql2text_new import SQL2Text as SQL2TextNew
 
 # Konfiguracja logowania
 logging.basicConfig(
@@ -27,167 +41,31 @@ class SQL2Text:
             model_name: Nazwa modelu Ollama do użycia
             sql_dir: Katalog z zapytaniami SQL (opcjonalny)
         """
+        # Inicjalizacja nowej implementacji
+        config = {
+            "model": model_name,
+            "output_dir": sql_dir
+        }
+        self.impl = SQL2TextNew(config=config)
         self.model_name = model_name
         self.sql_dir = sql_dir
         logger.info(f"Inicjalizacja SQL2Text z modelem {model_name}")
         if sql_dir:
             logger.info(f"Katalog SQL: {sql_dir}")
-        
     
     def ensure_model_available(self) -> bool:
         """Sprawdza, czy model jest dostępny"""
-        try:
-            # Sprawdź, czy Ollama jest zainstalowane i czy model jest dostępny
-            cmd = ["ollama", "list"]
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            stdout, stderr = process.communicate()
-            
-            if process.returncode != 0:
-                logger.error(f"Błąd podczas sprawdzania dostępności modelu: {stderr}")
-                return False
-            
-            # Sprawdź, czy model jest na liście
-            return self.model_name in stdout
-            
-        except Exception as e:
-            logger.error(f"Błąd podczas sprawdzania dostępności modelu: {e}")
-            return False
+        return self.impl.ensure_model_available()
     
     def sql_to_text(self, sql_code: str) -> Dict[str, Any]:
         """Konwertuje zapytanie SQL na opis w języku naturalnym"""
-        try:
-            # Upewnij się, że model jest dostępny
-            if not self.ensure_model_available():
-                return {
-                    "success": False,
-                    "description": "",
-                    "error": f"Model {self.model_name} nie jest dostępny",
-                    "analysis": "Problem z modelem"
-                }
-            
-            logger.info(f"Generowanie opisu dla zapytania SQL...")
-            
-            # Przygotuj zapytanie do modelu
-            system_prompt = """Jesteś ekspertem w wyjaśnianiu zapytań SQL.
-Twoim zadaniem jest wygenerowanie dokładnego opisu w języku naturalnym, który wyjaśnia co robi podane zapytanie SQL.
-Opis powinien być szczegółowy, ale zrozumiały dla osoby nieznającej szczegółów technicznych SQL.
-Wyjaśnij cel zapytania, jakie dane pobiera lub modyfikuje, oraz jakie operacje wykonuje na tych danych."""
-            
-            # Łączymy system prompt z właściwym promptem
-            combined_prompt = f"{system_prompt}\n\nWyjaśnij, co robi następujące zapytanie SQL:\n```sql\n{sql_code}\n```"
-            
-            # Wywołaj model Ollama
-            cmd = [
-                "ollama", "run", self.model_name,
-                combined_prompt
-            ]
-            
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            stdout, stderr = process.communicate()
-            
-            if process.returncode != 0:
-                logger.error(f"Błąd podczas generowania opisu: {stderr}")
-                return {
-                    "success": False,
-                    "description": "",
-                    "error": stderr,
-                    "analysis": "Błąd generowania"
-                }
-            
-            # Wyodrębnij opis z odpowiedzi
-            description = stdout.strip()
-            
-            return {
-                "success": True,
-                "description": description,
-                "error": "",
-                "analysis": "Opis wygenerowany pomyślnie"
-            }
-            
-        except Exception as e:
-            logger.error(f"Błąd podczas konwersji SQL na tekst: {e}")
-            return {
-                "success": False,
-                "description": "",
-                "error": str(e),
-                "analysis": "Wyjątek podczas generowania"
-            }
+        # Wywołaj metodę process z nowej implementacji
+        return self.impl.process(sql_code)
     
     def analyze_sql_query(self, sql_code: str) -> Dict[str, Any]:
         """Analizuje zapytanie SQL i zwraca jego strukturę i potencjalne problemy"""
-        try:
-            # Upewnij się, że model jest dostępny
-            if not self.ensure_model_available():
-                return {
-                    "success": False,
-                    "analysis": "",
-                    "error": f"Model {self.model_name} nie jest dostępny"
-                }
-            
-            # Przygotuj zapytanie do modelu
-            system_prompt = """Jesteś ekspertem w analizie zapytań SQL.
-Twoim zadaniem jest przeanalizowanie podanego zapytania SQL i zwrócenie:
-1. Struktury zapytania (główne klauzule, tabele, warunki)
-2. Potencjalnych problemów wydajnościowych
-3. Sugestii optymalizacji
-4. Oceny złożoności zapytania
-
-Odpowiedź powinna być szczegółowa i techniczna."""
-            
-            prompt = f"Przeanalizuj następujące zapytanie SQL:\n\n```sql\n{sql_code}\n```"
-            
-            # Łączymy system prompt z właściwym promptem
-            combined_prompt = f"{system_prompt}\n\n{prompt}"
-            
-            # Wywołaj model Ollama
-            cmd = [
-                "ollama", "run", self.model_name,
-                combined_prompt
-            ]
-            
-            logger.info("Analizowanie zapytania SQL...")
-            
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            stdout, stderr = process.communicate()
-            
-            if process.returncode != 0:
-                logger.error(f"Błąd podczas analizy zapytania: {stderr}")
-                return {
-                    "success": False,
-                    "analysis": "",
-                    "error": stderr
-                }
-            
-            return {
-                "success": True,
-                "analysis": stdout.strip(),
-                "error": ""
-            }
-            
-        except Exception as e:
-            logger.error(f"Błąd podczas analizy zapytania SQL: {e}")
-            return {
-                "success": False,
-                "analysis": "",
-                "error": str(e)
-            }
+        # Wywołaj metodę analyze_sql_query z nowej implementacji
+        return self.impl.analyze_sql_query(sql_code)
     
     def generate_example_data(self, sql_code: str) -> Dict[str, Any]:
         """Generuje przykładowe dane, które pasują do zapytania SQL"""

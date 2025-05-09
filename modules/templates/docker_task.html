@@ -3,7 +3,6 @@
 {% block title %}Szczegóły zadania Docker {{ task_id }}{% endblock %}
 
 {% block content %}
-{% set task_info = get_docker_task(task_id) %}
 
 <div class="container mt-4">
     <h1>Szczegóły zadania Docker</h1>
@@ -11,42 +10,35 @@
     <div class="card mb-4">
         <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
             <h5 class="mb-0">Zadanie: {{ task_id }}</h5>
-            {% if task_info.status is defined %}
-            <span class="badge {% if task_info.status and 'nie jest aktywny' not in task_info.status %}bg-success{% else %}bg-danger{% endif %}">
-                {% if task_info.status and 'nie jest aktywny' not in task_info.status %}Aktywny{% else %}Nieaktywny{% endif %}
+            <span class="badge {% if container_exists %}bg-success{% else %}bg-secondary{% endif %}">
+                {% if container_exists %}Aktywny{% else %}Zakończony{% endif %}
             </span>
-            {% elif container_exists is defined %}
-            <span class="badge {% if container_exists %}bg-success{% else %}bg-danger{% endif %}">
-                {% if container_exists %}Aktywny{% else %}Nieaktywny{% endif %}
-            </span>
-            {% else %}
-            <span class="badge bg-secondary">Status nieznany</span>
-            {% endif %}
         </div>
         <div class="card-body">
             <div class="row">
                 <div class="col-md-6">
-                    <h5>Informacje o kontenerze</h5>
+                    <h5>Informacje o zadaniu</h5>
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item">
                             <strong>ID kontenera:</strong> 
-                            <a href="http://localhost:5000/docker" class="text-decoration-none">
-                                {{ task_info.container_id }}
-                            </a>
+                            <span class="text-monospace">{{ task_info.container_id }}</span>
                         </li>
                         <li class="list-group-item">
-                            <strong>Data utworzenia:</strong> {{ task_info.timestamp }}
+                            <strong>Data utworzenia:</strong> {{ timestamp }}
                         </li>
                         <li class="list-group-item">
-                            <strong>Status:</strong> {{ task_info.status }}
+                            <strong>Status kontenera:</strong> 
+                            <span class="{% if container_exists %}text-success{% else %}text-secondary{% endif %}">
+                                {{ container_status }}
+                            </span>
                         </li>
-                        {% if task_info.is_service %}
+                        {% if is_service %}
                         <li class="list-group-item">
                             <strong>Typ:</strong> <span class="badge bg-info">Serwis webowy</span>
                         </li>
-                        {% if task_info.service_name %}
+                        {% if service_name is defined %}
                         <li class="list-group-item">
-                            <strong>Nazwa serwisu:</strong> {{ task_info.service_name }}
+                            <strong>Nazwa serwisu:</strong> {{ service_name }}
                         </li>
                         {% endif %}
                         {% endif %}
@@ -58,14 +50,15 @@
                         <a href="http://localhost:5000/docker" class="btn btn-outline-primary">
                             <i class="fas fa-arrow-left"></i> Powrót do listy kontenerów
                         </a>
-                        {% if task_info.status and 'nie jest aktywny' not in task_info.status %}
+                        
+                        {% if container_exists %}
                         <button class="btn btn-outline-danger" onclick="stopContainer('{{ task_info.container_id }}')">
                             <i class="fas fa-stop-circle"></i> Zatrzymaj kontener
                         </button>
                         {% endif %}
                         
-                        {% if task_info.is_service and task_info.service_url %}
-                        <a href="{{ task_info.service_url }}" target="_blank" class="btn btn-success">
+                        {% if is_service and service_url is defined %}
+                        <a href="{{ service_url }}" target="_blank" class="btn btn-success">
                             <i class="fas fa-external-link-alt"></i> Otwórz serwis
                         </a>
                         <a href="{{ url_for('service_details', task_id=task_id) }}" class="btn btn-info">
@@ -77,28 +70,28 @@
             </div>
 
             <div class="mt-4">
-                <h5>Polecenie Docker</h5>
+                <h5>Kod wykonany w kontenerze</h5>
                 <div class="bg-light p-3 rounded">
-                    <code>{{ task_info.code }}</code>
+                    <code class="text-wrap">{{ code }}</code>
                 </div>
             </div>
 
             <div class="mt-4">
                 <h5>Wynik wykonania</h5>
                 <div class="bg-light p-3 rounded">
-                    <pre>{{ task_info.output }}</pre>
+                    <pre>{{ execution_result }}</pre>
                 </div>
             </div>
             
-            {% if task_info.is_service and task_info.service_url %}
+            {% if is_service and service_url is defined %}
             <div class="mt-4">
                 <h5>URL serwisu</h5>
                 <div class="input-group">
-                    <input type="text" class="form-control" value="{{ task_info.service_url }}" readonly id="serviceUrl">
+                    <input type="text" class="form-control" value="{{ service_url }}" readonly id="serviceUrl">
                     <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('serviceUrl')">
                         <i class="fas fa-copy"></i>
                     </button>
-                    <a href="{{ task_info.service_url }}" target="_blank" class="btn btn-primary">
+                    <a href="{{ service_url }}" target="_blank" class="btn btn-primary">
                         <i class="fas fa-external-link-alt"></i> Otwórz
                     </a>
                 </div>

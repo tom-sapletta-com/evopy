@@ -75,8 +75,21 @@ def save_tasks():
     except Exception as e:
         logger.error(f"Błąd podczas zapisywania zadań Docker: {e}")
 
-def register_docker_container(task_id, container_id, code, output, is_service=False, service_url=None, service_name=None, user_prompt=None, agent_explanation=None):
-    """Rejestruje kontener Docker dla zadania"""
+def register_docker_container(task_id, container_id, code, output, is_service=False, service_url=None, service_name=None, user_prompt=None, agent_explanation=None, container_exists=True):
+    """Rejestruje kontener Docker dla zadania
+    
+    Args:
+        task_id: ID zadania Docker
+        container_id: ID kontenera Docker
+        code: Kod Python, który został uruchomiony
+        output: Wynik wykonania kodu
+        is_service: Czy to jest serwis webowy
+        service_url: URL serwisu (tylko dla is_service=True)
+        service_name: Nazwa serwisu (tylko dla is_service=True)
+        user_prompt: Zapytanie użytkownika, które doprowadziło do wygenerowania kodu
+        agent_explanation: Wyjaśnienie asystenta dotyczące wygenerowanego kodu
+        container_exists: Czy kontener nadal istnieje w systemie
+    """
     DOCKER_TASKS[task_id] = {
         "container_id": container_id,
         "timestamp": datetime.now().isoformat(),
@@ -86,17 +99,28 @@ def register_docker_container(task_id, container_id, code, output, is_service=Fa
         "service_url": service_url,
         "service_name": service_name,
         "user_prompt": user_prompt,
-        "agent_explanation": agent_explanation
+        "agent_explanation": agent_explanation,
+        "container_exists": container_exists
     }
     
-    # Jeśli to serwis webowy, dodaj go również do słownika serwisów
-    if is_service and service_url:
-        web_services[task_id] = {
+    # Jeśli to serwis webowy, dodaj go również do słownika serwisów niezależnie od tego, czy kontener istnieje
+    if is_service:
+        service_info = {
             "container_id": container_id,
             "timestamp": datetime.now().isoformat(),
-            "service_url": service_url,
-            "service_name": service_name or f"Service {task_id[:8]}"
+            "container_exists": container_exists
         }
+        
+        if service_url:
+            service_info["service_url"] = service_url
+            logger.info(f"Zarejestrowano URL serwisu: {service_url} dla zadania {task_id}")
+        
+        if service_name:
+            service_info["service_name"] = service_name
+        else:
+            service_info["service_name"] = f"Serwis {task_id[:8]}"
+            
+        web_services[task_id] = service_info
     
     # Zapisz zadania do pliku
     save_tasks()
