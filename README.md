@@ -285,7 +285,7 @@ pip install -e .
 
 ## Licencja
 
-Ten projekt jest udostępniany na licencji MIT. Szczegóły w pliku LICENSE.
+Ten projekt jest udostępniany na licencji Apache 2.0. Szczegóły w pliku [LICENSE](LICENSE).
 
 ## Autorzy
 
@@ -296,3 +296,7 @@ Ten projekt jest udostępniany na licencji MIT. Szczegóły w pliku LICENSE.
 - Zespół Ollama za świetne narzędzie do lokalnego uruchamiania modeli LLM
 - Zespół DeepSeek za model DeepSeek Coder
 - Zespół Meta AI za model Llama 3
+
+
+- Windsurf za czujność:
+![alt text](image.png)
