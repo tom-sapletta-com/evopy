@@ -1,3 +1,8 @@
+---
+layout: default
+title: Wytyczne Projektu
+---
+
 # Wytyczne projektu evopy
 
 ## Główne założenia projektu

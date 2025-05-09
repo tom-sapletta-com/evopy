@@ -1,3 +1,8 @@
+---
+layout: default
+title: Architektura Sandbox
+---
+
 # Architektura Sandbox w Evopy
 
 ## Przegląd

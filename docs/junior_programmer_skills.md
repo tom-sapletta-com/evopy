@@ -1,3 +1,8 @@
+---
+layout: default
+title: Umiejętności Junior Programisty
+---
+
 # 100 Umiejętności Junior Programisty i Implementacja w Evopy
 
 Poniżej znajduje się lista 100 umiejętności, które powinien posiadać junior programista, wraz z opisem jak platforma evopy może implementować te umiejętności jako usługi w środowisku private sandbox.
