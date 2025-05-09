@@ -268,6 +268,16 @@ function main() {
     
     # Wygeneruj raport porównawczy
     generate_comparison_report
+    
+    # Aktualizuj link do najnowszego raportu
+    if [ -f "$SCRIPT_DIR/update_latest_report_link.sh" ]; then
+        echo -e "${BLUE}Aktualizacja linku do najnowszego raportu...${NC}"
+        bash "$SCRIPT_DIR/update_latest_report_link.sh"
+    else
+        echo -e "${YELLOW}Skrypt update_latest_report_link.sh nie istnieje. Link do najnowszego raportu nie zostanie zaktualizowany.${NC}"
+    fi
+    
+    echo -e "${BLUE}Najnowszy raport jest dostępny pod linkiem: ${CYAN}$REPORT_DIR/comparison_report_latest.md${NC}"
 }
 
 # Uruchom główną funkcję skryptu

@@ -1,11 +1,45 @@
 # Evopy Testing System Documentation
 
-> [!TIP]
 > **Najnowszy raport porównawczy**: [Raport porównawczy modeli LLM](../reports/comparison_report_latest.md)
 
 ## Overview
 
 The Evopy testing system provides comprehensive testing capabilities for both the `text2python` and `python2text` modules. It allows you to test different language models (LLMs) and compare their performance, accuracy, and capabilities.
+
+## System Architecture
+
+```mermaid
+flowchart TD
+    subgraph "Test Scripts"
+        test["test.sh\nSingle Model Testing"] --> model_selection["Model Selection"]
+        report["report.sh\nMulti-Model Comparison"] --> model_selection
+        report_debug["report_debug.sh\nDetailed Diagnostics"] --> model_selection
+    end
+    
+    model_selection --> ollama["Ollama API"]
+    ollama --> available_models["Available Models"]
+    
+    subgraph "Test Types"
+        query_tests["Basic Query Tests"]
+        correctness_tests["Correctness Tests"]
+        performance_tests["Performance Tests"]
+    end
+    
+    available_models --> query_tests
+    available_models --> correctness_tests
+    available_models --> performance_tests
+    
+    query_tests --> results["Test Results"]
+    correctness_tests --> results
+    performance_tests --> results
+    
+    results --> report_generation["Report Generation"]
+    report_generation --> md["Markdown Report"]
+    report_generation --> html["HTML Report"]
+    report_generation --> pdf["PDF Report"]
+    
+    md --> latest_link["Latest Report Link"]
+```
 
 ## Available Scripts
 
@@ -58,6 +92,63 @@ To generate a comprehensive comparison report:
    - Enter `all` to test all available models
    - Select the "All models" option
 
+### Report Generation Process
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant ReportScript as report.sh
+    participant TestSystem as Test System
+    participant Ollama
+    participant ReportGen as Report Generator
+    
+    User->>ReportScript: Execute ./report.sh
+    ReportScript->>Ollama: Query available models
+    Ollama-->>ReportScript: Return model list
+    ReportScript->>User: Display available models
+    User->>ReportScript: Select models to test
+    
+    loop For each selected model
+        ReportScript->>TestSystem: Run tests with model
+        TestSystem->>Ollama: Execute queries
+        Ollama-->>TestSystem: Return responses
+        TestSystem-->>ReportScript: Save test results
+    end
+    
+    ReportScript->>ReportGen: Generate comparison report
+    ReportGen->>ReportGen: Create MD, HTML, PDF
+    ReportGen-->>ReportScript: Update latest report link
+    ReportScript-->>User: Display report location
+```
+
+## Dependency Auto-Repair System
+
+Evopy includes an automatic dependency repair system that detects and fixes missing imports in code executed in Docker containers.
+
+```mermaid
+flowchart LR
+    code["Python Code"] --> dependency_manager["dependency_manager.py"]
+    dependency_manager --> analysis["Code Analysis"]
+    analysis --> missing["Detect Missing Imports"]
+    missing --> repair["Auto-Repair Code"]
+    repair --> docker["docker_sandbox.py"]
+    docker --> execution["Code Execution"]
+    
+    subgraph "Auto-Import Mechanism"
+        std_modules["Standard Modules"]
+        dynamic_import["Dynamic Import"]
+    end
+    
+    execution --> error{"Error?"}
+    error -->|Yes| auto_import["Auto-Import"]
+    error -->|No| results["Results"]
+    
+    auto_import --> std_modules
+    auto_import --> dynamic_import
+    std_modules --> execution
+    dynamic_import --> execution
+```
+
 3. Wait for all tests to complete. This may take some time depending on the number of models selected.
 
 4. The report will be generated in the `reports` directory with a filename like `comparison_report_YYYYMMDD_HHMMSS.md`.
@@ -76,6 +167,39 @@ The generated report includes:
    - Execution times
    - Success rates
    - Specific test case results
+
+## Report Formats
+
+Evopy generates reports in multiple formats:
+
+### 1. Markdown (.md)
+
+The primary report format with full formatting and links to all test results.
+
+### 2. HTML
+
+An HTML version of the report is automatically generated for web viewing. To ensure proper rendering of Mermaid diagrams in HTML, the system uses the following approach:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+mermaid.initialize({ startOnLoad: true, theme: 'default' });
+</script>
+```
+
+### 3. PDF (Landscape)
+
+A PDF version is generated using `wkhtmltopdf` with landscape orientation for better readability of tables and diagrams.
+
+## Viewing Reports
+
+For the best experience viewing reports with Mermaid diagrams:
+
+1. **Markdown**: Use a Markdown viewer that supports Mermaid (like VS Code with Markdown Preview Enhanced)
+2. **HTML**: Open in any modern web browser
+3. **PDF**: Open with any PDF viewer
+
+The HTML version is recommended for the best interactive experience with diagrams.
 
 ## Troubleshooting
 
