@@ -138,6 +138,9 @@ class Text2Python:
                 }
 
             # Sprawdź czy zapytanie jest prostym wyrażeniem arytmetycznym
+            # W klasie Text2Python, w metodzie generate_code, znajdź i zmodyfikuj ten fragment:
+
+            # Sprawdź czy zapytanie jest prostym wyrażeniem arytmetycznym
             import re
             arithmetic_pattern = re.compile(r'^\s*(\d+\s*[+\-*/]\s*\d+)\s*$')
             match = arithmetic_pattern.match(prompt)
@@ -147,11 +150,19 @@ class Text2Python:
                 expression = match.group(1).strip()
                 logger.info(f"Wykryto proste wyrażenie arytmetyczne: {expression}")
 
-                # Generuj kod, który faktycznie wykonuje obliczenie
-                code = f"def execute():\n    # Obliczenie wyrażenia {expression}\n    result = {expression}\n    return result"
-
-                # Generuj wyjaśnienie
-                explanation = f"Ten kod wykonuje proste obliczenie matematyczne: {expression}.\n\nFunkcja 'execute' oblicza wartość wyrażenia {expression} i zwraca wynik.\n\nCzy to jest to, czego oczekiwałeś?"
+                # Rozdziel wyrażenie na operandy i operator
+                match_parts = re.match(r'\s*(\d+)\s*([+\-*/])\s*(\d+)\s*', expression)
+                if match_parts:
+                    x, operator, y = match_parts.groups()
+                    # Zawsze używaj wersji z zmiennymi x i y
+                    code = f"def execute():\n    # Obliczenie wyrażenia {expression} przy użyciu zmiennych\n    x = {x}\n    y = {y}\n    result = x {operator} y\n    return result"
+                    # Generuj wyjaśnienie z użyciem zmiennych
+                    explanation = f"Ten kod wykonuje proste obliczenie matematyczne: {expression}.\n\nFunkcja 'execute':\n1. Definiuje zmienne x = {x} i y = {y}\n2. Oblicza wynik operacji x {operator} y\n3. Zwraca obliczony wynik\n\nTakie podejście z użyciem zmiennych jest bardziej czytelne i pozwala na łatwą modyfikację wartości w przyszłości.\n\nCzy to jest to, czego oczekiwałeś?"
+                else:
+                    # Fallback jeśli nie uda się rozdzielić wyrażenia
+                    code = f"def execute():\n    # Obliczenie wyrażenia {expression}\n    result = {expression}\n    return result"
+                    # Generuj wyjaśnienie dla prostego obliczenia
+                    explanation = f"Ten kod wykonuje proste obliczenie matematyczne: {expression}.\n\nFunkcja 'execute' oblicza wartość wyrażenia {expression} i zwraca wynik.\n\nCzy to jest to, czego oczekiwałeś?"
 
                 # Utwórz analizę
                 analysis = {

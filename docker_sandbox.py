@@ -22,13 +22,14 @@ from dependency_manager import fix_code_dependencies
 
 logger = logging.getLogger("evo-assistant.docker-sandbox")
 
+
 class DockerSandbox:
     """Klasa do zarządzania piaskownicami Docker dla kodu użytkownika"""
-    
+
     def __init__(self, base_dir: Path, docker_image: str = "python:3.9-slim", timeout: int = 30):
         """
         Inicjalizacja piaskownicy Docker
-        
+
         Args:
             base_dir: Katalog bazowy dla plików piaskownicy
             docker_image: Obraz Docker do użycia
@@ -40,26 +41,26 @@ class DockerSandbox:
         self.container_id = None
         self.sandbox_id = str(uuid.uuid4())
         self.sandbox_dir = base_dir / self.sandbox_id
-        
+
         # Utwórz katalog dla piaskownicy
         os.makedirs(self.sandbox_dir, exist_ok=True)
-    
+
     def prepare_code(self, code: str, filename: str = "user_code.py") -> Path:
         """
         Przygotowuje kod do wykonania w piaskownicy
-        
+
         Args:
             code: Kod Python do wykonania
             filename: Nazwa pliku dla kodu
-            
+
         Returns:
             Path: Ścieżka do pliku z kodem
         """
         # Napraw brakujące zależności w kodzie użytkownika
         code = fix_code_dependencies(code)
-        
+
         code_file = self.sandbox_dir / filename
-        
+
         # Dodaj wrapper do przechwytywania wyjścia i błędów
         wrapped_code = f"""
 import sys
@@ -84,7 +85,7 @@ def auto_import():
         'subprocess', 'threading', 'multiprocessing', 'urllib', 'http',
         'socket', 'email', 'csv', 'xml', 'html', 'sqlite3', 'logging'
     ]
-    
+
     # Importuj wszystkie moduły z listy
     for module_name in auto_import_modules:
         if module_name not in globals():
@@ -99,10 +100,10 @@ auto_import()
 class OutputCapture:
     def __init__(self):
         self.output = []
-    
+
     def write(self, text):
         self.output.append(text)
-    
+
     def flush(self):
         pass
 
@@ -124,22 +125,16 @@ result = {{
     "execution_time": 0
 }}
 
-# Define original_exception at the beginning to ensure it's always available
-original_exception = None
-
 try:
     start_time = time.time()
-    
+
     # Kod użytkownika
 {chr(10).join(['    ' + line for line in code.split(chr(10))])}
-    
+
     execution_time = time.time() - start_time
     result["success"] = True
     result["execution_time"] = execution_time
 except ImportError as e:
-    # Store the original exception
-    original_exception = e
-    
     # Próba automatycznego importu brakującego modułu
     missing_module = str(e).split("'")
     if len(missing_module) >= 2:
@@ -152,25 +147,23 @@ except ImportError as e:
             try:
                 # Ponowna próba wykonania kodu
                 start_time = time.time()
-                
+
                 # Kod użytkownika
 {chr(10).join(['                ' + line for line in code.split(chr(10))])}
-                
+
                 execution_time = time.time() - start_time
                 result["success"] = True
                 result["execution_time"] = execution_time
-            except Exception as e2:
-                result["error"] = f"Po próbie automatycznego importu: {str(e2)}"
+            except Exception as import_retry_error:
+                result["error"] = f"Po próbie automatycznego importu: {{str(import_retry_error)}}"
                 result["traceback"] = traceback.format_exc()
         else:
-            result["error"] = f"Brakujący moduł: {module_name}. Nie można go automatycznie zaimportować."
+            result["error"] = f"Brakujący moduł: {{module_name}}. Nie można go automatycznie zaimportować."
             result["traceback"] = traceback.format_exc()
     else:
-        result["error"] = str(original_exception)
+        result["error"] = str(e)
         result["traceback"] = traceback.format_exc()
 except Exception as e:
-    # Store the exception
-    original_exception = e
     result["error"] = str(e)
     result["traceback"] = traceback.format_exc()
 
@@ -188,29 +181,29 @@ with open("result.json", "w") as f:
 
 print(json.dumps(result))
 """
-        
+
         with open(code_file, "w") as f:
             f.write(wrapped_code)
-        
+
         return code_file
-    
+
     def run(self, code: str) -> Dict[str, Any]:
         """
         Uruchamia kod w piaskownicy Docker
-        
+
         Args:
             code: Kod Python do wykonania
-            
+
         Returns:
             Dict: Wynik wykonania kodu
         """
         try:
             # Przygotuj kod
             code_file = self.prepare_code(code)
-            
+
             # Utwórz kontener Docker
             container_name = f"evopy-sandbox-{self.sandbox_id}"
-            
+
             # Uruchom kontener
             cmd = [
                 "docker", "run",
@@ -224,20 +217,20 @@ print(json.dumps(result))
                 self.docker_image,
                 "python", "/app/user_code.py"
             ]
-            
+
             logger.info(f"Uruchamianie kodu w piaskownicy: {container_name}")
-            
+
             # Uruchom z limitem czasu
             process = subprocess.Popen(
-                cmd, 
-                stdout=subprocess.PIPE, 
+                cmd,
+                stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 text=True
             )
-            
+
             try:
                 stdout, stderr = process.communicate(timeout=self.timeout)
-                
+
                 # Sprawdź wynik
                 if process.returncode != 0:
                     logger.warning(f"Kod zakończył się z błędem: {stderr}")
@@ -247,7 +240,7 @@ print(json.dumps(result))
                         "error": stderr,
                         "execution_time": self.timeout
                     }
-                
+
                 # Parsuj wynik JSON
                 try:
                     result = json.loads(stdout)
@@ -259,13 +252,13 @@ print(json.dumps(result))
                         "error": "",
                         "execution_time": 0
                     }
-                
+
             except subprocess.TimeoutExpired:
                 # Zabij kontener jeśli przekroczył limit czasu
-                subprocess.run(["docker", "kill", container_name], 
-                              stdout=subprocess.PIPE, 
-                              stderr=subprocess.PIPE)
-                
+                subprocess.run(["docker", "kill", container_name],
+                               stdout=subprocess.PIPE,
+                               stderr=subprocess.PIPE)
+
                 logger.warning(f"Kod przekroczył limit czasu ({self.timeout}s)")
                 return {
                     "success": False,
@@ -273,7 +266,7 @@ print(json.dumps(result))
                     "error": f"Kod przekroczył limit czasu ({self.timeout}s)",
                     "execution_time": self.timeout
                 }
-                
+
         except Exception as e:
             logger.error(f"Błąd podczas uruchamiania kodu: {e}")
             return {
@@ -292,7 +285,7 @@ print(json.dumps(result))
                 )
             except:
                 pass
-    
+
     def cleanup(self):
         """Czyści zasoby piaskownicy"""
         try:
