@@ -122,21 +122,77 @@ To add new test cases or modify existing ones:
 2. Edit files in `tests/correctness/` for correctness tests
 3. Edit files in `tests/performance/` for performance tests
 
+## Multi-Format Report Generation
+
+Evopy now supports generating reports in multiple formats using the `generate_report.py` script:
+
+### 3. `generate_report.py` - Multi-Format Report Generator
+
+This script generates comparison reports in multiple formats from existing test results.
+
+#### Usage:
+
+```bash
+python generate_report.py [--format=all|md|html|pdf] [--input=<results_dir>] [--output=<output_dir>]
+```
+
+#### Features:
+
+- Generates reports in multiple formats (Markdown, HTML, PDF)
+- PDF reports are generated in landscape orientation for better table display
+- Automatically detects and includes all models with test results
+- Creates visually enhanced HTML reports with proper styling
+- Comprehensive comparison of all tested models
+
+#### Dependencies:
+
+To use all report formats, you'll need:
+- `pandoc` - For HTML conversion
+- `wkhtmltopdf` - For PDF generation
+
+Install these dependencies with:
+```bash
+sudo apt-get install pandoc wkhtmltopdf
+```
+
 ## Rendering and Viewing Reports
 
-The reports are generated in Markdown format for easy viewing:
+Reports can be generated and viewed in multiple formats:
 
-1. **Command Line**: Use tools like `mdless` or `glow` to view reports in the terminal:
+1. **Markdown Format**:
    ```bash
+   # Generate only markdown report
+   python generate_report.py --format=md
+   
+   # View in terminal
+   less reports/comparison_report_YYYYMMDD_HHMMSS.md
+   # or with a markdown viewer
    glow reports/comparison_report_YYYYMMDD_HHMMSS.md
    ```
 
-2. **Web Browser**: Convert to HTML for better visualization:
+2. **HTML Format**:
    ```bash
-   pandoc -s reports/comparison_report_YYYYMMDD_HHMMSS.md -o report.html
+   # Generate only HTML report
+   python generate_report.py --format=html
+   
+   # Open in web browser
+   xdg-open reports/comparison_report_YYYYMMDD_HHMMSS.html
    ```
 
-3. **IDE/Editor**: Open the markdown file in any markdown-supporting editor
+3. **PDF Format (Landscape)**:
+   ```bash
+   # Generate only PDF report
+   python generate_report.py --format=pdf
+   
+   # Open in PDF viewer
+   xdg-open reports/comparison_report_YYYYMMDD_HHMMSS.pdf
+   ```
+
+4. **All Formats at Once**:
+   ```bash
+   # Generate reports in all formats
+   python generate_report.py --format=all
+   ```
 
 ## Best Practices
 
