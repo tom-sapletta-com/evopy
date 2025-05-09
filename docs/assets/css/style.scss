@@ -1,0 +1,99 @@
+---
+---
+
+@import "jekyll-theme-primer";
+
+/* Custom styles for Evopy documentation */
+
+/* Navigation menu */
+.navigation-menu {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: 2rem;
+  padding: 1rem;
+  background-color: #f8f8f8;
+  border-radius: 5px;
+  border: 1px solid #e8e8e8;
+}
+
+.nav-section {
+  flex: 1;
+  min-width: 200px;
+  margin-right: 2rem;
+  margin-bottom: 1rem;
+}
+
+.nav-section h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1.2rem;
+  color: #0366d6;
+  border-bottom: 1px solid #e1e4e8;
+  padding-bottom: 0.3rem;
+}
+
+.nav-section ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin-top: 0.5rem;
+}
+
+.nav-section li {
+  margin-bottom: 0.5rem;
+}
+
+.nav-section a {
+  text-decoration: none;
+  color: #24292e;
+}
+
+.nav-section a:hover {
+  color: #0366d6;
+  text-decoration: underline;
+}
+
+/* Mermaid diagrams */
+.mermaid {
+  margin: 1.5em 0;
+  text-align: center;
+  overflow: auto;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .navigation-menu {
+    background-color: #2f3136;
+    border-color: #444;
+  }
+  
+  .nav-section h3 {
+    color: #58a6ff;
+    border-color: #444;
+  }
+  
+  .nav-section a {
+    color: #c9d1d9;
+  }
+  
+  .nav-section a:hover {
+    color: #58a6ff;
+  }
+  
+  .mermaid {
+    background-color: #f8f8f8;
+    padding: 10px;
+    border-radius: 5px;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .navigation-menu {
+    flex-direction: column;
+  }
+  
+  .nav-section {
+    width: 100%;
+    margin-right: 0;
+  }
+}
