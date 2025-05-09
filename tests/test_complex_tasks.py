@@ -20,7 +20,7 @@ from datetime import datetime
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Import modułów projektu
-from text2python import Text2Python
+from modules.text2python.text2python import Text2Python
 from docker_sandbox import DockerSandbox
 from test_assistant_performance import AssistantTester
 

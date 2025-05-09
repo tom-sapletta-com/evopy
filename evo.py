@@ -21,6 +21,7 @@ import uuid
 import shutil
 import signal
 import logging
+import logging.handlers
 import asyncio
 import argparse
 import platform
@@ -51,14 +52,17 @@ except ImportError:
         UNDERLINE = '\033[4m'
         END = '\033[0m'
 
+# Definicja ścieżek projektu
+APP_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
+
 # Import modułów lokalnych
 try:
-    from text2python import Text2Python
+    from modules.text2python.text2python import Text2Python
     from docker_sandbox import DockerSandbox
 except ImportError:
     # Jeśli moduły nie są dostępne, dodaj katalog projektu do ścieżki
     sys.path.append(os.path.dirname(os.path.abspath(__file__)))
-    from text2python import Text2Python
+    from modules.text2python.text2python import Text2Python
     from docker_sandbox import DockerSandbox
 
 # Konfiguracja logowania z rotacją
@@ -1145,7 +1149,7 @@ class EvoAssistant:
             return
         
         # Zapisz konwersację do pliku
-        conversation_path = CONVERSATIONS_DIR / f"{conversation_id}.json"
+        conversation_path = HISTORY_DIR / f"{conversation_id}.json"
         with open(conversation_path, "w", encoding="utf-8") as f:
             json.dump(conversation, f, ensure_ascii=False, indent=2)
         

@@ -124,6 +124,9 @@ result = {{
     "execution_time": 0
 }}
 
+# Define original_exception at the beginning to ensure it's always available
+original_exception = None
+
 try:
     start_time = time.time()
     
@@ -134,6 +137,9 @@ try:
     result["success"] = True
     result["execution_time"] = execution_time
 except ImportError as e:
+    # Store the original exception
+    original_exception = e
+    
     # Próba automatycznego importu brakującego modułu
     missing_module = str(e).split("'")
     if len(missing_module) >= 2:
@@ -160,9 +166,11 @@ except ImportError as e:
             result["error"] = f"Brakujący moduł: {module_name}. Nie można go automatycznie zaimportować."
             result["traceback"] = traceback.format_exc()
     else:
-        result["error"] = str(e)
+        result["error"] = str(original_exception)
         result["traceback"] = traceback.format_exc()
 except Exception as e:
+    # Store the exception
+    original_exception = e
     result["error"] = str(e)
     result["traceback"] = traceback.format_exc()
 
