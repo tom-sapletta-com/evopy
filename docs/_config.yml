@@ -5,7 +5,6 @@ url: "https://tom-sapletta-com.github.io" # the base hostname & protocol for you
 
 # Build settings
 markdown: kramdown
-theme: jekyll-theme-primer
 remote_theme: pages-themes/primer@v0.6.0
 
 # Markdown processing
@@ -25,6 +24,15 @@ plugins:
   - jekyll-seo-tag
   - jekyll-sitemap
   - jekyll-feed
+  - jekyll-coffeescript
+  - jekyll-commonmark-ghpages
+  - jekyll-gist
+  - jekyll-paginate
+  - jekyll-relative-links
+  - jekyll-optional-front-matter
+  - jekyll-readme-index
+  - jekyll-default-layout
+  - jekyll-titles-from-headings
 
 # Exclude from processing
 exclude:

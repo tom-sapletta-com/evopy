@@ -224,7 +224,7 @@ class Text2Python:
         
         return round(complexity, 2)
     
-    def generate_code(self, prompt: str) -> Dict[str, Any]:
+    def generate_code(self, prompt: str, timeout: int = 30) -> Dict[str, Any]:
         """
         Generuje kod Python na podstawie opisu w języku naturalnym, a następnie weryfikuje go
         poprzez ponowną konwersję na tekst w celu potwierdzenia intencji użytkownika.
@@ -302,11 +302,11 @@ class Text2Python:
             
             logger.info(f"Generowanie kodu dla zapytania: {prompt[:50]}...")
             
-            # Uruchom model z timeoutem 30 sekund
+            # Uruchom model z przekazanym timeoutem
             returncode, stdout, stderr = run_model_with_timeout(
                 model_name=self.model_name,
                 prompt=combined_prompt_code,
-                timeout=30
+                timeout=timeout
             )
             
             if returncode != 0:

@@ -25,6 +25,9 @@ from typing import Dict, Any, List
 # Dodaj katalog główny do ścieżki, aby zaimportować moduły Evopy
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Importuj moduł resource_manager do dostosowywania timeout'u
+from modules.utils.resource_manager import get_adjusted_timeout
+
 # Importuj moduły Evopy
 from modules.text2python import Text2Python
 
@@ -66,13 +69,13 @@ TEST_QUERIES = [
     }
 ]
 
-def run_tests(model_name="llama3", timeout=30, test_case=None):
+def run_tests(model_name="llama3", timeout=None, test_case=None):
     """
     Uruchamia testy dla podanego modelu z timeoutem
     
     Args:
         model_name: Nazwa modelu do testowania
-        timeout: Limit czasu w sekundach dla każdego testu
+        timeout: Limit czasu w sekundach dla każdego testu (opcjonalnie, jeśli None, zostanie dostosowany automatycznie)
         test_case: Opcjonalny konkretny przypadek testowy do uruchomienia
         
     Returns:
@@ -81,10 +84,16 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
     # Konfiguracja loggera
     setup_logging()
     
+    # Jeśli timeout nie został podany, dostosuj go automatycznie do zasobów sprzętowych
+    if timeout is None:
+        timeout = get_adjusted_timeout()
+        logger.info(f"Automatycznie dostosowano timeout do zasobów sprzętowych: {timeout}s")
+    
     # Informacja o rozpoczęciu testów
     logger.info(f"Rozpoczynam testy z modelem {model_name} (timeout: {timeout}s)")
     
     # Sprawdzenie dostępności Ollama przed próbą użycia modelu
+    # Importujemy funkcję check_ollama_running z model_manager
     from modules.text2python.model_manager import check_ollama_running
     
     if not check_ollama_running(timeout=5):
@@ -102,7 +111,9 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
     
     # Inicjalizacja Text2Python z podanym modelem
     try:
-        text2python = Text2Python(model_name=model_name, timeout=timeout)
+        text2python = Text2Python(model_name=model_name)
+        # Zapisujemy timeout jako atrybut do późniejszego wykorzystania
+        text2python.timeout = timeout
     except Exception as e:
         logger.error(f"Błąd podczas inicjalizacji Text2Python: {str(e)}")
         return {
@@ -134,6 +145,9 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
                 "details": [],
                 "error": "Model niedostępny"
             }
+    
+    # Przygotowanie słownika przypadków testowych z listy TEST_QUERIES
+    test_cases = {query['name']: query for query in TEST_QUERIES}
     
     # Informacja o liczbie testów
     total_tests = len(test_cases) if not test_case else 1
@@ -199,8 +213,8 @@ def run_test_case(text2python, case_name, case_data):
         # Analizuj zapytanie
         logger.info(f"Analizowanie zapytania: '{query}'")
         
-        # Generuj kod Python na podstawie zapytania
-        result = text2python.generate_code(query)
+        # Generuj kod Python na podstawie zapytania z określonym timeoutem
+        result = text2python.generate_code(query, timeout=text2python.timeout)
         
         # Zmierz czas wykonania
         execution_time = time.time() - start_time
