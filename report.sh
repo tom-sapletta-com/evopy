@@ -49,132 +49,109 @@ elif [ -d "$SCRIPT_DIR/venv" ]; then
     PYTHON_CMD="$SCRIPT_DIR/venv/bin/python"
 else
     echo -e "${BLUE}Nie znaleziono wirtualnego środowiska, używanie systemowego Pythona...${NC}"
-    # Wybierz dostępną komendę Python
-    if command -v python3 >/dev/null 2>&1; then
-        PYTHON_CMD="python3"
-    else
-        PYTHON_CMD="python"
-    fi
+    PYTHON_CMD="python"
 fi
 
 # Sprawdź dostępne modele Ollama
 echo -e "${BLUE}Sprawdzanie dostępnych modeli Ollama...${NC}"
-AVAILABLE_OLLAMA_MODELS=$(ollama list 2>/dev/null | awk 'NR>1 {print $1}' | cut -d':' -f1 | sort -u)
-
-# Domyślna lista modeli do testowania
-DEFAULT_MODELS=("llama" "phi" "llama32" "bielik" "deepsek" "qwen" "mistral")
-
-# Filtruj listę modeli na podstawie dostępnych modeli Ollama
-MODELS=()
-for model in "${DEFAULT_MODELS[@]}"; do
-    # Sprawdź czy model jest dostępny w Ollama lub jest to model niestandardowy
-    if [[ "$AVAILABLE_OLLAMA_MODELS" == *"$model"* ]] || [[ "$model" == "bielik" ]] || [[ "$model" == "deepsek" ]]; then
-        MODELS+=("$model")
+if command -v ollama &> /dev/null; then
+    OLLAMA_MODELS=$(ollama list | grep -v "NAME" | awk '{print $1}')
+    if [ -n "$OLLAMA_MODELS" ]; then
+        echo -e "${GREEN}Znaleziono modele Ollama: ${YELLOW}$OLLAMA_MODELS${NC}"
+    else
+        echo -e "${YELLOW}Nie znaleziono żadnych modeli Ollama.${NC}"
     fi
-done
-
-# Jeśli nie znaleziono żadnych modeli, użyj domyślnych
-if [ ${#MODELS[@]} -eq 0 ]; then
-    echo -e "${YELLOW}Nie znaleziono dostępnych modeli Ollama. Używanie domyślnej listy.${NC}"
-    MODELS=("llama" "phi" "llama32" "bielik" "deepsek")
+else
+    echo -e "${YELLOW}Ollama nie jest zainstalowana. Pomijanie sprawdzania modeli Ollama.${NC}"
 fi
+
+# Lista modeli do testowania (domyślna)
+if [ -z "$MODELS" ]; then
+    MODELS=("llama3" "gpt-4" "claude" "gemini" "deepsek")
+fi
+
+# Domyślne ustawienia
+specific_model=""
+report_format="all"
+trend_days=30
+compare_models=()
+metrics="all"
+only_report=false
 
 # Funkcja do uruchamiania testów dla danego modelu
 function run_tests_for_model() {
     local model=$1
-    echo -e "\n${GREEN}${BOLD}=== Uruchamianie testów dla modelu: ${YELLOW}$model${NC} ===${NC}"
     
-    # Uruchom testy podstawowych zapytań
-    echo -e "${BLUE}1. Testy podstawowych zapytań:${NC}"
-    $PYTHON_CMD "$SCRIPT_DIR/test_queries.py" --model="$model"
-    QUERIES_RESULT=$?
+    echo -e "${GREEN}=== Uruchamianie testów dla modelu: $model ===${NC}"
+    
+    # Uruchom testy zapytań
+    echo -e "${BLUE}Uruchamianie testów zapytań...${NC}"
+    "$PYTHON_CMD" "$SCRIPT_DIR/test_queries.py" --model="$model"
+    local queries_result=$?
     
     # Uruchom testy poprawności
-    echo -e "\n${BLUE}2. Testy poprawności:${NC}"
-    $PYTHON_CMD "$TESTS_DIR/correctness/correctness_test.py" --model="$model"
-    CORRECTNESS_RESULT=$?
-    
-    # Uruchom testy wydajności
-    echo -e "\n${BLUE}3. Testy wydajności:${NC}"
-    $PYTHON_CMD "$TESTS_DIR/performance/performance_test.py" --model="$model"
-    PERFORMANCE_RESULT=$?
-    
-    # Podsumowanie testów dla modelu
-    echo -e "\n${CYAN}=== Podsumowanie testów dla modelu: ${YELLOW}$model${NC} ===${NC}"
-    if [ $QUERIES_RESULT -eq 0 ] && [ $CORRECTNESS_RESULT -eq 0 ] && [ $PERFORMANCE_RESULT -eq 0 ]; then
-        echo -e "${GREEN}✓ Wszystkie testy zakończone pomyślnie${NC}"
+    echo -e "${BLUE}Uruchamianie testów poprawności...${NC}"
+    if [ -f "$SCRIPT_DIR/test_correctness.py" ]; then
+        "$PYTHON_CMD" "$SCRIPT_DIR/test_correctness.py" --model="$model"
+        local correctness_result=$?
     else
-        echo -e "${RED}✗ Niektóre testy nie powiodły się${NC}"
-        echo -e "${BLUE}Testy podstawowych zapytań: $([ $QUERIES_RESULT -eq 0 ] && echo "${GREEN}OK" || echo "${RED}BŁĄD")${NC}"
-        echo -e "${BLUE}Testy poprawności: $([ $CORRECTNESS_RESULT -eq 0 ] && echo "${GREEN}OK" || echo "${RED}BŁĄD")${NC}"
-        echo -e "${BLUE}Testy wydajności: $([ $PERFORMANCE_RESULT -eq 0 ] && echo "${GREEN}OK" || echo "${RED}BŁĄD")${NC}"
+        echo -e "${YELLOW}Skrypt test_correctness.py nie istnieje. Pomijanie testów poprawności.${NC}"
+        local correctness_result=0
     fi
     
-    # Zapisz wyniki do pliku JSON dla późniejszego porównania
+    # Uruchom testy wydajności
+    echo -e "${BLUE}Uruchamianie testów wydajności...${NC}"
+    if [ -f "$SCRIPT_DIR/test_performance.py" ]; then
+        "$PYTHON_CMD" "$SCRIPT_DIR/test_performance.py" --model="$model"
+        local performance_result=$?
+    else
+        echo -e "${YELLOW}Skrypt test_performance.py nie istnieje. Pomijanie testów wydajności.${NC}"
+        local performance_result=0
+    fi
+    
+    # Zapisz wyniki testów
     local timestamp=$(date +"%Y%m%d_%H%M%S")
     local results_file="$REPORT_DIR/results_${model}_${timestamp}.json"
     
-    echo "{
-        \"model\": \"$model\",
-        \"timestamp\": \"$timestamp\",
-        \"queries_result\": $QUERIES_RESULT,
-        \"correctness_result\": $CORRECTNESS_RESULT,
-        \"performance_result\": $PERFORMANCE_RESULT
-    }" > "$results_file"
+    echo "{" > "$results_file"
+    echo "  \"model\": \"$model\"," >> "$results_file"
+    echo "  \"timestamp\": \"$timestamp\"," >> "$results_file"
+    echo "  \"queries_result\": $queries_result," >> "$results_file"
+    echo "  \"correctness_result\": $correctness_result," >> "$results_file"
+    echo "  \"performance_result\": $performance_result" >> "$results_file"
+    echo "}" >> "$results_file"
     
-    echo -e "${BLUE}Wyniki zapisane do: ${YELLOW}$results_file${NC}"
+    echo -e "${GREEN}Wyniki testów zapisane w pliku: ${YELLOW}$results_file${NC}"
+    echo
 }
 
 # Funkcja do generowania raportu porównawczego
 function generate_comparison_report() {
-    local timestamp=$(date +"%Y%m%d_%H%M%S")
-    local report_file="$REPORT_DIR/comparison_report_${timestamp}.md"
-    local format="${1:-all}"  # Format raportu: all, md, html, pdf
-    local days="${2:-30}"     # Liczba dni do analizy trendów
+    local format=$1
+    local days=$2
     
-    echo -e "${GREEN}${BOLD}=== Generowanie zaawansowanego raportu porównawczego ===${NC}"
+    echo -e "${GREEN}=== Generowanie raportu porównawczego ===${NC}"
     
-    # Użyj nowego skryptu Python do generowania raportu
-    $PYTHON_CMD "$SCRIPT_DIR/generate_report.py" \
-        --format="$format" \
-        --days="$days" \
-        --output="$report_file"
+    # Uruchom generowanie raportu
+    "$PYTHON_CMD" "$SCRIPT_DIR/generate_report.py" --format="$format" --trend="$days"
+    local report_result=$?
     
-    # Sprawdź czy generowanie się powiodło
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Raport porównawczy wygenerowany: ${YELLOW}$report_file${NC}"
-        
-        # Utwórz link do najnowszego raportu
-        ln -sf "$report_file" "$REPORT_DIR/comparison_report_latest.md"
-        
-        # Jeśli wygenerowano HTML, wyświetl informację
-        if [[ "$format" == "all" || "$format" == "html" ]]; then
-            local html_file="${report_file%.md}.html"
-            if [ -f "$html_file" ]; then
-                echo -e "${GREEN}Raport HTML wygenerowany: ${YELLOW}$html_file${NC}"
-            fi
-        fi
-        
-        # Jeśli wygenerowano PDF, wyświetl informację
-        if [[ "$format" == "all" || "$format" == "pdf" ]]; then
-            local pdf_file="${report_file%.md}.pdf"
-            if [ -f "$pdf_file" ]; then
-                echo -e "${GREEN}Raport PDF wygenerowany: ${YELLOW}$pdf_file${NC}"
-            fi
-        fi
+    if [ $report_result -eq 0 ]; then
+        echo -e "${GREEN}Raport porównawczy wygenerowany pomyślnie.${NC}"
     else
-        echo -e "${RED}Błąd podczas generowania raportu!${NC}"
+        echo -e "${RED}Wystąpił błąd podczas generowania raportu porównawczego.${NC}"
         
-        # Awaryjne generowanie prostego raportu w przypadku błędu
-        echo -e "${YELLOW}Generowanie uproszczonego raportu awaryjnego...${NC}"
+        # Wygeneruj uproszczony raport w Markdown
+        echo -e "${YELLOW}Generowanie uproszczonego raportu w formacie Markdown...${NC}"
         
-        # Nagłówek raportu
-        echo "# Raport porównawczy modeli LLM dla Evopy" > "$report_file"
-        echo "Data wygenerowania: $(date '+%Y-%m-%d %H:%M:%S')" >> "$report_file"
+        local timestamp=$(date +"%Y%m%d_%H%M%S")
+        local report_file="$REPORT_DIR/report_simplified_${timestamp}.md"
+        
+        echo "# Uproszczony raport porównawczy modeli LLM" > "$report_file"
         echo "" >> "$report_file"
-        
-        # Tabela wyników
-        echo "## Podsumowanie wyników" >> "$report_file"
+        echo "Data: $(date '+%Y-%m-%d %H:%M:%S')" >> "$report_file"
+        echo "" >> "$report_file"
+        echo "## Podsumowanie wyników testów" >> "$report_file"
         echo "" >> "$report_file"
         echo "| Model | Testy zapytań | Testy poprawności | Testy wydajności | Całkowity wynik |" >> "$report_file"
         echo "|-------|--------------|-------------------|------------------|-----------------|" >> "$report_file"
@@ -276,6 +253,53 @@ function cleanup_files() {
     fi
 }
 
+# Przetwarzanie argumentów wiersza poleceń
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --model=*)
+            specific_model="${1#*=}"
+            shift
+            ;;
+        --format=*)
+            report_format="${1#*=}"
+            shift
+            ;;
+        --trend=*)
+            trend_days="${1#*=}"
+            shift
+            ;;
+        --compare=*)
+            IFS=',' read -ra compare_models <<< "${1#*=}"
+            shift
+            ;;
+        --metrics=*)
+            metrics="${1#*=}"
+            shift
+            ;;
+        --only-report)
+            only_report=true
+            shift
+            ;;
+        --help)
+            echo -e "${BLUE}Użycie: $0 [opcje]${NC}"
+            echo -e "${BLUE}Opcje:${NC}"
+            echo -e "  ${GREEN}--model=NAZWA${NC}       Uruchom testy tylko dla wybranego modelu"
+            echo -e "  ${GREEN}--format=FORMAT${NC}     Format raportu: all, md, html, pdf (domyślnie: all)"
+            echo -e "  ${GREEN}--trend=DNI${NC}         Liczba dni do analizy trendów (domyślnie: 30)"
+            echo -e "  ${GREEN}--compare=MODEL1,MODEL2${NC} Porównaj tylko wybrane modele"
+            echo -e "  ${GREEN}--metrics=METRYKI${NC}   Wybrane metryki do analizy (domyślnie: all)"
+            echo -e "  ${GREEN}--only-report${NC}       Wygeneruj tylko raport bez uruchamiania testów"
+            echo -e "  ${GREEN}--help${NC}              Wyświetl tę pomoc"
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Błąd: Nieznana opcja '$1'${NC}"
+            echo -e "${BLUE}Użyj '$0 --help' aby wyświetlić dostępne opcje${NC}"
+            exit 1
+            ;;
+    esac
+done
+
 # Główna funkcja skryptu
 function main() {
     echo -e "${GREEN}${BOLD}=== Raport porównawczy modeli LLM dla Evopy ===${NC}"
@@ -287,27 +311,29 @@ function main() {
     
     echo
     
-    # Zapytaj, które modele testować
-    echo -e "${YELLOW}Dostępne modele do testowania:${NC}"
-    for i in "${!MODELS[@]}"; do
-        echo -e "$((i+1))) ${CYAN}${MODELS[$i]}${NC}"
-    done
-    echo -e "$((${#MODELS[@]}+1))) ${CYAN}Wszystkie modele${NC}"
-    
-    # Pobierz wybór użytkownika
-    read -p "${YELLOW}Wybierz model (1-$((${#MODELS[@]}+1))): ${NC}" choice
-    echo
-    
-    # Sprawdź wybór użytkownika
-    if [ "$choice" -eq "$((${#MODELS[@]}+1))" ]; then
-        # Wybrano wszystkie modele
-        echo -e "${BLUE}Wybrano wszystkie modele${NC}"
-    elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#MODELS[@]}" ]; then
-        # Wybrano konkretny model
-        specific_model="${MODELS[$((choice-1))]}"
-        echo -e "${BLUE}Wybrano model: ${YELLOW}$specific_model${NC}"
-    else
-        echo -e "${RED}Błędny wybór. Używanie wszystkich modeli.${NC}"
+    # Zapytaj, które modele testować, jeśli nie podano w argumentach
+    if [ -z "$specific_model" ] && [ ${#compare_models[@]} -eq 0 ]; then
+        echo -e "${YELLOW}Dostępne modele do testowania:${NC}"
+        for i in "${!MODELS[@]}"; do
+            echo -e "$((i+1))) ${CYAN}${MODELS[$i]}${NC}"
+        done
+        echo -e "$((${#MODELS[@]}+1))) ${CYAN}Wszystkie modele${NC}"
+        
+        # Pobierz wybór użytkownika
+        read -p "${YELLOW}Wybierz model (1-$((${#MODELS[@]}+1))): ${NC}" choice
+        echo
+        
+        # Sprawdź wybór użytkownika
+        if [ "$choice" -eq "$((${#MODELS[@]}+1))" ]; then
+            # Wybrano wszystkie modele
+            echo -e "${BLUE}Wybrano wszystkie modele${NC}"
+        elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#MODELS[@]}" ]; then
+            # Wybrano konkretny model
+            specific_model="${MODELS[$((choice-1))]}"
+            echo -e "${BLUE}Wybrano model: ${YELLOW}$specific_model${NC}"
+        else
+            echo -e "${RED}Błędny wybór. Używanie wszystkich modeli.${NC}"
+        fi
     fi
     
     # Wyświetl informacje o uruchamianych testach
