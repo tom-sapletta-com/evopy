@@ -230,12 +230,12 @@ def test_python2text(model_name: str) -> Dict[str, Any]:
     }
     
     # Inicjalizacja konwertera python2text
-    python2text = Python2Text(model_id=model_id, output_dir=DESCRIPTION_DIR)
+    python2text = Python2Text(model_name=model_name, output_dir=DESCRIPTION_DIR)
     
     # Sprawdź, czy model jest dostępny
     if not python2text.ensure_model_available():
-        logger.error(f"Model {model_id} nie jest dostępny. Testy nie mogą być wykonane.")
-        results["error"] = f"Model {model_id} nie jest dostępny"
+        logger.error(f"Model {model_name} nie jest dostępny. Testy nie mogą być wykonane.")
+        results["error"] = f"Model {model_name} nie jest dostępny"
         return results
     
     # Uruchom testy dla każdego kodu
@@ -320,8 +320,8 @@ def save_results(results: Dict[str, Any], test_type: str) -> str:
         str: Ścieżka do zapisanego pliku
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_id = results["model_id"]
-    filename = f"{test_type}_{model_id}_{timestamp}.json"
+    model_name = results["model_name"]
+    filename = f"{test_type}_{model_name}_{timestamp}.json"
     file_path = RESULTS_DIR / filename
     
     with open(file_path, "w", encoding="utf-8") as f:
@@ -358,25 +358,25 @@ def main():
         models = ["deepsek"]
     
     # Uruchom testy dla każdego modelu
-    for model_id in models:
-        logger.info(f"Rozpoczynanie testów dla modelu: {model_id}")
+    for model_name in models:
+        logger.info(f"Rozpoczynanie testów dla modelu: {model_name}")
         
         if args.text2python:
-            text2python_results = test_text2python(model_id)
+            text2python_results = test_text2python(model_name)
             save_results(text2python_results, "text2python")
             
             # Wyświetl podsumowanie
-            logger.info(f"Wyniki testów text2python dla modelu {model_id}:")
+            logger.info(f"Wyniki testów text2python dla modelu {model_name}:")
             logger.info(f"Zaliczone: {text2python_results['passed']}/{text2python_results['total_queries']}")
             logger.info(f"Całkowity czas: {text2python_results['total_time']:.2f}s")
             logger.info(f"Średni czas: {text2python_results['avg_time']:.2f}s")
         
         if args.python2text:
-            python2text_results = test_python2text(model_id)
+            python2text_results = test_python2text(model_name)
             save_results(python2text_results, "python2text")
             
             # Wyświetl podsumowanie
-            logger.info(f"Wyniki testów python2text dla modelu {model_id}:")
+            logger.info(f"Wyniki testów python2text dla modelu {model_name}:")
             logger.info(f"Zaliczone: {python2text_results['passed']}/{python2text_results['total_codes']}")
             logger.info(f"Całkowity czas: {python2text_results['total_time']:.2f}s")
             logger.info(f"Średni czas: {python2text_results['avg_time']:.2f}s")

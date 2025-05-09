@@ -412,8 +412,8 @@ def save_results(results: Dict[str, Any], test_type: str) -> str:
         str: Ścieżka do zapisanego pliku
     """
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    model_id = results["model_id"]
-    filename = f"{test_type}_correctness_{model_id}_{timestamp}.json"
+    model_name = results["model_name"]
+    filename = f"{test_type}_correctness_{model_name}_{timestamp}.json"
     file_path = RESULTS_DIR / filename
     
     with open(file_path, "w", encoding="utf-8") as f:
@@ -450,23 +450,23 @@ def main():
         models = ["deepsek"]
     
     # Uruchom testy dla każdego modelu
-    for model_id in models:
-        logger.info(f"Rozpoczynanie testów poprawności dla modelu: {model_id}")
+    for model_name in models:
+        logger.info(f"Rozpoczynanie testów poprawności dla modelu: {model_name}")
         
         if args.text2python:
-            text2python_results = test_text2python_correctness(model_id)
+            text2python_results = test_text2python_correctness(model_name)
             save_results(text2python_results, "text2python")
             
             # Wyświetl podsumowanie
-            logger.info(f"Wyniki testów poprawności text2python dla modelu {model_id}:")
+            logger.info(f"Wyniki testów poprawności text2python dla modelu {model_name}:")
             logger.info(f"Zaliczone: {text2python_results['passed']}/{text2python_results['total_tests']}")
         
         if args.python2text:
-            python2text_results = test_python2text_correctness(model_id)
+            python2text_results = test_python2text_correctness(model_name)
             save_results(python2text_results, "python2text")
             
             # Wyświetl podsumowanie
-            logger.info(f"Wyniki testów poprawności python2text dla modelu {model_id}:")
+            logger.info(f"Wyniki testów poprawności python2text dla modelu {model_name}:")
             logger.info(f"Zaliczone: {python2text_results['passed']}/{python2text_results['total_tests']}")
     
     logger.info("Testy poprawności zakończone")

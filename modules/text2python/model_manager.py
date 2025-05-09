@@ -103,6 +103,32 @@ def get_available_models() -> List[Dict[str, Any]]:
     
     return models
 
+def check_ollama_running(timeout: int = 5) -> bool:
+    """
+    Sprawdza, czy serwer Ollama jest uruchomiony
+    
+    Args:
+        timeout: Limit czasu w sekundach
+        
+    Returns:
+        bool: True jeśli serwer Ollama jest uruchomiony, False w przeciwnym przypadku
+    """
+    try:
+        # Próba połączenia z serwerem Ollama
+        process = subprocess.run(
+            ["curl", "-s", "http://localhost:11434/api/version"],
+            timeout=timeout,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        
+        # Jeśli kod wyjścia jest 0 i otrzymaliśmy jakąś odpowiedź, serwer działa
+        if process.returncode == 0 and process.stdout:
+            return True
+        return False
+    except (subprocess.TimeoutExpired, subprocess.SubprocessError):
+        return False
+
 def check_ollama_models(timeout: int = 5) -> List[str]:
     """
     Sprawdza dostępne modele w Ollama z timeoutem
