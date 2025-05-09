@@ -12,7 +12,7 @@ import uuid
 # Konfiguracja logowania
 logger = logging.getLogger('docker-task-register')
 
-def register_docker_task(task_id=None, container_id=None, code=None, output=None, is_service=False, service_url=None, service_name=None):
+def register_docker_task(task_id=None, container_id=None, code=None, output=None, is_service=False, service_url=None, service_name=None, user_prompt=None, agent_explanation=None):
     """Rejestruje zadanie Docker bezpośrednio w serwerze modułów
     
     Args:
@@ -23,6 +23,8 @@ def register_docker_task(task_id=None, container_id=None, code=None, output=None
         is_service: Czy to jest serwis webowy
         service_url: URL serwisu (tylko dla is_service=True)
         service_name: Nazwa serwisu (tylko dla is_service=True)
+        user_prompt: Zapytanie użytkownika, które doprowadziło do wygenerowania kodu
+        agent_explanation: Wyjaśnienie asystenta dotyczące wygenerowanego kodu
         
     Returns:
         dict: Informacje o zarejestrowanym zadaniu Docker
@@ -50,6 +52,16 @@ def register_docker_task(task_id=None, container_id=None, code=None, output=None
                 data["service_url"] = service_url
             if service_name:
                 data["service_name"] = service_name
+                
+        # Dodaj prompt użytkownika i wyjaśnienie asystenta, jeśli są dostępne
+        if user_prompt:
+            data["user_prompt"] = user_prompt
+            
+        if agent_explanation:
+            data["agent_explanation"] = agent_explanation
+            
+        logger.info(f"Rejestrowanie zadania Docker {task_id} z danymi: {data.keys()}")
+        logger.info(f"URL serwera: http://localhost:5000/docker/register")
         
         # Wyślij żądanie do serwera modułów
         response = requests.post(

@@ -422,8 +422,25 @@ def conversation_details(conversation_id):
             "updated_at": conversation.get("updated_at", ""),
             "message_count": len(conversation.get("messages", [])),
             "messages": [],
-            "code_executions": conversation.get("code_executions", [])
+            "code_executions": conversation.get("code_executions", []),
+            "docker_tasks": []
         }
+        
+        # Znajdź powiązane zadania Docker
+        for execution in conversation_data["code_executions"]:
+            if "docker_task_id" in execution:
+                conversation_data["docker_tasks"].append(execution["docker_task_id"])
+            
+        # Szukaj również linków do Docker w treści wiadomości
+        for message in conversation.get("messages", []):
+            content = message.get("content", "")
+            if "http://localhost:5000/docker/" in content:
+                # Wyodrębnij ID zadania Docker z linku
+                import re
+                docker_links = re.findall(r'http://localhost:5000/docker/([\w-]+)', content)
+                for task_id in docker_links:
+                    if task_id not in conversation_data["docker_tasks"]:
+                        conversation_data["docker_tasks"].append(task_id)
         
         # Formatuj daty
         for date_field in ["created_at", "updated_at"]:
