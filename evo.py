@@ -27,9 +27,29 @@ import platform
 import readline  # Do historii w konsoli
 import subprocess
 import threading
+import psutil
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union, Tuple
+
+# Import narzędzi interfejsu konsolowego
+try:
+    from console_utils import Colors, CommandCompleter, ResultFormatter, print_header, print_table, create_progress_bar
+    CONSOLE_UTILS_AVAILABLE = True
+except ImportError:
+    CONSOLE_UTILS_AVAILABLE = False
+    # Fallback do oryginalnej klasy Colors
+    class Colors:
+        HEADER = '\033[95m'
+        BLUE = '\033[94m'
+        GREEN = '\033[92m'
+        YELLOW = '\033[93m'
+        RED = '\033[91m'
+        CYAN = '\033[96m'
+        MAGENTA = '\033[95m'
+        BOLD = '\033[1m'
+        UNDERLINE = '\033[4m'
+        END = '\033[0m'
 
 # Import modułów lokalnych
 try:
@@ -59,18 +79,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger("evo-assistant")
 
-# Kolory dla terminala
-class Colors:
-    HEADER = '\033[95m'
-    BLUE = '\033[94m'
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    CYAN = '\033[96m'
-    MAGENTA = '\033[95m'
-    BOLD = '\033[1m'
-    UNDERLINE = '\033[4m'
-    END = '\033[0m'
+# Kolory dla terminala zdefiniowane w console_utils.py
 
 # Stałe
 APP_DIR = Path.home() / ".evo-assistant"
@@ -120,6 +129,12 @@ class EvoAssistant:
             model_name=self.config.get("model", DEFAULT_MODEL),
             code_dir=CODE_DIR
         )
+        
+        # Inicjalizacja narzędzi interfejsu konsolowego
+        if CONSOLE_UTILS_AVAILABLE:
+            from console_utils import DEFAULT_COMMANDS
+            self.result_formatter = ResultFormatter()
+            self.command_completer = CommandCompleter(DEFAULT_COMMANDS)
         
         # Rejestracja obsługi sygnałów
         signal.signal(signal.SIGINT, self._handle_interrupt)
@@ -683,7 +698,12 @@ class EvoAssistant:
                 code = code_result["code"]
                 logger.info("Kod został pomyślnie wygenerowany")
                 print(f"{Colors.GREEN}Wygenerowano kod Python:{Colors.END}")
-                print(f"{Colors.CYAN}{code}{Colors.END}")
+                
+                # Użyj kolorowania składni, jeśli dostępne
+                if CONSOLE_UTILS_AVAILABLE:
+                    print(self.result_formatter.format_code(code))
+                else:
+                    print(f"{Colors.CYAN}{code}{Colors.END}")
                 
                 # Pokaż wyjaśnienie kodu
                 if code_result.get("explanation"):
@@ -748,6 +768,19 @@ class EvoAssistant:
             
             # Zapisz wynik uruchomienia kodu
             self._save_code_execution_result(query, code, sandbox_result)
+            
+            # Wyświetl sformatowany wynik wykonania kodu
+            if CONSOLE_UTILS_AVAILABLE:
+                print(self.result_formatter.format_execution_result(sandbox_result))
+            else:
+                # Standardowe wyświetlanie wyniku
+                if sandbox_result["success"]:
+                    print(f"{Colors.GREEN}Kod został wykonany pomyślnie!{Colors.END}")
+                    print(f"{Colors.BLUE}Wynik wykonania:{Colors.END}")
+                    print(f"{Colors.CYAN}{sandbox_result['output']}{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Wystąpił błąd podczas wykonywania kodu:{Colors.END}")
+                    print(f"{Colors.RED}{sandbox_result.get('error', 'Nieznany błąd')}{Colors.END}")
             
         except Exception as e:
             logger.error(f"Błąd w pętli interaktywnej: {str(e)}")
@@ -865,9 +898,24 @@ class EvoAssistant:
     
     def _interactive_loop(self):
         """Główna pętla interaktywna asystenta"""
+        # Wyświetl powitanie
+        if CONSOLE_UTILS_AVAILABLE:
+            print_header(f"Ewolucyjny Asystent v{VERSION}")
+            print(f"\nWpisz {Colors.BOLD}/help{Colors.END} aby uzyskać pomoc lub {Colors.BOLD}zapytanie{Colors.END} aby rozpocząć konwersację.\n")
+        else:
+            print(f"{Colors.HEADER}Ewolucyjny Asystent v{VERSION}{Colors.END}")
+            print(f"\nWpisz /help aby uzyskać pomoc lub zapytanie aby rozpocząć konwersację.\n")
+        
         while self.running:
             try:
-                user_input = input(f"{Colors.GREEN}> {Colors.END}")
+                # Wyświetl prompt z informacją o aktualnej konwersacji
+                if self.current_conversation_id and self.current_conversation_id in self.conversations:
+                    conv_title = self.conversations[self.current_conversation_id].get("title", "Bez tytułu")
+                    prompt = f"{Colors.GREEN}[{conv_title}]> {Colors.END}"
+                else:
+                    prompt = f"{Colors.GREEN}> {Colors.END}"
+                
+                user_input = input(prompt)
                 
                 # Obsługa komend
                 if user_input.startswith("/"):
@@ -895,12 +943,15 @@ class EvoAssistant:
         cmd = parts[0].lower()
         args = parts[1:] if len(parts) > 1 else []
         
+        # Obsługa podstawowych komend
         if cmd == "/help":
             self._show_help()
+            return
         
         elif cmd == "/exit" or cmd == "/quit":
             print(f"{Colors.YELLOW}Kończenie pracy...{Colors.END}")
             self.running = False
+            return
         
         elif cmd == "/new":
             self._create_new_conversation()
@@ -992,24 +1043,77 @@ class EvoAssistant:
             else:
                 print(f"{Colors.RED}Brak aktywnej konwersacji.{Colors.END}")
         
+        # Dodatkowe komendy
+        elif cmd == "/status":
+            self._show_status()
+        
+        elif cmd == "/history":
+            self._show_history()
+        
+        elif cmd == "/export":
+            if not args:
+                print(f"{Colors.RED}Nie podano nazwy pliku. Użyj: /export <plik>{Colors.END}")
+                return
+            self._export_conversation(args[0])
+        
+        elif cmd == "/import":
+            if not args:
+                print(f"{Colors.RED}Nie podano nazwy pliku. Użyj: /import <plik>{Colors.END}")
+                return
+            self._import_conversation(args[0])
+        
+        elif cmd == "/monitor":
+            self._show_resource_usage()
+        
         else:
             print(f"{Colors.RED}Nieznana komenda: {cmd}. Wpisz /help aby uzyskać pomoc.{Colors.END}")
     
     def _show_help(self):
         """Wyświetla pomoc dla komend asystenta"""
-        print(f"{Colors.BLUE}Dostępne komendy:{Colors.END}")
-        print(f"{Colors.BLUE}/help{Colors.END} - Wyświetla tę pomoc")
-        print(f"{Colors.BLUE}/exit{Colors.END}, {Colors.BLUE}/quit{Colors.END} - Kończy pracę asystenta")
-        print(f"{Colors.BLUE}/new{Colors.END} - Tworzy nową konwersację")
-        print(f"{Colors.BLUE}/list{Colors.END} - Wyświetla listę konwersacji")
-        print(f"{Colors.BLUE}/load <id>{Colors.END} - Ładuje konwersację o podanym ID")
-        print(f"{Colors.BLUE}/title <nowy tytuł>{Colors.END} - Zmienia tytuł aktualnej konwersacji")
-        print(f"{Colors.BLUE}/clear{Colors.END} - Czyści historię aktualnej konwersacji")
-        print(f"{Colors.BLUE}/model [nazwa modelu]{Colors.END} - Wyświetla/zmienia aktualny model")
-        print(f"{Colors.BLUE}/skills{Colors.END} - Wyświetla umiejętności asystenta")
-        print(f"{Colors.BLUE}/projects{Colors.END} - Wyświetla projekty w aktualnej konwersacji")
-        print(f"{Colors.BLUE}/docker [ps|images|network|info]{Colors.END} - Zarządzanie Dockerem")
-        print(f"{Colors.BLUE}/save{Colors.END} - Zapisuje aktualną konwersację")
+        if CONSOLE_UTILS_AVAILABLE:
+            print_header("Dostępne komendy")
+            
+            # Przygotuj dane do tabeli
+            commands = [
+                ["/help", "Wyświetla tę pomoc"],
+                ["/exit, /quit", "Kończy pracę asystenta"],
+                ["/new", "Tworzy nową konwersację"],
+                ["/list", "Wyświetla listę konwersacji"],
+                ["/load <id>", "Ładuje konwersację o podanym ID"],
+                ["/title <nowy tytuł>", "Zmienia tytuł aktualnej konwersacji"],
+                ["/clear", "Czyści historię aktualnej konwersacji"],
+                ["/model [nazwa modelu]", "Wyświetla/zmienia aktualny model"],
+                ["/skills", "Wyświetla umiejętności asystenta"],
+                ["/projects", "Wyświetla projekty w aktualnej konwersacji"],
+                ["/docker [ps|images|network|info]", "Zarządzanie Dockerem"],
+                ["/save", "Zapisuje aktualną konwersację"],
+                ["/status", "Wyświetla status systemu"],
+                ["/history", "Wyświetla historię konwersacji"],
+                ["/export <plik>", "Eksportuje konwersację do pliku"],
+                ["/import <plik>", "Importuje konwersację z pliku"],
+                ["/monitor", "Wyświetla informacje o zużyciu zasobów"]
+            ]
+            
+            print_table(["Komenda", "Opis"], commands)
+        else:
+            print(f"{Colors.BLUE}Dostępne komendy:{Colors.END}")
+            print(f"{Colors.BLUE}/help{Colors.END} - Wyświetla tę pomoc")
+            print(f"{Colors.BLUE}/exit{Colors.END}, {Colors.BLUE}/quit{Colors.END} - Kończy pracę asystenta")
+            print(f"{Colors.BLUE}/new{Colors.END} - Tworzy nową konwersację")
+            print(f"{Colors.BLUE}/list{Colors.END} - Wyświetla listę konwersacji")
+            print(f"{Colors.BLUE}/load <id>{Colors.END} - Ładuje konwersację o podanym ID")
+            print(f"{Colors.BLUE}/title <nowy tytuł>{Colors.END} - Zmienia tytuł aktualnej konwersacji")
+            print(f"{Colors.BLUE}/clear{Colors.END} - Czyści historię aktualnej konwersacji")
+            print(f"{Colors.BLUE}/model [nazwa modelu]{Colors.END} - Wyświetla/zmienia aktualny model")
+            print(f"{Colors.BLUE}/skills{Colors.END} - Wyświetla umiejętności asystenta")
+            print(f"{Colors.BLUE}/projects{Colors.END} - Wyświetla projekty w aktualnej konwersacji")
+            print(f"{Colors.BLUE}/docker [ps|images|network|info]{Colors.END} - Zarządzanie Dockerem")
+            print(f"{Colors.BLUE}/save{Colors.END} - Zapisuje aktualną konwersację")
+            print(f"{Colors.BLUE}/status{Colors.END} - Wyświetla status systemu")
+            print(f"{Colors.BLUE}/history{Colors.END} - Wyświetla historię konwersacji")
+            print(f"{Colors.BLUE}/export <plik>{Colors.END} - Eksportuje konwersację do pliku")
+            print(f"{Colors.BLUE}/import <plik>{Colors.END} - Importuje konwersację z pliku")
+            print(f"{Colors.BLUE}/monitor{Colors.END} - Wyświetla informacje o zużyciu zasobów")
     
     def _list_conversations_command(self):
         """Wyświetla listę konwersacji"""
@@ -1024,25 +1128,230 @@ class EvoAssistant:
             created_at = datetime.fromisoformat(conv.get("created_at", "")).strftime("%Y-%m-%d %H:%M")
             is_current = " (aktualna)" if conv.get("id") == self.current_conversation_id else ""
             print(f"{Colors.BLUE}{i}. {conv.get('title', 'Bez tytułu')} - {created_at}{is_current}{Colors.END}")
+    
+    def _save_conversation(self, conversation_id=None):
+        """Zapisuje konwersację do pliku"""
+        if not conversation_id:
+            conversation_id = self.current_conversation_id
+            
+        if not conversation_id:
+            print(f"{Colors.RED}Brak aktywnej konwersacji.{Colors.END}")
+            return
+        
+        # Pobierz konwersację
+        conversation = self.conversations.get(conversation_id)
+        if not conversation:
+            print(f"{Colors.RED}Nie można znaleźć konwersacji o ID {conversation_id}.{Colors.END}")
+            return
+        
+        # Zapisz konwersację do pliku
+        conversation_path = CONVERSATIONS_DIR / f"{conversation_id}.json"
+        with open(conversation_path, "w", encoding="utf-8") as f:
+            json.dump(conversation, f, ensure_ascii=False, indent=2)
+        
+        logger.info(f"Konwersacja {conversation_id} została zapisana")
+        
+    def _export_conversation(self, filename: str):
+        """Eksportuje aktualną konwersację do pliku"""
+        if not self.current_conversation_id:
+            print(f"{Colors.RED}Brak aktywnej konwersacji do eksportu.{Colors.END}")
+            return
+        
+        # Pobierz aktualną konwersację
+        conversation = self.conversations.get(self.current_conversation_id)
+        if not conversation:
+            print(f"{Colors.RED}Nie można znaleźć aktualnej konwersacji.{Colors.END}")
+            return
+        
+        # Jeśli nie podano rozszerzenia, dodaj .json
+        if not filename.endswith('.json'):
+            filename += '.json'
+        
+        # Jeśli podano ścieżkę względną, dodaj ścieżkę do katalogu domowego
+        if not os.path.isabs(filename):
+            export_path = Path.home() / filename
+        else:
+            export_path = Path(filename)
+        
+        # Zapisz konwersację do pliku
+        try:
+            with open(export_path, "w", encoding="utf-8") as f:
+                json.dump(conversation, f, ensure_ascii=False, indent=2)
+            print(f"{Colors.GREEN}Konwersacja została wyeksportowana do {export_path}{Colors.END}")
+        except Exception as e:
+            print(f"{Colors.RED}Błąd podczas eksportu konwersacji: {e}{Colors.END}")
+    
+    def _import_conversation(self, filename: str):
+        """Importuje konwersację z pliku"""
+        # Jeśli nie podano rozszerzenia, dodaj .json
+        if not filename.endswith('.json'):
+            filename += '.json'
+        
+        # Jeśli podano ścieżkę względną, dodaj ścieżkę do katalogu domowego
+        if not os.path.isabs(filename):
+            import_path = Path.home() / filename
+        else:
+            import_path = Path(filename)
+        
+        # Sprawdź, czy plik istnieje
+        if not import_path.exists():
+            print(f"{Colors.RED}Plik {import_path} nie istnieje.{Colors.END}")
+            return
+        
+        # Wczytaj konwersację z pliku
+        try:
+            with open(import_path, "r", encoding="utf-8") as f:
+                conversation = json.load(f)
+            
+            # Sprawdź, czy to prawidłowa konwersacja
+            if not isinstance(conversation, dict) or "messages" not in conversation:
+                print(f"{Colors.RED}Plik nie zawiera prawidłowej konwersacji.{Colors.END}")
+                return
+            
+            # Dodaj konwersację do listy konwersacji
+            conversation_id = conversation.get("id", str(uuid.uuid4()))
+            self.conversations[conversation_id] = conversation
+            self.current_conversation_id = conversation_id
+            
+            # Zapisz konwersację do pliku
+            conversation_path = CONVERSATIONS_DIR / f"{conversation_id}.json"
+            with open(conversation_path, "w", encoding="utf-8") as f:
+                json.dump(conversation, f, ensure_ascii=False, indent=2)
+            
+            print(f"{Colors.GREEN}Konwersacja została zaimportowana i ustawiona jako aktualna.{Colors.END}")
+        except Exception as e:
+            print(f"{Colors.RED}Błąd podczas importu konwersacji: {e}{Colors.END}")
+    
+    def _show_history(self):
+        """Wyświetla historię aktualnej konwersacji"""
+        if not self.current_conversation_id:
+            print(f"{Colors.RED}Brak aktywnej konwersacji.{Colors.END}")
+            return
+        
+        # Pobierz aktualną konwersację
+        conversation = self.conversations.get(self.current_conversation_id)
+        if not conversation:
+            print(f"{Colors.RED}Nie można znaleźć aktualnej konwersacji.{Colors.END}")
+            return
+        
+        # Pobierz wiadomości
+        messages = conversation.get("messages", [])
+        if not messages:
+            print(f"{Colors.YELLOW}Konwersacja nie zawiera żadnych wiadomości.{Colors.END}")
+            return
+        
+        # Wyświetl historię
+        print(f"{Colors.BLUE}Historia konwersacji '{conversation.get('title', 'Bez tytułu')}' ({len(messages)} wiadomości):{Colors.END}")
+        
+        for i, msg in enumerate(messages, 1):
+            role = msg.get("role", "")
+            content = msg.get("content", "")
+            timestamp = msg.get("timestamp", "")
+            
+            if timestamp:
+                try:
+                    timestamp = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M")
+                except:
+                    pass
+            
+            if role == "user":
+                print(f"\n{Colors.GREEN}[{i}] Użytkownik ({timestamp}):{Colors.END}")
+                print(f"{content}")
+            elif role == "assistant":
+                print(f"\n{Colors.BLUE}[{i}] Asystent ({timestamp}):{Colors.END}")
+                print(f"{content}")
+            elif role == "system":
+                print(f"\n{Colors.YELLOW}[{i}] System ({timestamp}):{Colors.END}")
+                print(f"{content}")
+            else:
+                print(f"\n{Colors.MAGENTA}[{i}] {role.capitalize()} ({timestamp}):{Colors.END}")
+                print(f"{content}")
+    
+    def _show_status(self):
+        """Wyświetla status systemu"""
+        # Informacje o systemie
+        print(f"{Colors.BLUE}Informacje o systemie:{Colors.END}")
+        print(f"System: {platform.system()} {platform.release()}")
+        print(f"Python: {platform.python_version()}")
+        print(f"Katalog aplikacji: {APP_DIR}")
+        
+        # Informacje o modelu
+        print(f"\n{Colors.BLUE}Informacje o modelu:{Colors.END}")
+        print(f"Model: {self.config.get('model', DEFAULT_MODEL)}")
+        
+        # Informacje o konwersacjach
+        print(f"\n{Colors.BLUE}Informacje o konwersacjach:{Colors.END}")
+        print(f"Liczba konwersacji: {len(self.conversations)}")
+        if self.current_conversation_id:
+            conversation = self.conversations.get(self.current_conversation_id, {})
+            print(f"Aktualna konwersacja: {conversation.get('title', 'Bez tytułu')}")
+            print(f"Liczba wiadomości: {len(conversation.get('messages', []))}")
+        
+        # Informacje o zasobach
+        print(f"\n{Colors.BLUE}Informacje o zasobach:{Colors.END}")
+        cpu_percent = psutil.cpu_percent(interval=0.1)
+        memory = psutil.virtual_memory()
+        disk = psutil.disk_usage('/')
+        
+        print(f"CPU: {cpu_percent}%")
+        print(f"RAM: {memory.percent}% (używane: {self._format_bytes(memory.used)}, całkowite: {self._format_bytes(memory.total)})")
+        print(f"Dysk: {disk.percent}% (używane: {self._format_bytes(disk.used)}, całkowite: {self._format_bytes(disk.total)})")
+    
+    def _show_resource_usage(self):
+        """Wyświetla szczegółowe informacje o zużyciu zasobów"""
+        try:
+            # Uruchom monitor_resources.py w trybie raportowania
+            script_path = Path(__file__).parent / "monitor_resources.py"
+            if not script_path.exists():
+                print(f"{Colors.RED}Nie znaleziono skryptu monitor_resources.py{Colors.END}")
+                return
+            
+            print(f"{Colors.BLUE}Pobieranie informacji o zasobach...{Colors.END}")
+            result = subprocess.run([sys.executable, str(script_path), "--report"], 
+                                   capture_output=True, text=True, check=False)
+            
+            if result.returncode == 0:
+                print(result.stdout)
+            else:
+                print(f"{Colors.RED}Błąd podczas pobierania informacji o zasobach:{Colors.END}")
+                print(result.stderr)
+        except Exception as e:
+            print(f"{Colors.RED}Błąd podczas wyświetlania informacji o zasobach: {e}{Colors.END}")
+    
+    def _format_bytes(self, bytes_value):
+        """Formatuje bajty do czytelnej postaci"""
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if bytes_value < 1024.0:
+                return f"{bytes_value:.2f} {unit}"
+            bytes_value /= 1024.0
+        return f"{bytes_value:.2f} PB"
 
 
 def main():
-    """Entry point for the evopy package"""
-    parser = argparse.ArgumentParser(description="Ewolucyjny Asystent - system konwersacyjny")
+    """Główna funkcja programu"""
+    parser = argparse.ArgumentParser(description="Ewolucyjny Asystent - system konwersacyjny rozwijający się wraz z interakcjami")
+    parser.add_argument("--model", type=str, help="Model językowy do użycia")
     parser.add_argument("--config", type=str, help="Ścieżka do pliku konfiguracyjnego")
-    parser.add_argument("--debug", action="store_true", help="Włącza tryb debugowania")
-    parser.add_argument("--auto-accept", action="store_true", help="Automatycznie akceptuje wszystkie pytania")
+    parser.add_argument("--no-color", action="store_true", help="Wyłącz kolorowanie w terminalu")
     args = parser.parse_args()
     
-    if args.debug:
-        logging.basicConfig(level=logging.DEBUG)
+    # Obsługa wyłączenia kolorów
+    if args.no_color:
+        # Nadpisz klasę Colors pustymi kodami
+        for attr in dir(Colors):
+            if not attr.startswith('__'):
+                setattr(Colors, attr, '')
     
-    # Jeśli auto-accept jest włączone, ustawiamy zmienną środowiskową
-    if args.auto_accept:
-        os.environ["EVOPY_AUTO_ACCEPT"] = "1"
-    
+    # Utwórz instancję asystenta
     config_path = Path(args.config) if args.config else CONFIG_FILE
     assistant = EvoAssistant(config_path=config_path)
+    
+    # Ustaw model z argumentów wiersza poleceń, jeśli podano
+    if args.model:
+        assistant.config["model"] = args.model
+        assistant._save_config()
+    
+    # Uruchom asystenta
     assistant.start()
 
 
