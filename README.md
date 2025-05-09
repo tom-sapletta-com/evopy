@@ -296,6 +296,7 @@ Ten projekt jest udostępniany na licencji Apache 2.0. Szczegóły w pliku [LICE
 - Zespół Ollama za świetne narzędzie do lokalnego uruchamiania modeli LLM
 - Zespół DeepSeek za model DeepSeek Coder
 - Zespół Meta AI za model Llama 3
+- Zespół Bielik za pomoc i wsparcie na Discord
 
 
 - Windsurf za czujność:
