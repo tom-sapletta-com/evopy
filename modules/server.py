@@ -6,11 +6,14 @@ import sys
 import subprocess
 import json
 import logging
-import datetime
 import importlib.util
+import uuid
 from pathlib import Path
 from datetime import datetime
-from flask import Flask, render_template, jsonify, request, redirect, url_for
+from flask import Flask, render_template, jsonify, request, redirect, url_for, send_from_directory
+
+# Import custom filters
+from custom_filters import register_filters
 
 # Konfiguracja logowania
 MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,7 +23,7 @@ HISTORY_DIR = os.path.join(APP_DIR, 'history')
 
 os.makedirs(LOG_DIR, exist_ok=True)
 
-log_file = os.path.join(LOG_DIR, f'server_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+log_file = os.path.join(LOG_DIR, f'server_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
 
 logging.basicConfig(
     level=logging.INFO,
@@ -35,6 +38,13 @@ logger = logging.getLogger('modules-server')
 
 app = Flask(__name__)
 
+# Register custom filters
+register_filters(app)
+
+# Configure static folder for images
+app.config['UPLOAD_FOLDER'] = os.path.join(APP_DIR, 'output', 'images')
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
 # Lista modułów konwersji
 CONVERTERS = [
     {"name": "text2python", "description": "Konwersja tekstu na kod Python"},
@@ -44,20 +54,63 @@ CONVERTERS = [
     {"name": "text2sql", "description": "Konwersja tekstu na zapytania SQL"},
     {"name": "sql2text", "description": "Konwersja zapytań SQL na opis tekstowy"},
     {"name": "text2regex", "description": "Konwersja tekstu na wyrażenia regularne"},
-    {"name": "regex2text", "description": "Konwersja wyrażeń regularnych na opis tekstowy"}
+    {"name": "regex2text", "description": "Konwersja wyrażeń regularnych na opis tekstowy"},
+    {"name": "text2docker", "description": "Konwersja tekstu na polecenia Docker"},
+    {"name": "docker2text", "description": "Konwersja poleceń Docker na opis tekstowy"},
+    {"name": "text2python_docker", "description": "Konwersja tekstu na kod Python i uruchomienie w Dockerze"},
+    {"name": "text2speech", "description": "Konwersja tekstu na mowę (text-to-speech)"},
+    {"name": "text2email", "description": "Konwersja tekstu na wiadomości email"},
+    {"name": "text2notification", "description": "Konwersja tekstu na powiadomienia systemowe"},
+    {"name": "text2image", "description": "Konwersja tekstu na obrazy i diagramy"},
+    {"name": "text2discord", "description": "Konwersja tekstu na wiadomości Discord"},
+    {"name": "text2telegram", "description": "Konwersja tekstu na wiadomości Telegram"}
 ]
+
+# Importuj moduł do przechowywania zadań Docker
+from docker_tasks_store import DOCKER_TASKS, docker_tasks, web_services, get_all_docker_tasks, get_all_web_services
+from docker_tasks_store import register_docker_container as store_register_docker_container
+from docker_tasks_store import get_docker_task as store_get_docker_task
+
+# Słownik do przechowywania aktywnych kontenerów Docker
+docker_containers = {}
+
+# Zapisz te słowniki w zmiennych aplikacji Flask, aby były dostępne w całej aplikacji
+def init_app_variables(app):
+    app.config['DOCKER_TASKS'] = DOCKER_TASKS
+    app.config['docker_containers'] = docker_containers
+    app.config['web_services'] = web_services
+    
+    # Dodaj funkcję pomocniczą do szablonu Jinja2
+    @app.template_global()
+    def get_docker_task(task_id):
+        return store_get_docker_task(task_id)
+
+# Funkcja do rejestrowania kontenera Docker dla zadania
+def register_docker_container(task_id, container_id, code, output, is_service=False, service_url=None, service_name=None):
+    """Rejestruje kontener Docker dla zadania"""
+    # Użyj funkcji z modułu docker_tasks_store
+    task_info = store_register_docker_container(task_id, container_id, code, output, is_service, service_url, service_name)
+    logger.info(f"Zarejestrowano kontener {container_id} dla zadania {task_id}")
+    return task_info
 
 def module_exists(module_name):
     """Sprawdza, czy moduł istnieje w nowej strukturze katalogów"""
     module_dir = os.path.join(MODULES_DIR, module_name)
+    # Sprawdź, czy istnieje plik modułu lub katalog z __init__.py
     module_file = os.path.join(module_dir, f"{module_name}.py")
-    return os.path.exists(module_file)
+    init_file = os.path.join(module_dir, "__init__.py")
+    return os.path.exists(module_file) or os.path.exists(init_file)
 
 def get_module_content(module_name):
     """Pobiera zawartość pliku modułu"""
     module_file = os.path.join(MODULES_DIR, module_name, f"{module_name}.py")
+    init_file = os.path.join(MODULES_DIR, module_name, "__init__.py")
+    
     if os.path.exists(module_file):
         with open(module_file, 'r') as f:
+            return f.read()
+    elif os.path.exists(init_file):
+        with open(init_file, 'r') as f:
             return f.read()
     return None
 
@@ -79,6 +132,12 @@ def docker_containers():
     """Strona z listą kontenerów Docker"""
     logger.info("Dostęp do strony z kontenerami Docker")
     try:
+        # Upewnij się, że mamy najnowsze zadania Docker
+        from docker_tasks_store import load_tasks, DOCKER_TASKS, web_services
+        load_tasks()  # Załaduj najnowsze zadania z pliku
+        
+        logger.info(f"Załadowano {len(DOCKER_TASKS)} zadań Docker")
+        
         # Uruchom polecenie docker ps w celu uzyskania listy kontenerów
         result = subprocess.run(
             ["docker", "ps", "--format", "{{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"],
@@ -92,20 +151,48 @@ def docker_containers():
             if line:
                 parts = line.split('\t')
                 if len(parts) >= 4:
+                    container_id = parts[0]
+                    # Sprawdź, czy kontener jest powiązany z zadaniem
+                    task_id = None
+                    is_service = False
+                    service_url = None
+                    service_name = None
+                    
+                    for tid, info in DOCKER_TASKS.items():
+                        if info.get('container_id') == container_id:
+                            task_id = tid
+                            is_service = info.get('is_service', False)
+                            service_url = info.get('service_url')
+                            service_name = info.get('service_name')
+                            break
+                    
                     containers.append({
-                        "id": parts[0],
+                        "id": container_id,
                         "image": parts[1],
                         "status": parts[2],
-                        "name": parts[3]
+                        "name": parts[3],
+                        "task_id": task_id,
+                        "is_service": is_service,
+                        "service_url": service_url,
+                        "service_name": service_name
                     })
         
-        return render_template('docker.html', containers=containers)
+        # Dodaj informacje o zadaniach Docker do kontekstu szablonu
+        all_docker_tasks = dict(DOCKER_TASKS)  # Skopiuj słownik, aby uniknąć problemów z referencjami
+        
+        logger.info(f"Przekazywanie {len(all_docker_tasks)} zadań Docker do szablonu")
+        
+        return render_template('docker.html', 
+                               containers=containers, 
+                               docker_tasks=all_docker_tasks, 
+                               web_services=web_services)
     except subprocess.CalledProcessError as e:
         error_message = f"Błąd podczas pobierania listy kontenerów Docker: {e.stderr}"
-        return render_template('docker.html', error=error_message, containers=[])
+        return render_template('docker.html', error=error_message, containers=[], docker_tasks={})
     except Exception as e:
         error_message = f"Wystąpił nieoczekiwany błąd: {str(e)}"
-        return render_template('docker.html', error=error_message, containers=[])
+        logger.error(f"Błąd w docker_containers: {e}", exc_info=True)
+        return render_template('docker.html', error=error_message, containers=[], docker_tasks={})
 
 @app.route('/module/<string:name>')
 def module_details(name):
@@ -121,11 +208,76 @@ def module_details(name):
     
     return render_template('module.html', name=name, content=content)
 
+@app.route('/docker/register', methods=['POST'])
+def register_docker_task():
+    """Rejestruje zadanie Docker bezpośrednio"""
+    task_id = request.form.get('task_id', str(uuid.uuid4()))
+    container_id = request.form.get('container_id', '')
+    code = request.form.get('code', '')
+    output = request.form.get('output', '')
+    is_service = request.form.get('is_service', 'false').lower() == 'true'
+    service_url = request.form.get('service_url', None)
+    service_name = request.form.get('service_name', None)
+    user_prompt = request.form.get('user_prompt', None)
+    agent_explanation = request.form.get('agent_explanation', None)
+    
+    logger.info(f"Rejestrowanie zadania Docker: {task_id} dla kontenera {container_id}")
+    
+    if not container_id:
+        return jsonify({"error": "Brak identyfikatora kontenera"}), 400
+    
+    try:
+        # Zarejestruj kontener Docker dla zadania
+        task_info = {
+            "container_id": container_id,
+            "timestamp": datetime.now().isoformat(),
+            "code": code,
+            "output": output,
+            "is_service": is_service,
+            "service_url": service_url,
+            "service_name": service_name,
+            "user_prompt": user_prompt,
+            "agent_explanation": agent_explanation
+        }
+        
+        # Zapisz zadanie w słowniku
+        DOCKER_TASKS[task_id] = task_info
+        
+        # Jeśli to serwis webowy, dodaj go również do słownika serwisów
+        if is_service and service_url:
+            web_services[task_id] = {
+                "container_id": container_id,
+                "timestamp": datetime.now().isoformat(),
+                "service_url": service_url,
+                "service_name": service_name or f"Service {task_id[:8]}"
+            }
+        
+        # Zapisz zadania do pliku
+        from docker_tasks_store import save_tasks
+        save_tasks()
+        
+        logger.info(f"Zarejestrowano zadanie Docker: {task_id}")
+        
+        return jsonify({
+            "success": True,
+            "task_id": task_id,
+            "container_id": container_id,
+            "docker_url": f"http://localhost:5000/docker/{task_id}"
+        })
+    except Exception as e:
+        logger.error(f"Błąd podczas rejestrowania zadania Docker: {e}")
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/docker/run', methods=['POST'])
 def docker_run():
     """Uruchamia polecenie Docker"""
     command = request.form.get('command', '')
-    logger.info(f"Uruchamianie polecenia Docker: {command}")
+    task_id = request.form.get('task_id', str(uuid.uuid4()))
+    is_service = request.form.get('is_service', 'false').lower() == 'true'
+    service_url = request.form.get('service_url', None)
+    service_name = request.form.get('service_name', None)
+    
+    logger.info(f"Uruchamianie polecenia Docker: {command} dla zadania {task_id}")
     
     if not command:
         return jsonify({"error": "Brak polecenia"}), 400
@@ -138,11 +290,26 @@ def docker_run():
             text=True
         )
         
-        return jsonify({
-            "stdout": result.stdout,
-            "stderr": result.stderr,
-            "returncode": result.returncode
-        })
+        # Jeśli to polecenie tworzy kontener, zarejestruj go
+        if command.startswith('run') and result.returncode == 0:
+            container_id = result.stdout.strip()
+            register_docker_container(task_id, container_id, command, result.stdout, is_service, service_url, service_name)
+            
+            return jsonify({
+                "success": True,
+                "container_id": container_id,
+                "output": result.stdout,
+                "is_service": is_service,
+                "service_url": service_url
+            })
+        else:
+            return jsonify({
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "returncode": result.returncode,
+                "task_id": task_id,
+                "docker_url": f"http://localhost:5000/docker/{task_id}"
+            })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -306,20 +473,232 @@ def conversation_details(conversation_id):
         logger.error(f"Błąd podczas pobierania szczegółów konwersacji: {str(e)}")
         return render_template('conversations.html', error=f"Wystąpił błąd: {str(e)}", conversations=[])
 
+@app.route('/docker/<string:task_id>')
+def docker_task_details(task_id):
+    """Szczegóły zadania Docker"""
+    logger.info(f"Dostęp do szczegółów zadania Docker: {task_id}")
+    
+    # Pobierz informacje o zadaniu
+    task_info = DOCKER_TASKS.get(task_id)
+    if not task_info:
+        return "Zadanie nie istnieje", 404
+    
+    # Sprawdzamy format zadania i dostosowujemy go do nowego formatu, jeśli potrzeba
+    if 'status' not in task_info:
+        # Pobierz status kontenera
+        container_id = task_info.get('container_id')
+        container_exists = False
+        container_status = "Nieznany"
+        
+        if container_id:
+            try:
+                result = subprocess.run(
+                    ["docker", "ps", "-a", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.stdout.strip():
+                    container_exists = True
+                    container_status = result.stdout.strip()
+                    task_info['status'] = container_status
+                else:
+                    task_info['status'] = "Kontener nie jest aktywny"
+            except Exception as e:
+                logger.error(f"Błąd podczas sprawdzania statusu kontenera: {e}")
+                task_info['status'] = f"Błąd: {str(e)}"
+        
+        # Dodajemy informacje o kontenerze do kontekstu szablonu dla kompatybilności wstecznej
+        return render_template(
+            'docker_task.html', 
+            task_id=task_id, 
+            task_info=task_info, 
+            container_exists=container_exists,
+            container_status=container_status
+        )
+    else:
+        # Nowy format zadania, sprawdzamy czy to serwis
+        container_id = task_info.get('container_id')
+        if container_id:
+            try:
+                # Sprawdzamy aktualny status kontenera
+                result = subprocess.run(
+                    ["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
+                    capture_output=True,
+                    text=True
+                )
+                status = result.stdout.strip() or "Kontener nie jest aktywny"
+                task_info['status'] = status
+                
+                # Jeśli to serwis, pobierz dodatkowe informacje
+                if task_info.get('is_service'):
+                    # Pobierz logi kontenera
+                    try:
+                        logs_result = subprocess.run(
+                            ["docker", "logs", "--tail", "50", container_id],
+                            capture_output=True,
+                            text=True
+                        )
+                        task_info['logs'] = logs_result.stdout
+                    except Exception as e:
+                        task_info['logs'] = f"Błąd podczas pobierania logów: {str(e)}"
+            except Exception as e:
+                task_info['status'] = f"Błąd podczas pobierania statusu: {str(e)}"
+        
+        return render_template('docker_task.html', task_id=task_id, task_info=task_info)
+
+@app.route('/api/docker_task/<string:task_id>')
+def api_docker_task(task_id):
+    """API do pobierania informacji o zadaniu Docker"""
+    if task_id not in docker_tasks:
+        return jsonify({"error": "Zadanie nie istnieje"}), 404
+    
+    return jsonify(docker_tasks[task_id])
+@app.route('/static/images/<path:filename>')
+def serve_image(filename):
+    """Serwuje pliki obrazów"""
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/services')
+def list_services():
+    """Strona z listą serwisów webowych"""
+    logger.info("Dostęp do strony z serwisami webowymi")
+    
+    # Sprawdź status każdego serwisu
+    active_services = {}
+    for task_id, service_info in web_services.items():
+        container_id = service_info.get('container_id')
+        if container_id:
+            try:
+                result = subprocess.run(
+                    ["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
+                    capture_output=True,
+                    text=True,
+                    check=True
+                )
+                status = result.stdout.strip() or "Nieaktywny"
+                service_info['status'] = status
+                
+                # Jeśli kontener jest aktywny, dodaj go do listy aktywnych serwisów
+                if status != "Nieaktywny":
+                    active_services[task_id] = service_info
+            except Exception as e:
+                service_info['status'] = f"Błąd: {str(e)}"
+    
+    return render_template('services.html', services=active_services)
+
+@app.route('/service/<string:task_id>')
+def service_details(task_id):
+    """Szczegóły serwisu webowego"""
+    logger.info(f"Dostęp do szczegółów serwisu: {task_id}")
+    
+    # Pobierz informacje o serwisie
+    service_info = web_services.get(task_id)
+    if not service_info:
+        return "Serwis nie istnieje", 404
+    
+    # Pobierz szczegółowe informacje o kontenerze
+    container_id = service_info.get('container_id')
+    if container_id:
+        try:
+            # Status kontenera
+            status_result = subprocess.run(
+                ["docker", "ps", "--filter", f"id={container_id}", "--format", "{{.Status}}"],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            service_info['status'] = status_result.stdout.strip() or "Nieaktywny"
+            
+            # Logi kontenera
+            logs_result = subprocess.run(
+                ["docker", "logs", "--tail", "50", container_id],
+                capture_output=True,
+                text=True
+            )
+            service_info['logs'] = logs_result.stdout
+            
+            # Pobierz informacje o portach
+            ports_result = subprocess.run(
+                ["docker", "port", container_id],
+                capture_output=True,
+                text=True
+            )
+            service_info['ports'] = ports_result.stdout
+        except Exception as e:
+            service_info['error'] = str(e)
+    
+    # Pobierz informacje o zadaniu Docker
+    task_info = docker_tasks.get(task_id, {})
+    
+    return render_template('service_details.html', task_id=task_id, service_info=service_info, task_info=task_info)
+
+@app.route('/service/stop/<string:task_id>', methods=['POST'])
+def stop_service(task_id):
+    """Zatrzymuje serwis webowy"""
+    logger.info(f"Zatrzymywanie serwisu: {task_id}")
+    
+    # Pobierz informacje o serwisie
+    service_info = web_services.get(task_id)
+    if not service_info:
+        return jsonify({"error": "Serwis nie istnieje"}), 404
+    
+    # Zatrzymaj kontener
+    container_id = service_info.get('container_id')
+    if container_id:
+        try:
+            subprocess.run(
+                ["docker", "stop", container_id],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return jsonify({"success": True, "message": "Serwis został zatrzymany"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Brak identyfikatora kontenera"}), 400
+
+@app.route('/service/restart/<string:task_id>', methods=['POST'])
+def restart_service(task_id):
+    """Restartuje serwis webowy"""
+    logger.info(f"Restartowanie serwisu: {task_id}")
+    
+    # Pobierz informacje o serwisie
+    service_info = web_services.get(task_id)
+    if not service_info:
+        return jsonify({"error": "Serwis nie istnieje"}), 404
+    
+    # Restartuj kontener
+    container_id = service_info.get('container_id')
+    if container_id:
+        try:
+            subprocess.run(
+                ["docker", "restart", container_id],
+                capture_output=True,
+                text=True,
+                check=True
+            )
+            return jsonify({"success": True, "message": "Serwis został zrestartowany"})
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+    else:
+        return jsonify({"error": "Brak identyfikatora kontenera"}), 400
+
+# Inicjalizuj zmienne aplikacji
+init_app_variables(app)
+
+# Utwórz katalogi potrzebne do działania aplikacji
+templates_dir = os.path.join(MODULES_DIR, 'templates')
+os.makedirs(templates_dir, exist_ok=True)
+
+static_dir = os.path.join(MODULES_DIR, 'static')
+os.makedirs(static_dir, exist_ok=True)
+
+# Utwórz katalogi dla nowych modułów
+for module_name in [m['name'] for m in CONVERTERS]:
+    module_dir = os.path.join(MODULES_DIR, module_name)
+    os.makedirs(module_dir, exist_ok=True)
+
 if __name__ == '__main__':
-    # Utwórz katalog templates, jeśli nie istnieje
-    templates_dir = os.path.join(MODULES_DIR, 'templates')
-    os.makedirs(templates_dir, exist_ok=True)
-    
-    # Sprawdź, czy katalog templates istnieje w converters i skopiuj szablony, jeśli to konieczne
-    old_templates_dir = os.path.join(MODULES_DIR, 'converters', 'templates')
-    if os.path.exists(old_templates_dir) and not os.listdir(templates_dir):
-        logger.info("Kopiowanie szablonów z katalogu converters")
-        for template_file in os.listdir(old_templates_dir):
-            src_file = os.path.join(old_templates_dir, template_file)
-            dst_file = os.path.join(templates_dir, template_file)
-            if os.path.isfile(src_file) and not os.path.exists(dst_file):
-                with open(src_file, 'r') as src, open(dst_file, 'w') as dst:
-                    dst.write(src.read())
-    
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Uruchom serwer Flask
+    app.run(host='0.0.0.0', port=5000, debug=True)

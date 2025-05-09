@@ -29,6 +29,7 @@ import readline  # Do historii w konsoli
 import subprocess
 import threading
 import psutil
+import importlib
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Union, Tuple
@@ -694,9 +695,9 @@ class EvoAssistant:
                     if code_result.get("analysis"):
                         print(f"{Colors.YELLOW}Analiza zapytania: {code_result['analysis']}{Colors.END}")
                     
-                    # Zapytaj użytkownika czy chce uruchomić kod mimo błędu
-                    print(f"{Colors.YELLOW}Czy chcesz uruchomić ten kod w piaskownicy Docker? (t/N):{Colors.END} ", end="")
-                    choice = input().lower()
+                    # Automatycznie uruchamiaj kod w piaskownicy Docker
+                    print(f"{Colors.BLUE}Automatyczne uruchamianie kodu w piaskownicy Docker...{Colors.END}")
+                    choice = 't'
                     
                     if choice == 't':
                         # Kontynuuj z uruchomieniem kodu
@@ -735,42 +736,9 @@ class EvoAssistant:
                         for i, suggestion in enumerate(code_result["suggestions"], 1):
                             print(f"{Colors.YELLOW}{i}. {suggestion}{Colors.END}")
                 
-                # Zapytaj użytkownika czy to jest to, czego oczekiwał
-                print(f"{Colors.BLUE}Czy to jest to, czego oczekiwałeś? (t/n/e):{Colors.END} ", end="")
-                intent_choice = input().lower()
-                
-                if intent_choice == 'n':
-                    print(f"{Colors.YELLOW}Co dokładnie nie działa zgodnie z oczekiwaniami?{Colors.END} ", end="")
-                    feedback = input()
-                    print(f"{Colors.YELLOW}Dziękuję za informację. Spróbuję poprawić kod w przyszłości.{Colors.END}")
-                    
-                    # Zapisz informację o niezgodności z intencją użytkownika
-                    self.conversations[self.current_conversation_id]["messages"].append({
-                        "role": "system",
-                        "content": f"Użytkownik zaznaczył, że kod nie spełnia jego oczekiwań. Feedback: {feedback}",
-                        "timestamp": datetime.now().isoformat()
-                    })
-                    self._save_conversation(self.current_conversation_id)
-                    return
-                elif intent_choice == 'e':
-                    print(f"{Colors.YELLOW}Podaj dodatkowe wyjaśnienia lub modyfikacje:{Colors.END} ", end="")
-                    modifications = input()
-                    
-                    # Zapisz informację o modyfikacjach
-                    self.conversations[self.current_conversation_id]["messages"].append({
-                        "role": "user",
-                        "content": f"Modyfikacje do kodu: {modifications}",
-                        "timestamp": datetime.now().isoformat()
-                    })
-                    self._save_conversation(self.current_conversation_id)
-                    
-                    # Tutaj można byłoby dodać logikę do modyfikacji kodu, ale to wykracza poza zakres obecnej implementacji
-                    print(f"{Colors.YELLOW}Dziękuję za informację. Czy chcesz uruchomić obecny kod mimo to? (t/N):{Colors.END} ", end="")
-                    choice = input().lower()
-                else:
-                    # Użytkownik zatwierdził kod (t) lub nie podał odpowiedzi
-                    print(f"{Colors.YELLOW}Czy chcesz uruchomić ten kod w piaskownicy Docker? (t/N):{Colors.END} ", end="")
-                    choice = input().lower()
+                # Automatycznie uruchamiaj kod w piaskownicy Docker
+                print(f"{Colors.BLUE}Automatyczne uruchamianie kodu w piaskownicy Docker...{Colors.END}")
+                choice = 't'
             
             if choice != 't':
                 print(f"{Colors.YELLOW}Pominięto uruchomienie kodu.{Colors.END}")
@@ -792,6 +760,10 @@ class EvoAssistant:
                     print(f"{Colors.GREEN}Kod został wykonany pomyślnie!{Colors.END}")
                     print(f"{Colors.BLUE}Wynik wykonania:{Colors.END}")
                     print(f"{Colors.CYAN}{sandbox_result['output']}{Colors.END}")
+                    
+                    # Wyświetl link do kontenera Docker
+                    if "docker_url" in sandbox_result:
+                        print(f"{Colors.BLUE}Link do kontenera Docker: {Colors.CYAN}{sandbox_result['docker_url']}{Colors.END}")
                 else:
                     print(f"{Colors.RED}Wystąpił błąd podczas wykonywania kodu:{Colors.END}")
                     print(f"{Colors.RED}{sandbox_result.get('error', 'Nieznany błąd')}{Colors.END}")
@@ -813,6 +785,10 @@ class EvoAssistant:
             print(f"{Colors.BLUE}Wynik wykonania:{Colors.END}")
             print(f"{Colors.CYAN}{sandbox_result['output']}{Colors.END}")
             
+            # Wyświetl link do kontenera Docker
+            if "docker_url" in sandbox_result:
+                print(f"{Colors.BLUE}Link do kontenera Docker: {Colors.CYAN}{sandbox_result['docker_url']}{Colors.END}")
+            
             # Wygeneruj wyjaśnienie kodu
             print(f"{Colors.BLUE}Generowanie wyjaśnienia kodu...{Colors.END}")
             explanation = self.text2python.explain_code(code)
@@ -831,28 +807,204 @@ class EvoAssistant:
             print(f"{Colors.RED}Wystąpił błąd podczas wykonywania kodu:{Colors.END}")
             print(f"{Colors.RED}{sandbox_result.get('error', 'Nieznany błąd')}{Colors.END}")
     
-    def _run_code_in_sandbox(self, code: str) -> Dict[str, Any]:
+    def _run_code_in_sandbox(self, code: str, as_service: bool = False, service_name: str = None) -> Dict[str, Any]:
         """Uruchamia kod w piaskownicy Docker
         
         Args:
             code: Kod Python do uruchomienia
+            as_service: Czy uruchomić kod jako serwis webowy
+            service_name: Nazwa serwisu (tylko dla as_service=True)
             
         Returns:
             Dict: Wynik wykonania kodu
         """
         try:
-            # Utwórz piaskownicę Docker
-            sandbox = DockerSandbox(
-                base_dir=SANDBOX_DIR,
-                docker_image=self.config.get("sandbox_image", "python:3.9-slim"),
-                timeout=self.config.get("sandbox_timeout", 30)
-            )
+            # Generuj unikalny identyfikator zadania
+            task_id = str(uuid.uuid4())
             
-            # Uruchom kod w piaskownicy
-            result = sandbox.run(code)
+            # Sprawdź, czy kod ma być uruchomiony jako serwis
+            if as_service or "@api_endpoint" in code or "web_page" in code:
+                # Importuj ServiceSandbox
+                try:
+                    from service_sandbox import ServiceSandbox
+                except ImportError:
+                    logger.warning("Nie znaleziono modułu service_sandbox, używam standardowej piaskownicy")
+                    as_service = False
             
-            # Wyczyść piaskownicę
-            sandbox.cleanup()
+            if as_service:
+                # Utwórz piaskownicę serwisu
+                sandbox = ServiceSandbox(
+                    base_dir=SANDBOX_DIR,
+                    docker_image=self.config.get("sandbox_image", "python:3.9-slim"),
+                    timeout=self.config.get("sandbox_timeout", 30)
+                )
+                
+                # Przygotuj nazwę serwisu
+                if not service_name:
+                    service_name = f"Evopy Service {task_id[:8]}"
+                
+                # Uruchom serwis
+                result = sandbox.build_and_run(
+                    code,
+                    name=service_name,
+                    description="Serwis wygenerowany przez Evopy Assistant",
+                    version="1.0.0"
+                )
+                
+                # Dodaj identyfikator zadania i link do wyniku
+                result["task_id"] = task_id
+                result["docker_url"] = f"http://localhost:5000/docker/{task_id}"
+                result["service_url"] = sandbox.service_url
+                result["is_service"] = True
+                
+                # Jeśli serwis został uruchomiony pomyślnie, dodaj informacje o API
+                if result["success"]:
+                    # Pobierz dokumentację API
+                    api_docs = sandbox.get_api_docs()
+                    if api_docs["success"]:
+                        result["api_docs"] = api_docs["api_docs"]
+                    
+                    # Dodaj informacje o logach
+                    logs = sandbox.get_logs()
+                    if logs["success"]:
+                        result["logs"] = logs["logs"]
+                
+                # Nie czyścimy piaskownicy, ponieważ serwis ma działać w tle
+                # Zamiast tego zapisujemy informacje o piaskownicy, aby można było ją później wyczyścić
+                result["sandbox_id"] = sandbox.sandbox_id
+                
+                # Zarejestruj kontener Docker dla zadania, jeśli uruchomienie było udane
+                if result["success"] and hasattr(sandbox, "container_id") and sandbox.container_id:
+                    try:
+                        # Użyj nowego modułu do bezpośredniego rejestrowania zadań Docker
+                        try:
+                            from docker_task_register import register_docker_task
+                            
+                            # Pobierz zapytanie użytkownika i wyjaśnienie asystenta z konwersacji
+                            user_prompt = self.conversation.get_last_user_message() if hasattr(self, 'conversation') else None
+                            agent_explanation = self.conversation.get_last_assistant_message() if hasattr(self, 'conversation') else None
+                            
+                            # Zarejestruj zadanie Docker bezpośrednio
+                            register_result = register_docker_task(
+                                task_id=task_id,
+                                container_id=sandbox.container_id,
+                                code=code,
+                                output=result.get("output", ""),
+                                is_service=True,
+                                service_url=sandbox.service_url,
+                                service_name=service_name,
+                                user_prompt=user_prompt,
+                                agent_explanation=agent_explanation
+                            )
+                            
+                            logger.info(f"Zadanie Docker {task_id} zostało zarejestrowane: {register_result}")
+                        except ImportError:
+                            # Jeśli moduł nie jest dostępny, użyj bezpośredniego endpointu
+                            import requests
+                            
+                            # Pobierz zapytanie użytkownika i wyjaśnienie asystenta z konwersacji
+                            user_prompt = self.conversation.get_last_user_message() if hasattr(self, 'conversation') else None
+                            agent_explanation = self.conversation.get_last_assistant_message() if hasattr(self, 'conversation') else None
+                            
+                            # Przygotuj dane do wysłania
+                            data = {
+                                "task_id": task_id,
+                                "container_id": sandbox.container_id,
+                                "code": code,
+                                "output": result.get("output", ""),
+                                "is_service": "true",
+                                "service_url": sandbox.service_url,
+                                "service_name": service_name
+                            }
+                            
+                            # Dodaj prompt użytkownika i wyjaśnienie asystenta, jeśli są dostępne
+                            if user_prompt:
+                                data["user_prompt"] = user_prompt
+                            if agent_explanation:
+                                data["agent_explanation"] = agent_explanation
+                            
+                            response = requests.post(
+                                "http://localhost:5000/docker/register",
+                                data=data
+                            )
+                            
+                            logger.info(f"Zadanie Docker {task_id} zostało zarejestrowane przez API: {response.text}")
+                    except Exception as e:
+                        logger.warning(f"Nie udało się zarejestrować kontenera w serwerze modułów: {e}")
+            else:
+                # Standardowe uruchomienie kodu w piaskownicy
+                # Utwórz piaskownicę Docker
+                from docker_sandbox import DockerSandbox
+                sandbox = DockerSandbox(
+                    base_dir=SANDBOX_DIR,
+                    docker_image=self.config.get("sandbox_image", "python:3.9-slim"),
+                    timeout=self.config.get("sandbox_timeout", 30)
+                )
+                
+                # Uruchom kod w piaskownicy
+                result = sandbox.run(code)
+                
+                # Dodaj identyfikator zadania i link do wyniku
+                result["task_id"] = task_id
+                result["docker_url"] = f"http://localhost:5000/docker/{task_id}"
+                result["is_service"] = False
+                
+                # Zarejestruj kontener Docker dla zadania, jeśli wykonanie było udane
+                if result["success"] and hasattr(sandbox, "container_id") and sandbox.container_id:
+                    try:
+                        # Użyj nowego modułu do bezpośredniego rejestrowania zadań Docker
+                        try:
+                            from docker_task_register import register_docker_task
+                            
+                            # Pobierz zapytanie użytkownika i wyjaśnienie asystenta z konwersacji
+                            user_prompt = self.conversation.get_last_user_message() if hasattr(self, 'conversation') else None
+                            agent_explanation = self.conversation.get_last_assistant_message() if hasattr(self, 'conversation') else None
+                            
+                            # Zarejestruj zadanie Docker bezpośrednio
+                            register_result = register_docker_task(
+                                task_id=task_id,
+                                container_id=sandbox.container_id,
+                                code=code,
+                                output=result.get("output", ""),
+                                is_service=False,
+                                user_prompt=user_prompt,
+                                agent_explanation=agent_explanation
+                            )
+                            
+                            logger.info(f"Zadanie Docker {task_id} zostało zarejestrowane: {register_result}")
+                        except ImportError:
+                            # Jeśli moduł nie jest dostępny, użyj bezpośredniego endpointu
+                            import requests
+                            
+                            # Pobierz zapytanie użytkownika i wyjaśnienie asystenta z konwersacji
+                            user_prompt = self.conversation.get_last_user_message() if hasattr(self, 'conversation') else None
+                            agent_explanation = self.conversation.get_last_assistant_message() if hasattr(self, 'conversation') else None
+                            
+                            # Przygotuj dane do wysłania
+                            data = {
+                                "task_id": task_id,
+                                "container_id": sandbox.container_id,
+                                "code": code,
+                                "output": result.get("output", "")
+                            }
+                            
+                            # Dodaj prompt użytkownika i wyjaśnienie asystenta, jeśli są dostępne
+                            if user_prompt:
+                                data["user_prompt"] = user_prompt
+                            if agent_explanation:
+                                data["agent_explanation"] = agent_explanation
+                            
+                            response = requests.post(
+                                "http://localhost:5000/docker/register",
+                                data=data
+                            )
+                            
+                            logger.info(f"Zadanie Docker {task_id} zostało zarejestrowane przez API: {response.text}")
+                    except Exception as e:
+                        logger.warning(f"Nie udało się zarejestrować kontenera w serwerze modułów: {e}")
+                
+                # Wyczyść piaskownicę
+                sandbox.cleanup()
             
             return result
         except Exception as e:
@@ -1379,6 +1531,7 @@ class EvoAssistant:
                 subprocess.run(["docker", "--version"], check=True, capture_output=True)
             except (subprocess.CalledProcessError, FileNotFoundError):
                 print(f"{Colors.RED}Docker nie jest zainstalowany lub nie jest dostępny.{Colors.END}")
+                print(f"{Colors.YELLOW}Możesz uruchomić serwer modułów bez Dockera: /docker modules{Colors.END}")
                 return
             
             # Wykonaj odpowiednią operację Docker
@@ -1392,6 +1545,9 @@ class EvoAssistant:
                 if result.returncode == 0:
                     print(f"{Colors.GREEN}Aktywne kontenery Docker:{Colors.END}")
                     print(f"{Colors.CYAN}{result.stdout}{Colors.END}")
+                    
+                    # Dodaj link do interfejsu webowego Docker
+                    print(f"{Colors.YELLOW}Interfejs webowy Docker: {Colors.CYAN}http://localhost:5000/docker{Colors.END}")
                 else:
                     print(f"{Colors.RED}Błąd podczas listowania kontenerów: {result.stderr}{Colors.END}")
             
@@ -1483,47 +1639,34 @@ class EvoAssistant:
                     print(f"{Colors.RED}Błąd podczas usuwania kontenera: {result.stderr}{Colors.END}")
             
             elif operation == "modules":
-                # Uruchom serwer modułów konwersji
-                print(f"{Colors.BLUE}Uruchamianie serwera modułów konwersji...{Colors.END}")
-                
-                # Sprawdź, czy katalog modułów istnieje
-                modules_dir = os.path.join(APP_DIR, "modules")
-                if not os.path.exists(modules_dir):
-                    print(f"{Colors.RED}Katalog modułów nie istnieje: {modules_dir}{Colors.END}")
-                    return
-                
-                # Sprawdź, czy skrypt uruchomieniowy istnieje w nowej strukturze
-                run_script = os.path.join(modules_dir, "run_server.sh")
-                
-                # Jeśli nie istnieje w nowej strukturze, sprawdź starą strukturę
-                if not os.path.exists(run_script):
-                    old_modules_dir = os.path.join(modules_dir, "converters")
-                    if os.path.exists(old_modules_dir):
-                        run_script = os.path.join(old_modules_dir, "run.sh")
-                        if not os.path.exists(run_script):
-                            run_script = os.path.join(old_modules_dir, "run_server.sh")
-                            if not os.path.exists(run_script):
-                                run_script = os.path.join(old_modules_dir, "run.py")
-                                if not os.path.exists(run_script):
-                                    print(f"{Colors.RED}Nie znaleziono skryptu uruchomieniowego w katalogu modułów.{Colors.END}")
-                                    return
-                        modules_dir = old_modules_dir
-                    else:
-                        print(f"{Colors.RED}Nie znaleziono skryptu uruchomieniowego w katalogu modułów.{Colors.END}")
+                # Uruchomienie serwera modułów konwersji
+                print(f"{Colors.YELLOW}Uruchamianie serwera modułów konwersji...{Colors.END}")
+                try:
+                    # Sprawdź, czy serwer jest już uruchomiony
+                    import socket
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                    result = sock.connect_ex(('localhost', 5000))
+                    sock.close()
+                    
+                    if result == 0:
+                        print(f"{Colors.GREEN}Serwer modułów jest już uruchomiony na porcie 5000.{Colors.END}")
+                        print(f"{Colors.GREEN}Dostęp przez przeglądarkę: http://localhost:5000{Colors.END}")
+                        print(f"{Colors.GREEN}Kontenery Docker: http://localhost:5000/docker{Colors.END}")
                         return
-                
-                # Uruchom skrypt w tle
-                if run_script.endswith(".sh"):
-                    subprocess.Popen(["bash", run_script], cwd=modules_dir)
-                else:
-                    subprocess.Popen([sys.executable, run_script], cwd=modules_dir)
-                
-                print(f"{Colors.GREEN}Serwer modułów konwersji został uruchomiony.{Colors.END}")
-                print(f"{Colors.GREEN}Interfejs dostępny pod adresem: http://localhost:5000{Colors.END}")
-            
-            else:
-                print(f"{Colors.RED}Nieznana operacja Docker: {operation}{Colors.END}")
-                print(f"{Colors.YELLOW}Dostępne operacje: ps, images, network, info, logs, stop, start, rm, modules{Colors.END}")
+                    
+                    # Uruchom serwer modułów w tle
+                    server_script = os.path.join(APP_DIR, "modules", "run_server.py")
+                    if os.path.exists(server_script):
+                        subprocess.Popen([sys.executable, server_script], 
+                                        stdout=subprocess.PIPE, 
+                                        stderr=subprocess.PIPE)
+                        print(f"{Colors.GREEN}Serwer modułów został uruchomiony na porcie 5000.{Colors.END}")
+                        print(f"{Colors.GREEN}Dostęp przez przeglądarkę: http://localhost:5000{Colors.END}")
+                        print(f"{Colors.GREEN}Kontenery Docker: http://localhost:5000/docker{Colors.END}")
+                    else:
+                        print(f"{Colors.RED}Nie znaleziono skryptu serwera modułów.{Colors.END}")
+                except Exception as e:
+                    print(f"{Colors.RED}Błąd podczas uruchamiania serwera modułów: {str(e)}{Colors.END}")
         
         except Exception as e:
             logger.error(f"Błąd podczas wykonywania komendy Docker: {str(e)}")

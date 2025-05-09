@@ -1,0 +1,129 @@
+{% extends "base_form.html" %}
+
+{% block title %}Text-to-Image{% endblock %}
+
+{% block form_content %}
+<div class="mb-4">
+    <label for="input" class="block text-gray-700 text-sm font-bold mb-2">Opis obrazu:</label>
+    <textarea id="input" name="input" rows="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Opisz obraz, który chcesz wygenerować..."></textarea>
+</div>
+
+<div class="mb-4">
+    <label for="generation_type" class="block text-gray-700 text-sm font-bold mb-2">Typ generacji:</label>
+    <select id="generation_type" name="generation_type" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="image" selected>Obraz</option>
+        <option value="chart">Wykres</option>
+        <option value="diagram">Diagram</option>
+    </select>
+</div>
+
+<div class="mb-4">
+    <label for="provider" class="block text-gray-700 text-sm font-bold mb-2">Dostawca:</label>
+    <select id="provider" name="provider" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="local" selected>Lokalny</option>
+        <option value="stability_ai">Stability AI</option>
+        <option value="openai">OpenAI</option>
+        <option value="replicate">Replicate</option>
+    </select>
+</div>
+
+<div class="grid grid-cols-2 gap-4 mb-4">
+    <div>
+        <label for="width" class="block text-gray-700 text-sm font-bold mb-2">Szerokość:</label>
+        <input type="number" id="width" name="width" value="512" min="256" max="1024" step="64" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+    </div>
+    <div>
+        <label for="height" class="block text-gray-700 text-sm font-bold mb-2">Wysokość:</label>
+        <input type="number" id="height" name="height" value="512" min="256" max="1024" step="64" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+    </div>
+</div>
+
+<div class="mb-4">
+    <label for="format" class="block text-gray-700 text-sm font-bold mb-2">Format:</label>
+    <select id="format" name="format" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="png" selected>PNG</option>
+        <option value="jpg">JPG</option>
+    </select>
+</div>
+
+<div class="flex items-center justify-between">
+    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Generuj obraz
+    </button>
+    <button type="reset" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyczyść
+    </button>
+</div>
+{% endblock %}
+
+{% block result_content %}
+{% if result %}
+<div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+    <h3 class="text-xl font-bold mb-4">Wynik konwersji:</h3>
+    
+    {% if result.error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="font-bold">Błąd:</p>
+        <p>{{ result.error }}</p>
+    </div>
+    {% else %}
+    <div class="mb-4">
+        <p class="font-bold">Status:</p>
+        <p class="text-green-600">Obraz został wygenerowany</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Metoda:</p>
+        <p>{{ result.method }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Prompt:</p>
+        <div class="bg-gray-100 p-4 rounded">
+            {{ result.prompt }}
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Wygenerowany obraz:</p>
+        <div class="mt-2">
+            <img src="/static/images/{{ result.path|basename }}" alt="Wygenerowany obraz" class="max-w-full h-auto rounded shadow-lg">
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Ścieżka do pliku:</p>
+        <p>{{ result.path }}</p>
+    </div>
+    
+    <div class="grid grid-cols-3 gap-4 mb-4">
+        <div>
+            <p class="font-bold">Wymiary:</p>
+            <p>{{ result.width }}x{{ result.height }}</p>
+        </div>
+        <div>
+            <p class="font-bold">Format:</p>
+            <p>{{ result.format }}</p>
+        </div>
+        <div>
+            <p class="font-bold">Dostawca:</p>
+            <p>{{ result.provider }}</p>
+        </div>
+    </div>
+    
+    {% if result.timestamp %}
+    <div class="mb-4">
+        <p class="font-bold">Czas wygenerowania:</p>
+        <p>{{ result.timestamp }}</p>
+    </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="/static/images/{{ result.path|basename }}" download class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+            Pobierz obraz
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

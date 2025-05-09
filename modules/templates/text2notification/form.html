@@ -1,0 +1,92 @@
+{% extends "base_form.html" %}
+
+{% block title %}Text-to-Notification{% endblock %}
+
+{% block form_content %}
+<div class="mb-4">
+    <label for="input" class="block text-gray-700 text-sm font-bold mb-2">Tekst powiadomienia:</label>
+    <textarea id="input" name="input" rows="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Wpisz treść powiadomienia..."></textarea>
+</div>
+
+<div class="mb-4">
+    <label for="title" class="block text-gray-700 text-sm font-bold mb-2">Tytuł (opcjonalnie):</label>
+    <input type="text" id="title" name="title" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Tytuł powiadomienia">
+</div>
+
+<div class="mb-4">
+    <label for="urgency" class="block text-gray-700 text-sm font-bold mb-2">Priorytet:</label>
+    <select id="urgency" name="urgency" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="low">Niski</option>
+        <option value="normal" selected>Normalny</option>
+        <option value="critical">Krytyczny</option>
+    </select>
+</div>
+
+<div class="mb-4">
+    <label for="timeout" class="block text-gray-700 text-sm font-bold mb-2">Czas wyświetlania (ms):</label>
+    <input type="number" id="timeout" name="timeout" value="5000" min="1000" step="1000" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+</div>
+
+<div class="flex items-center justify-between">
+    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyślij powiadomienie
+    </button>
+    <button type="reset" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyczyść
+    </button>
+</div>
+{% endblock %}
+
+{% block result_content %}
+{% if result %}
+<div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+    <h3 class="text-xl font-bold mb-4">Wynik konwersji:</h3>
+    
+    {% if result.error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="font-bold">Błąd:</p>
+        <p>{{ result.error }}</p>
+    </div>
+    {% else %}
+    <div class="mb-4">
+        <p class="font-bold">Status:</p>
+        <p class="text-green-600">Powiadomienie zostało wysłane</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Metoda:</p>
+        <p>{{ result.method }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Tytuł:</p>
+        <p>{{ result.title }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Treść:</p>
+        <div class="bg-gray-100 p-4 rounded">
+            {{ result.text }}
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Priorytet:</p>
+        <p>{{ result.urgency }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Czas wyświetlania:</p>
+        <p>{{ result.timeout }} ms</p>
+    </div>
+    
+    {% if result.timestamp %}
+    <div class="mb-4">
+        <p class="font-bold">Czas wysłania:</p>
+        <p>{{ result.timestamp }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

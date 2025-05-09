@@ -1,187 +1,55 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Konwersacje Evopy</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background-color: white;
-            padding: 20px;
-            border-radius: 5px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        h1 {
-            color: #333;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        .conversation-list {
-            list-style-type: none;
-            padding: 0;
-        }
-        .conversation-item {
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background-color: #f9f9f9;
-        }
-        .conversation-item:hover {
-            background-color: #f0f0f0;
-        }
-        .conversation-title {
-            font-weight: bold;
-            font-size: 18px;
-            margin-bottom: 5px;
-        }
-        .conversation-meta {
-            color: #666;
-            font-size: 14px;
-            margin-bottom: 10px;
-        }
-        .conversation-actions {
-            margin-top: 10px;
-        }
-        .btn {
-            display: inline-block;
-            padding: 8px 12px;
-            background-color: #4CAF50;
-            color: white;
-            text-decoration: none;
-            border-radius: 4px;
-            font-size: 14px;
-            margin-right: 5px;
-        }
-        .btn:hover {
-            background-color: #45a049;
-        }
-        .btn-secondary {
-            background-color: #2196F3;
-        }
-        .btn-secondary:hover {
-            background-color: #0b7dda;
-        }
-        .btn-danger {
-            background-color: #f44336;
-        }
-        .btn-danger:hover {
-            background-color: #d32f2f;
-        }
-        .navbar {
-            background-color: #333;
-            overflow: hidden;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
-        .navbar a {
-            float: left;
-            display: block;
-            color: white;
-            text-align: center;
-            padding: 14px 16px;
-            text-decoration: none;
-        }
-        .navbar a:hover {
-            background-color: #ddd;
-            color: black;
-        }
-        .navbar a.active {
-            background-color: #4CAF50;
-            color: white;
-        }
-        .message {
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-        .message-user {
-            background-color: #e3f2fd;
-            border-left: 5px solid #2196F3;
-        }
-        .message-assistant {
-            background-color: #f1f8e9;
-            border-left: 5px solid #4CAF50;
-        }
-        .message-system {
-            background-color: #fff8e1;
-            border-left: 5px solid #ffc107;
-        }
-        .message-header {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .message-content {
-            white-space: pre-wrap;
-        }
-        .pagination {
-            display: flex;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        .pagination a {
-            color: black;
-            float: left;
-            padding: 8px 16px;
-            text-decoration: none;
-            border: 1px solid #ddd;
-            margin: 0 4px;
-        }
-        .pagination a.active {
-            background-color: #4CAF50;
-            color: white;
-            border: 1px solid #4CAF50;
-        }
-        .pagination a:hover:not(.active) {
-            background-color: #ddd;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="navbar">
-            <a href="/">Strona główna</a>
-            <a href="/docker">Docker</a>
-            <a href="/conversations" class="active">Konwersacje</a>
-        </div>
+{% extends 'base.html' %}
 
-        <h1>Konwersacje Evopy</h1>
-        
-        {% if error %}
-        <div class="message message-system">
-            <div class="message-header">Błąd:</div>
-            <div class="message-content">{{ error }}</div>
+{% block title %}Konwersacje Evopy{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Konwersacje Evopy</h1>
+
+{% if error %}
+<div class="alert alert-warning">
+    <h5 class="alert-heading">Błąd:</h5>
+    <p class="mb-0">{{ error }}</p>
+</div>
+{% endif %}
+
+{% if conversations %}
+<div class="row">
+    {% for conversation in conversations %}
+    <div class="col-md-6 col-lg-4 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">{{ conversation.title }}</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-calendar-alt me-2 text-muted"></i>
+                    <small class="text-muted">Utworzono: {{ conversation.created_at }}</small>
+                </div>
+                <div class="d-flex align-items-center mb-2">
+                    <i class="fas fa-clock me-2 text-muted"></i>
+                    <small class="text-muted">Aktualizacja: {{ conversation.updated_at }}</small>
+                </div>
+                <div class="d-flex align-items-center mb-3">
+                    <i class="fas fa-comments me-2 text-muted"></i>
+                    <small class="text-muted">Liczba wiadomości: {{ conversation.message_count }}</small>
+                </div>
+                
+                <div class="d-flex justify-content-between mt-3">
+                    <small class="text-muted text-truncate" style="max-width: 200px;">ID: {{ conversation.id }}</small>
+                </div>
+            </div>
+            <div class="card-footer bg-white p-2 border-top">
+                <a href="/conversation/{{ conversation.id }}" class="btn btn-primary w-100">
+                    <i class="fas fa-eye me-2"></i> Pokaż szczegóły
+                </a>
+            </div>
         </div>
-        {% endif %}
-        
-        {% if conversations %}
-        <ul class="conversation-list">
-            {% for conversation in conversations %}
-            <li class="conversation-item">
-                <div class="conversation-title">{{ conversation.title }}</div>
-                <div class="conversation-meta">
-                    ID: {{ conversation.id }}<br>
-                    Utworzono: {{ conversation.created_at }}<br>
-                    Ostatnia modyfikacja: {{ conversation.updated_at }}<br>
-                    Liczba wiadomości: {{ conversation.message_count }}
-                </div>
-                <div class="conversation-actions">
-                    <a href="/conversation/{{ conversation.id }}" class="btn">Pokaż szczegóły</a>
-                </div>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p>Brak zapisanych konwersacji.</p>
-        {% endif %}
     </div>
-</body>
-</html>
+    {% endfor %}
+</div>
+{% else %}
+<div class="alert alert-info">
+    <i class="fas fa-info-circle me-2"></i> Brak zapisanych konwersacji.
+</div>
+{% endif %}
+{% endblock %}

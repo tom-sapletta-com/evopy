@@ -1,0 +1,96 @@
+{% extends "base_form.html" %}
+
+{% block title %}Text-to-Discord{% endblock %}
+
+{% block form_content %}
+<div class="mb-4">
+    <label for="input" class="block text-gray-700 text-sm font-bold mb-2">Tekst wiadomości:</label>
+    <textarea id="input" name="input" rows="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Wpisz treść wiadomości Discord..."></textarea>
+</div>
+
+<div class="mb-4">
+    <label for="webhook_name" class="block text-gray-700 text-sm font-bold mb-2">Webhook:</label>
+    <select id="webhook_name" name="webhook_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="">Domyślny webhook</option>
+        {% for name, url in webhooks.items() %}
+        <option value="{{ name }}">{{ name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="mb-4">
+    <label for="username" class="block text-gray-700 text-sm font-bold mb-2">Nazwa użytkownika (opcjonalnie):</label>
+    <input type="text" id="username" name="username" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Nazwa użytkownika bota">
+</div>
+
+<div class="mb-4">
+    <label for="avatar_url" class="block text-gray-700 text-sm font-bold mb-2">URL awatara (opcjonalnie):</label>
+    <input type="text" id="avatar_url" name="avatar_url" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="https://przykład.com/awatar.png">
+</div>
+
+<div class="mb-4">
+    <div class="flex items-center">
+        <input type="checkbox" id="embed" name="embed" class="mr-2">
+        <label for="embed" class="text-gray-700 text-sm font-bold">Użyj embeda</label>
+    </div>
+    <p class="text-sm text-gray-500 mt-1">Embed to specjalny format wiadomości z tytułem i kolorowym paskiem.</p>
+</div>
+
+<div class="flex items-center justify-between">
+    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyślij wiadomość
+    </button>
+    <button type="reset" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyczyść
+    </button>
+</div>
+{% endblock %}
+
+{% block result_content %}
+{% if result %}
+<div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+    <h3 class="text-xl font-bold mb-4">Wynik konwersji:</h3>
+    
+    {% if result.error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="font-bold">Błąd:</p>
+        <p>{{ result.error }}</p>
+    </div>
+    {% else %}
+    <div class="mb-4">
+        <p class="font-bold">Status:</p>
+        <p class="text-green-600">{{ result.message }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Webhook:</p>
+        <p>{{ result.webhook_name or "Domyślny webhook" }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Nazwa użytkownika:</p>
+        <p>{{ result.username }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Treść wiadomości:</p>
+        <div class="bg-gray-100 p-4 rounded">
+            {{ result.text }}
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Format:</p>
+        <p>{{ "Embed" if result.embed else "Zwykła wiadomość" }}</p>
+    </div>
+    
+    {% if result.timestamp %}
+    <div class="mb-4">
+        <p class="font-bold">Czas wysłania:</p>
+        <p>{{ result.timestamp }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

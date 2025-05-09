@@ -1,0 +1,100 @@
+{% extends "base_form.html" %}
+
+{% block title %}Text-to-Telegram{% endblock %}
+
+{% block form_content %}
+<div class="mb-4">
+    <label for="input" class="block text-gray-700 text-sm font-bold mb-2">Tekst wiadomości:</label>
+    <textarea id="input" name="input" rows="4" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Wpisz treść wiadomości Telegram..."></textarea>
+</div>
+
+<div class="mb-4">
+    <label for="chat_name" class="block text-gray-700 text-sm font-bold mb-2">Czat:</label>
+    <select id="chat_name" name="chat_name" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="">Domyślny czat</option>
+        {% for name, chat_id in chats.items() %}
+        <option value="{{ name }}">{{ name }}</option>
+        {% endfor %}
+    </select>
+</div>
+
+<div class="mb-4">
+    <label for="parse_mode" class="block text-gray-700 text-sm font-bold mb-2">Format tekstu:</label>
+    <select id="parse_mode" name="parse_mode" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+        <option value="HTML" selected>HTML</option>
+        <option value="Markdown">Markdown</option>
+        <option value="">Zwykły tekst</option>
+    </select>
+</div>
+
+<div class="mb-4">
+    <div class="flex items-center">
+        <input type="checkbox" id="disable_notification" name="disable_notification" class="mr-2">
+        <label for="disable_notification" class="text-gray-700 text-sm font-bold">Wyłącz powiadomienia</label>
+    </div>
+    <p class="text-sm text-gray-500 mt-1">Wiadomość zostanie wysłana bez dźwięku powiadomienia.</p>
+</div>
+
+<div class="flex items-center justify-between">
+    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyślij wiadomość
+    </button>
+    <button type="reset" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyczyść
+    </button>
+</div>
+{% endblock %}
+
+{% block result_content %}
+{% if result %}
+<div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+    <h3 class="text-xl font-bold mb-4">Wynik konwersji:</h3>
+    
+    {% if result.error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="font-bold">Błąd:</p>
+        <p>{{ result.error }}</p>
+    </div>
+    {% else %}
+    <div class="mb-4">
+        <p class="font-bold">Status:</p>
+        <p class="text-green-600">{{ result.message }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Czat:</p>
+        <p>{{ result.chat_name or "Domyślny czat" }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">ID czatu:</p>
+        <p>{{ result.chat_id }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Treść wiadomości:</p>
+        <div class="bg-gray-100 p-4 rounded">
+            {{ result.text }}
+        </div>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Format tekstu:</p>
+        <p>{{ result.parse_mode or "Zwykły tekst" }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Powiadomienia:</p>
+        <p>{{ "Wyłączone" if result.disable_notification else "Włączone" }}</p>
+    </div>
+    
+    {% if result.timestamp %}
+    <div class="mb-4">
+        <p class="font-bold">Czas wysłania:</p>
+        <p>{{ result.timestamp }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

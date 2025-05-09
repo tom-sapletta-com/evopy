@@ -1,6 +1,16 @@
-# evopy - Ewolucyjny Asystent dla konwersji text2python
+# Evopy - Ewolucyjny Asystent AI dla Automatyzacji Zadań Programistycznych
 
-Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewoluować z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker. Asystent wspiera konwersję tekstu na kod Python i zarządzanie projektami w kontenerach Docker.
+Evopy to zaawansowany system asystenta AI zaprojektowany do automatyzacji zadań programistycznych, konwersji tekstu na kod Python, oraz zarządzania projektami w kontenerach Docker. Rozwiązanie to jest idealne dla zespołów programistycznych, edukatorów, oraz indywidualnych deweloperów, którzy chcą zwiększyć swoją produktywność poprzez automatyzację rutynowych zadań programistycznych.
+
+**Główne zastosowania Evopy:**
+
+- **Automatyzacja tworzenia kodu** - szybkie generowanie kodu Python na podstawie opisów w języku naturalnym
+- **Środowisko edukacyjne** - nauka programowania poprzez interaktywne konwersje tekstu na kod
+- **Prototypowanie** - błyskawiczne tworzenie prototypów aplikacji i mikrousług
+- **Zarządzanie infrastrukturą** - automatyzacja zadań DevOps i zarządzanie kontenerami Docker
+- **Testowanie i debugowanie** - automatyczne wykrywanie i naprawianie błędów w kodzie
+
+Evopy ewoluuje z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker, dostosowując się do rosnących potrzeb użytkownika i zespołu.
 
 ## Dokumentacja
 
@@ -15,6 +25,82 @@ Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewolu
 | [📊 Testy diagramów Mermaid](https://tom-sapletta-com.github.io/evopy/mermaid_test.md) | Przykłady diagramów Mermaid |
 
 [📚 Pełna dokumentacja online](https://tom-sapletta-com.github.io/evopy/)
+
+## Przykłady zastosowań
+
+Evopy może być wykorzystany w różnorodnych scenariuszach, od prostych zadań po złożone projekty. Poniżej przedstawiamy przykłady zastosowań o rosnącym poziomie złożoności:
+
+### Proste zastosowania
+
+1. **Generowanie prostych skryptów**
+   ```bash
+   # Generowanie skryptu do analizy pliku CSV
+   python main.py "Napisz skrypt, który wczyta plik dane.csv i obliczy średnią wartość z kolumny 'Cena'"
+   ```
+
+2. **Automatyzacja zadań systemowych**
+   ```bash
+   # Generowanie skryptu do monitorowania użycia dysku
+   python main.py "Stwórz skrypt monitorujący użycie dysku i wysyłający alert, gdy przekroczy 80%"
+   ```
+
+3. **Konwersja danych między formatami**
+   ```bash
+   # Konwersja JSON na CSV
+   python main.py "Napisz funkcję konwertującą dane z pliku JSON na format CSV"
+   ```
+
+### Średniozaawansowane zastosowania
+
+1. **Tworzenie API z Flask**
+   ```bash
+   # Generowanie prostego API REST
+   python main.py "Stwórz API REST z Flask do zarządzania listą zadań (todo list)"
+   ```
+
+2. **Analiza danych z wizualizacją**
+   ```bash
+   # Analiza i wizualizacja danych
+   python main.py "Napisz skrypt analizujący dane sprzedażowe z pliku CSV i generujący wykresy trendów miesięcznych"
+   ```
+
+3. **Automatyzacja testów**
+   ```bash
+   # Generowanie testów jednostkowych
+   python main.py "Stwórz testy jednostkowe dla klasy UserManager, która zarządza użytkownikami w bazie danych"
+   ```
+
+### Zaawansowane zastosowania
+
+1. **Mikroserwisy w kontenerach Docker**
+   ```bash
+   # Generowanie mikroserwisu w kontenerze
+   python main.py "Stwórz mikroserwis do przetwarzania obrazów z API REST, który będzie działał w kontenerze Docker"
+   ```
+
+2. **Aplikacje webowe z interfejsem użytkownika**
+   ```bash
+   # Generowanie aplikacji webowej
+   python main.py "Stwórz aplikację webową do zarządzania budżetem osobistym z Flask i SQLite"
+   ```
+
+3. **Integracja z zewnętrznymi API**
+   ```bash
+   # Integracja z API pogodowym i bazami danych
+   python main.py "Stwórz aplikację, która pobiera dane pogodowe z OpenWeatherMap API, zapisuje je w bazie MongoDB i generuje raporty pogodowe"
+   ```
+
+4. **Zaawansowane przetwarzanie danych**
+   ```bash
+   # Analiza sentymentu i przetwarzanie języka naturalnego
+   python main.py "Stwórz system analizy sentymentu dla komentarzy klientów, który klasyfikuje opinie i generuje raporty miesięczne"
+   ```
+
+5. **Orkiestracja kontenerów i CI/CD**
+   ```bash
+   # Automatyzacja procesów CI/CD
+   python main.py "Stwórz system automatycznego testowania i wdrażania aplikacji Python z wykorzystaniem Docker, GitHub Actions i Kubernetes"
+   ```
 
 ## Funkcjonalności
 
@@ -139,6 +225,41 @@ evopy/
 4. Analiza architektury porównuje różne podejścia do generowania i wykonywania kodu
 5. Raporty z testów pomagają zidentyfikować obszary do optymalizacji i ulepszeń
 6. Automatyczne testy zapytań weryfikują poprawność konwersji tekst-na-kod i analizę logiczną
+
+### Interfejs webowy i zarządzanie zadaniami Docker
+
+Evopy oferuje zaawansowany interfejs webowy do zarządzania zadaniami Docker i śledzenia konwersacji:
+
+#### Interfejs webowy
+
+- **Serwer Flask** - nowoczesny interfejs webowy dostępny pod adresem http://localhost:5000
+- **Zarządzanie modułami konwersji** - dostęp do wszystkich modułów konwersji (text2python, shell2text, text2sql, itp.)
+- **Panel zarządzania zadaniami Docker** - pełny podgląd i kontrola nad kontenerami Docker
+- **Historia konwersacji** - przeglądanie i analiza historii konwersacji z asystentem
+
+#### Zarządzanie zadaniami Docker
+
+- **Widok zadań Docker** - przejrzysty interfejs z kodem, zapytaniami użytkownika i wyjaśnieniami asystenta
+- **Wykonywanie poleceń Docker** - możliwość uruchamiania poleceń Docker bezpośrednio z interfejsu
+- **Rejestracja zadań** - automatyczna rejestracja zadań Docker z pełnym kontekstem konwersacji
+- **Wykonywanie zadań przez API** - możliwość wykonywania zadań przez API za pomocą poleceń curl
+
+#### Historia konwersacji
+
+- **Przeglądanie konwersacji** - dostęp do pełnej historii konwersacji z asystentem
+- **Szczegóły konwersacji** - podgląd pełnej treści konwersacji, włącznie z kodem Python
+- **Powiązane zadania Docker** - bezpośrednie linki do zadań Docker powiązanych z konwersacją
+- **Eksport konwersacji** - możliwość eksportu konwersacji do różnych formatów
+
+Uruchomienie interfejsu webowego:
+
+```bash
+# Uruchomienie serwera webowego
+bash modules/run_server.sh
+
+# Dostęp do interfejsu przez przeglądarkę
+# http://localhost:5000
+```
 
 ### System testowania i raportowania modeli LLM
 

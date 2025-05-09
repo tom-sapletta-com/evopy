@@ -1,0 +1,91 @@
+{% extends "base_form.html" %}
+
+{% block title %}Text-to-Email{% endblock %}
+
+{% block form_content %}
+<div class="mb-4">
+    <label for="input" class="block text-gray-700 text-sm font-bold mb-2">Tekst wiadomości:</label>
+    <textarea id="input" name="input" rows="6" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Wpisz treść wiadomości email..."></textarea>
+</div>
+
+<div class="mb-4">
+    <label for="recipient" class="block text-gray-700 text-sm font-bold mb-2">Adres odbiorcy:</label>
+    <input type="email" id="recipient" name="recipient" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="adres@email.com">
+</div>
+
+<div class="mb-4">
+    <label for="subject" class="block text-gray-700 text-sm font-bold mb-2">Temat (opcjonalnie):</label>
+    <input type="text" id="subject" name="subject" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="Temat wiadomości">
+</div>
+
+<div class="mb-4">
+    <label for="sender" class="block text-gray-700 text-sm font-bold mb-2">Adres nadawcy (opcjonalnie):</label>
+    <input type="email" id="sender" name="sender" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" placeholder="twoj@email.com">
+</div>
+
+<div class="mb-4">
+    <div class="flex items-center">
+        <input type="checkbox" id="send_now" name="send_now" class="mr-2">
+        <label for="send_now" class="text-gray-700 text-sm font-bold">Wyślij od razu</label>
+    </div>
+    <p class="text-sm text-gray-500 mt-1">Jeśli nie zaznaczysz, wiadomość zostanie tylko przygotowana, ale nie wysłana.</p>
+</div>
+
+<div class="flex items-center justify-between">
+    <button type="submit" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Konwertuj i wyślij
+    </button>
+    <button type="reset" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+        Wyczyść
+    </button>
+</div>
+{% endblock %}
+
+{% block result_content %}
+{% if result %}
+<div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
+    <h3 class="text-xl font-bold mb-4">Wynik konwersji:</h3>
+    
+    {% if result.error %}
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <p class="font-bold">Błąd:</p>
+        <p>{{ result.error }}</p>
+    </div>
+    {% else %}
+    <div class="mb-4">
+        <p class="font-bold">Status:</p>
+        <p class="text-green-600">{{ result.message }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Odbiorca:</p>
+        <p>{{ result.recipient }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Temat:</p>
+        <p>{{ result.subject }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Nadawca:</p>
+        <p>{{ result.sender }}</p>
+    </div>
+    
+    <div class="mb-4">
+        <p class="font-bold">Treść wiadomości:</p>
+        <div class="bg-gray-100 p-4 rounded">
+            {{ result.body|safe }}
+        </div>
+    </div>
+    
+    {% if result.timestamp %}
+    <div class="mb-4">
+        <p class="font-bold">Czas wysłania:</p>
+        <p>{{ result.timestamp }}</p>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

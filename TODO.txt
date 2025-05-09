@@ -1,0 +1,216 @@
+EVOPY - LISTA ZADAŃ I SCENARIUSZY DO IMPLEMENTACJI
+
+NOWE MODUŁY KOMUNIKACYJNE
+=========================
+
+1. TEXT2SPEECH [ZAIMPLEMENTOWANO] ✅
+--------------
+1. Konwersja tekstu na mowę z możliwością wyboru głosu (męski/żeński) ✅
+2. Generowanie plików audio w różnych formatach (mp3, wav, ogg) ✅
+3. Regulacja tempa i tonu głosu ✅
+4. Wsparcie dla wielu języków, w tym polskiego ✅
+5. Integracja z systemem powiadomień głosowych ✅
+
+2. TEXT2PRINT
+-------------
+6. Drukowanie dokumentów tekstowych na domyślnej drukarce
+7. Formatowanie tekstu przed drukowaniem (marginesy, czcionka, rozmiar)
+8. Drukowanie z opcją podglądu
+9. Wsparcie dla drukowania kodów kreskowych i QR
+10. Obsługa wielu drukarek z możliwością wyboru
+
+3. TEXT2EMAIL [ZAIMPLEMENTOWANO] ✅
+-------------
+11. Wysyłanie wiadomości email z automatycznym formatowaniem treści ✅
+12. Dodawanie załączników generowanych przez inne moduły ✅
+13. Obsługa szablonów wiadomości email ✅
+14. Planowanie wysyłki wiadomości w przyszłości ✅
+15. Integracja z popularnymi dostawcami email (Gmail, Outlook) ✅
+
+4. TEXT2SMS
+-----------
+16. Wysyłanie wiadomości SMS przez bramki internetowe
+17. Obsługa masowej wysyłki SMS
+18. Automatyczne skracanie długich wiadomości
+19. Planowanie wysyłki SMS w określonym czasie
+20. Odbieranie i analiza odpowiedzi SMS
+
+5. TEXT2NOTIFICATION [ZAIMPLEMENTOWANO] ✅
+-------------------
+21. Generowanie powiadomień systemowych na podstawie tekstu ✅
+22. Integracja z systemami powiadomień mobilnych (Android, iOS) ✅
+23. Tworzenie powiadomień z priorytetami i kategoriami ✅
+24. Planowanie powiadomień cyklicznych ✅
+25. Obsługa powiadomień interaktywnych z przyciskami akcji ✅
+
+6. TEXT2CALENDAR
+---------------
+26. Automatyczne dodawanie wydarzeń do kalendarza na podstawie opisu
+27. Wykrywanie dat i godzin z tekstu naturalnego
+28. Integracja z Google Calendar, Outlook Calendar
+29. Ustawianie przypomnień i powiadomień dla wydarzeń
+30. Generowanie zaproszeń na spotkania
+
+7. TEXT2SOCIAL
+-------------
+31. Publikowanie postów na platformach społecznościowych (Twitter, Facebook, LinkedIn)
+32. Automatyczne formatowanie treści pod specyfikę danej platformy
+33. Planowanie publikacji w optymalnych godzinach
+34. Generowanie hashtagow na podstawie treści
+35. Analiza potencjalnego zasięgu i odbioru treści
+
+8. TEXT2VIDEO
+------------
+36. Generowanie prostych animacji tekstowych
+37. Tworzenie prezentacji wideo na podstawie tekstu
+38. Dodawanie napisów do istniejących materiałów wideo
+39. Konwersja tekstu na animowane GIF-y
+40. Tworzenie tutoriali wideo z instrukcji tekstowych
+
+9. TEXT2IMAGE [ZAIMPLEMENTOWANO] ✅
+------------
+41. Generowanie obrazów na podstawie opisów tekstowych ✅
+42. Tworzenie infografik z danych tekstowych ✅
+43. Generowanie diagramów i schematów ✅
+44. Tworzenie komiksów i storyboardów ✅
+45. Konwersja tekstu na banery i grafiki reklamowe ✅
+
+10. TEXT2CHART
+-------------
+46. Automatyczne generowanie wykresów z danych tekstowych
+47. Tworzenie diagramów przepływu z opisów procesów
+48. Generowanie map myśli z notatek tekstowych
+49. Wizualizacja danych statystycznych z tekstu
+50. Tworzenie interaktywnych dashboardów
+
+11. TEXT2FORM
+------------
+51. Automatyczne wypełnianie formularzy na podstawie tekstu
+52. Generowanie formularzy HTML/PDF z opisów
+53. Walidacja danych wprowadzanych do formularzy
+54. Integracja z systemami zarządzania dokumentami
+55. Konwersja formularzy papierowych na cyfrowe
+
+12. TEXT2API
+-----------
+56. Generowanie zapytań API na podstawie opisów w języku naturalnym
+57. Automatyczne tworzenie dokumentacji API z kodu
+58. Testowanie endpointów API na podstawie scenariuszy tekstowych
+59. Konwersja między różnymi formatami API (REST, GraphQL)
+60. Generowanie klientów API w różnych językach programowania
+
+13. TEXT2IOT
+-----------
+61. Sterowanie urządzeniami IoT za pomocą poleceń tekstowych
+62. Tworzenie automatyzacji dla inteligentnego domu
+63. Monitorowanie i raportowanie stanu urządzeń
+64. Integracja z popularnymi platformami IoT (HomeAssistant, SmartThings)
+65. Generowanie scenariuszy automatyzacji na podstawie opisów
+
+14. TEXT2BLOCKCHAIN
+-----------------
+66. Generowanie smart kontraktów z opisów tekstowych
+67. Tworzenie tokenów NFT z treści tekstowych
+68. Automatyzacja transakcji blockchain na podstawie instrukcji
+69. Weryfikacja i audyt smart kontraktów
+70. Generowanie dokumentacji dla projektów blockchain
+
+15. TEXT2GAME
+-----------
+71. Tworzenie prostych gier tekstowych z opisów
+72. Generowanie scenariuszy i dialogów dla gier
+73. Konwersja tekstu na elementy gry (postacie, przedmioty, lokacje)
+74. Tworzenie interaktywnych opowieści
+75. Generowanie map i poziomów gry z opisów tekstowych
+
+16. TEXT2REPORT
+-------------
+76. Automatyczne generowanie raportów z danych tekstowych
+77. Tworzenie raportów finansowych z opisów wyników
+78. Generowanie raportów analitycznych z surowych danych
+79. Konwersja notatek ze spotkań na formalne raporty
+80. Tworzenie raportów okresowych z dzienników aktywności
+
+17. TEXT2LEGAL
+------------
+81. Generowanie prostych dokumentów prawnych z opisów
+82. Analiza i upraszczanie skomplikowanych tekstów prawnych
+83. Tworzenie umów i kontraktów na podstawie kluczowych punktów
+84. Porównywanie dokumentów prawnych i wykrywanie różnic
+85. Generowanie podsumowań regulaminów i polityk prywatności
+
+18. TEXT2TRANSLATION
+------------------
+86. Tłumaczenie tekstów między wieloma językami
+87. Lokalizacja treści z uwzględnieniem kontekstu kulturowego
+88. Tłumaczenie specjalistycznych tekstów (medycznych, prawnych, technicznych)
+89. Automatyczne wykrywanie języka źródłowego
+90. Generowanie słowników tematycznych
+
+19. TEXT2VOICE
+------------
+91. Integracja z asystentami głosowymi (Alexa, Google Assistant)
+92. Tworzenie własnych komend głosowych
+93. Konwersja tekstu na instrukcje dla asystentów głosowych
+94. Generowanie dialogów konwersacyjnych
+95. Tworzenie skryptów dla systemów IVR (Interactive Voice Response)
+
+20. TEXT2LEARN
+------------
+96. Generowanie materiałów edukacyjnych z treści tekstowych
+97. Tworzenie quizów i testów na podstawie tekstu
+98. Konwersja notatek na fiszki do nauki
+99. Generowanie planów lekcji i kursów
+100. Tworzenie interaktywnych tutoriali z instrukcji tekstowych
+
+21. TEXT2DISCORD [ZAIMPLEMENTOWANO] ✅
+--------------
+101. Wysyłanie wiadomości na kanały Discord przez webhooks ✅
+102. Formatowanie wiadomości z użyciem embedów ✅
+103. Dostosowywanie nazwy użytkownika i awatara bota ✅
+104. Zarządzanie wieloma webhookami dla różnych kanałów ✅
+105. Przechowywanie historii wysłanych wiadomości ✅
+
+22. TEXT2TELEGRAM [ZAIMPLEMENTOWANO] ✅
+---------------
+106. Wysyłanie wiadomości przez bota Telegram ✅
+107. Obsługa formatowania tekstu (HTML, Markdown) ✅
+108. Wysyłanie zdjęć i dokumentów ✅
+109. Zarządzanie wieloma czatami i grupami ✅
+110. Wysyłanie wiadomości bez powiadomień dźwiękowych ✅
+
+23. TEXT2SLACK
+------------
+111. Integracja z kanałami Slack przez webhooks i API
+112. Tworzenie wiadomości z blokami interaktywnymi
+113. Wysyłanie wiadomości do kanałów i bezpośrednio do użytkowników
+114. Tworzenie ankiet i głosowań
+115. Integracja z aplikacjami Slack
+
+24. TEXT2WHATSAPP
+---------------
+116. Wysyłanie wiadomości przez WhatsApp Business API
+117. Obsługa szablonów wiadomości
+118. Wysyłanie zdjęć, filmów i dokumentów
+119. Automatyczne odpowiedzi na wiadomości
+120. Tworzenie chatbotów dla WhatsApp
+
+25. TEXT2MESSENGER
+----------------
+121. Integracja z Facebook Messenger API
+122. Tworzenie interaktywnych botów konwersacyjnych
+123. Wysyłanie szablonów wiadomości z przyciskami
+124. Obsługa płatności przez Messenger
+125. Automatyzacja odpowiedzi na pytania klientów
+
+PRIORYTETY IMPLEMENTACJI:
+1. TEXT2SPEECH - konwersja tekstu na mowę [✅ ZREALIZOWANO]
+2. TEXT2EMAIL - wysyłanie wiadomości email [✅ ZREALIZOWANO]
+3. TEXT2NOTIFICATION - generowanie powiadomień [✅ ZREALIZOWANO]
+4. TEXT2IMAGE - generowanie obrazów z tekstu [✅ ZREALIZOWANO]
+5. TEXT2DISCORD - wysyłanie wiadomości na Discord [✅ ZREALIZOWANO]
+6. TEXT2TELEGRAM - wysyłanie wiadomości przez Telegram [✅ ZREALIZOWANO]
+7. TEXT2CALENDAR - zarządzanie wydarzeniami w kalendarzu
+8. TEXT2SLACK - integracja ze Slack
+9. TEXT2WHATSAPP - wysyłanie wiadomości przez WhatsApp
+10. TEXT2PRINT - drukowanie dokumentów

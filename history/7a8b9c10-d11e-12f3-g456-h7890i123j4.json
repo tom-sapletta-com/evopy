@@ -1,0 +1,23 @@
+{
+  "id": "7a8b9c10-d11e-12f3-g456-h7890i123j4",
+  "title": "Przykład funkcji obliczającej średnią",
+  "created_at": "2025-05-09T18:20:15.350",
+  "updated_at": "2025-05-09T18:21:22.359",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Napisz funkcję do obliczania średniej z listy liczb",
+      "timestamp": "2025-05-09T18:20:15.819"
+    },
+    {
+      "role": "assistant",
+      "content": "Oto funkcja do obliczania średniej z listy liczb w Pythonie:\n\n```python\ndef calculate_average(numbers):\n    if not numbers:\n        return 0\n    return sum(numbers) / len(numbers)\n```\n\nFunkcja ta przyjmuje listę liczb jako argument, sprawdza czy lista nie jest pusta (aby uniknąć dzielenia przez zero), a następnie zwraca sumę wszystkich liczb podzieloną przez ich ilość, co daje średnią arytmetyczną.",
+      "timestamp": "2025-05-09T18:21:22.359"
+    }
+  ],
+  "metadata": {
+    "model": "llama3",
+    "temperature": 0.7,
+    "system_prompt": "Jesteś asystentem AI, który pomaga w programowaniu i wyjaśnianiu kodu."
+  }
+}

@@ -1,7 +1,10 @@
 {% extends 'base.html' %}
 
+{% block title %}Kontenery Docker{% endblock %}
+
 {% block content %}
-<h2>Kontenery Docker</h2>
+<div class="container mt-4">
+    <h1>Kontenery Docker</h1>
 
 {% if error %}
 <div style="color: red; padding: 10px; background-color: #ffeeee; border: 1px solid #ffaaaa; border-radius: 5px;">
@@ -9,40 +12,337 @@
 </div>
 {% endif %}
 
-<div class="docker-command">
-    <h3>Uruchom polecenie Docker</h3>
-    <p>Wprowadź polecenie Docker (bez słowa "docker" na początku):</p>
-    <input type="text" id="docker-command" placeholder="np. ps -a" />
-    <button onclick="runDockerCommand()">Uruchom</button>
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Uruchom polecenie Docker</h5>
+    </div>
+    <div class="card-body">
+        <p>Wprowadź polecenie Docker (bez słowa "docker" na początku):</p>
+        <div class="input-group mb-3">
+            <span class="input-group-text">docker</span>
+            <input type="text" class="form-control" id="docker-command" placeholder="np. ps -a" />
+            <button class="btn btn-primary" onclick="runDockerCommand()">Uruchom</button>
+        </div>
+    </div>
 </div>
 
 <div id="command-result" class="result"></div>
 
 {% if containers %}
-<h3>Lista aktywnych kontenerów</h3>
-<table>
-    <thead>
-        <tr>
-            <th>ID</th>
-            <th>Obraz</th>
-            <th>Status</th>
-            <th>Nazwa</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for container in containers %}
-        <tr>
-            <td>{{ container.id }}</td>
-            <td>{{ container.image }}</td>
-            <td>{{ container.status }}</td>
-            <td>{{ container.name }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Lista aktywnych kontenerów</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Obraz</th>
+                        <th>Status</th>
+                        <th>Nazwa</th>
+                        <th>Typ</th>
+                        <th>Zadanie</th>
+                        <th>Akcje</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for container in containers %}
+                    <tr>
+                        <td>{{ container.id }}</td>
+                        <td>{{ container.image }}</td>
+                        <td>{{ container.status }}</td>
+                        <td>{{ container.name }}</td>
+                        <td>
+                            {% if container.is_service %}
+                            <span class="badge bg-success">Serwis webowy</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Kontener</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if container.task_id %}
+                            <a href="/docker/{{ container.task_id }}" class="badge bg-info text-decoration-none">
+                                {{ container.task_id[:8] }}...
+                            </a>
+                            {% else %}
+                            <span class="badge bg-secondary">Brak</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm" role="group">
+                                {% if container.task_id %}
+                                <a href="/docker/{{ container.task_id }}" class="btn btn-outline-info" title="Szczegóły zadania">
+                                    <i class="fas fa-info-circle"></i>
+                                </a>
+                                {% endif %}
+                                {% if container.is_service and container.service_url %}
+                                <a href="{{ container.service_url }}" target="_blank" class="btn btn-outline-success" title="Otwórz serwis">
+                                    <i class="fas fa-external-link-alt"></i>
+                                </a>
+                                <a href="{{ url_for('service_details', task_id=container.task_id) }}" class="btn btn-outline-primary" title="Szczegóły serwisu">
+                                    <i class="fas fa-cogs"></i>
+                                </a>
+                                {% endif %}
+                                <button class="btn btn-outline-danger" onclick="stopContainer('{{ container.id }}')" title="Zatrzymaj kontener">
+                                    <i class="fas fa-stop-circle"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 {% else %}
-<p>Brak aktywnych kontenerów Docker.</p>
+<div class="alert alert-info">
+    <p class="mb-0">Brak aktywnych kontenerów Docker.</p>
+</div>
 {% endif %}
 
-<p><a href="/">Powrót do listy modułów</a></p>
+{% if docker_tasks %}
+<div class="card mb-4 mt-5">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Zadania Docker z zapytań użytkownika</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="row m-0">
+            {% for task_id, task_info in docker_tasks.items() %}
+            <div class="col-md-6 col-lg-4 p-2">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-calendar-alt"></i> {{ task_info.timestamp.split('T')[0] }} 
+                            <i class="fas fa-clock ms-2"></i> {{ task_info.timestamp.split('T')[1].split('.')[0] }}
+                        </small>
+                        <div>
+                            {% if task_info.is_service %}
+                            <span class="badge bg-success">Serwis</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Kontener</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if task_info.user_prompt %}
+                        <!-- Prompt użytkownika w jednej linii z możliwością rozwijania -->
+                        <div class="p-2 bg-primary bg-opacity-10 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-user me-2"></i>
+                                    <small class="fw-bold me-2">Zapytanie:</small>
+                                    <span class="prompt-preview small" id="prompt-preview-{{ task_id }}">
+                                        {{ task_info.user_prompt|truncate(50) }}
+                                    </span>
+                                </div>
+                                {% if task_info.user_prompt|length > 50 %}
+                                <button class="btn btn-sm btn-link p-0 text-primary" 
+                                        onclick="togglePrompt('{{ task_id }}')" 
+                                        id="prompt-toggle-{{ task_id }}">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                            <div class="prompt-full mt-2" id="prompt-full-{{ task_id }}" style="display: none;">
+                                <p class="m-0 small">{{ task_info.user_prompt }}</p>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Kod jako główny element z kontrolką wysokości -->
+                        <div class="code-header bg-dark bg-opacity-10 p-2 d-flex justify-content-between align-items-center">
+                            <small class="fw-bold"><i class="fas fa-code me-2"></i> Kod Python</small>
+                            <button class="btn btn-sm btn-link p-0" 
+                                    onclick="toggleCodeHeight('{{ task_id }}')" 
+                                    id="code-toggle-{{ task_id }}">
+                                <i class="fas fa-expand"></i>
+                            </button>
+                        </div>
+                        <div class="code-container" id="code-container-{{ task_id }}" style="max-height: 150px; overflow-y: auto;">
+                            <pre class="language-python m-0 p-3" style="border-radius: 0;"><code>{{ task_info.code }}</code></pre>
+                        </div>
+                        
+                        {% if task_info.agent_explanation %}
+                        <!-- Wyjaśnienie agenta -->
+                        <div class="p-2 bg-success bg-opacity-10 border-top">
+                            <div class="d-flex align-items-center mb-1">
+                                <i class="fas fa-robot me-2"></i>
+                                <small class="fw-bold">Wyjaśnienie asystenta:</small>
+                            </div>
+                            <p class="m-0 small">{{ task_info.agent_explanation }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Informacje o kontenerze w małym formacie -->
+                        <div class="p-2 bg-light border-top">
+                            <div class="row g-2">
+                                <div class="col-12">
+                                    <small class="text-muted d-block">
+                                        <strong>ID zadania:</strong> <span class="text-truncate d-inline-block" style="max-width: 150px;">{{ task_id }}</span>
+                                    </small>
+                                    <small class="text-muted d-block">
+                                        <strong>ID kontenera:</strong> <span class="text-truncate d-inline-block" style="max-width: 150px;">{{ task_info.container_id }}</span>
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white p-2 border-top">
+                        <div class="btn-group btn-group-sm w-100" role="group">
+                            <a href="/docker/{{ task_id }}" class="btn btn-outline-primary" title="Szczegóły zadania">
+                                <i class="fas fa-info-circle"></i> Szczegóły
+                            </a>
+                            {% if task_info.is_service and task_info.service_url %}
+                            <a href="{{ task_info.service_url }}" target="_blank" class="btn btn-outline-success" title="Otwórz serwis">
+                                <i class="fas fa-external-link-alt"></i> Otwórz
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <a href="/" class="btn btn-outline-primary">
+        <i class="fas fa-arrow-left"></i> Powrót do listy modułów
+    </a>
+</div>
+</div>
+
+<script>
+function runDockerCommand() {
+    const command = document.getElementById('docker-command').value;
+    const resultDiv = document.getElementById('command-result');
+    
+    resultDiv.innerHTML = '<div class="alert alert-info">Wykonywanie polecenia...</div>';
+    
+    fetch('/docker/run', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+            'command': command
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        let resultHtml = '';
+        
+        if (data.returncode === 0) {
+            resultHtml = `<div class="alert alert-success">Polecenie wykonane pomyślnie.</div>`;
+            
+            if (data.docker_url) {
+                resultHtml += `<div class="alert alert-info">
+                    <p>Link do zadania Docker: <a href="${data.docker_url}">${data.docker_url}</a></p>
+                </div>`;
+            }
+            
+            if (data.stdout) {
+                resultHtml += `<div class="card mt-3">
+                    <div class="card-header bg-success text-white">Wynik</div>
+                    <div class="card-body">
+                        <pre>${data.stdout}</pre>
+                    </div>
+                </div>`;
+            }
+        } else {
+            resultHtml = `<div class="alert alert-danger">Błąd wykonania polecenia (kod: ${data.returncode})</div>`;
+            
+            if (data.stderr) {
+                resultHtml += `<div class="card mt-3">
+                    <div class="card-header bg-danger text-white">Błąd</div>
+                    <div class="card-body">
+                        <pre>${data.stderr}</pre>
+                    </div>
+                </div>`;
+            }
+        }
+        
+        resultDiv.innerHTML = resultHtml;
+    })
+    .catch(error => {
+        resultDiv.innerHTML = `<div class="alert alert-danger">Błąd: ${error}</div>`;
+    });
+}
+
+function stopContainer(containerId) {
+    if (confirm('Czy na pewno chcesz zatrzymać ten kontener?')) {
+        fetch('/docker/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'command': 'stop ' + containerId
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.returncode === 0) {
+                alert('Kontener został zatrzymany.');
+                location.reload();
+            } else {
+                alert('Błąd podczas zatrzymywania kontenera: ' + data.stderr);
+            }
+        })
+        .catch(error => {
+            alert('Błąd: ' + error);
+        });
+    }
+}
+
+function toggleCode(taskId) {
+    const codeElement = document.getElementById('code-' + taskId);
+    if (codeElement.style.display === 'none') {
+        codeElement.style.display = 'block';
+    } else {
+        codeElement.style.display = 'none';
+    }
+}
+
+// Funkcja do przełączania widoczności pełnego zapytania użytkownika
+function togglePrompt(taskId) {
+    const promptFull = document.getElementById('prompt-full-' + taskId);
+    const promptToggle = document.getElementById('prompt-toggle-' + taskId);
+    
+    if (promptFull.style.display === 'none') {
+        promptFull.style.display = 'block';
+        promptToggle.innerHTML = '<i class="fas fa-chevron-up"></i>';
+    } else {
+        promptFull.style.display = 'none';
+        promptToggle.innerHTML = '<i class="fas fa-chevron-down"></i>';
+    }
+}
+
+// Funkcja do przełączania wysokości kontenera z kodem
+function toggleCodeHeight(taskId) {
+    const codeContainer = document.getElementById('code-container-' + taskId);
+    const codeToggle = document.getElementById('code-toggle-' + taskId);
+    
+    if (codeContainer.style.maxHeight === '150px') {
+        codeContainer.style.maxHeight = '500px';
+        codeToggle.innerHTML = '<i class="fas fa-compress"></i>';
+    } else {
+        codeContainer.style.maxHeight = '150px';
+        codeToggle.innerHTML = '<i class="fas fa-expand"></i>';
+    }
+}
+
+// Inicjalizacja Prism.js po załadowaniu strony
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof Prism !== 'undefined') {
+        Prism.highlightAll();
+    }
+});
+
+</script>
 {% endblock %}
