@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Moduły Konwersji</h2>
+<p>Poniżej znajduje się lista dostępnych modułów konwersji:</p>
+
+<div class="module-list">
+    {% for converter in converters %}
+    <div class="module-card">
+        <h3>{{ converter.name }}</h3>
+        <p>{{ converter.description }}</p>
+        <a href="/module/{{ converter.name }}">Zobacz szczegóły</a>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

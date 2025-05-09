@@ -8,11 +8,16 @@ import json
 import logging
 import datetime
 import importlib.util
+from pathlib import Path
+from datetime import datetime
 from flask import Flask, render_template, jsonify, request, redirect, url_for
 
 # Konfiguracja logowania
 MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
+APP_DIR = os.path.dirname(MODULES_DIR)
 LOG_DIR = os.path.join(MODULES_DIR, 'logs')
+HISTORY_DIR = os.path.join(APP_DIR, 'history')
+
 os.makedirs(LOG_DIR, exist_ok=True)
 
 log_file = os.path.join(LOG_DIR, f'server_{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
@@ -181,6 +186,125 @@ def convert():
     except Exception as e:
         logger.error(f"Błąd podczas konwersji: {str(e)}")
         return jsonify({"error": f"Błąd podczas konwersji: {str(e)}"}), 500
+
+@app.route('/conversations')
+def list_conversations():
+    """Wyświetla listę konwersacji"""
+    logger.info("Dostęp do listy konwersacji")
+    try:
+        conversations = []
+        history_dir = Path(HISTORY_DIR)
+        
+        if not os.path.exists(history_dir):
+            return render_template('conversations.html', error="Katalog historii konwersacji nie istnieje", conversations=[])
+        
+        # Pobierz wszystkie pliki JSON z katalogu historii
+        for file in history_dir.glob("*.json"):
+            try:
+                with open(file, 'r', encoding='utf-8') as f:
+                    conversation = json.load(f)
+                    
+                    # Przygotuj dane do wyświetlenia
+                    conversation_data = {
+                        "id": conversation.get("id", file.stem),
+                        "title": conversation.get("title", "Bez tytułu"),
+                        "created_at": conversation.get("created_at", ""),
+                        "updated_at": conversation.get("updated_at", ""),
+                        "message_count": len(conversation.get("messages", []))
+                    }
+                    
+                    # Formatuj daty
+                    for date_field in ["created_at", "updated_at"]:
+                        if conversation_data[date_field]:
+                            try:
+                                dt = datetime.fromisoformat(conversation_data[date_field])
+                                conversation_data[date_field] = dt.strftime("%Y-%m-%d %H:%M:%S")
+                            except ValueError:
+                                pass
+                    
+                    conversations.append(conversation_data)
+            except Exception as e:
+                logger.error(f"Błąd podczas odczytu pliku konwersacji {file}: {str(e)}")
+        
+        # Sortuj konwersacje według daty aktualizacji (najnowsze pierwsze)
+        conversations.sort(key=lambda x: x.get("updated_at", ""), reverse=True)
+        
+        return render_template('conversations.html', conversations=conversations)
+    except Exception as e:
+        logger.error(f"Błąd podczas pobierania listy konwersacji: {str(e)}")
+        return render_template('conversations.html', error=f"Wystąpił błąd: {str(e)}", conversations=[])
+
+@app.route('/conversation/<string:conversation_id>')
+def conversation_details(conversation_id):
+    """Wyświetla szczegóły konwersacji"""
+    logger.info(f"Dostęp do szczegółów konwersacji: {conversation_id}")
+    try:
+        conversation_file = os.path.join(HISTORY_DIR, f"{conversation_id}.json")
+        
+        if not os.path.exists(conversation_file):
+            return render_template('conversations.html', error=f"Konwersacja o ID {conversation_id} nie istnieje", conversations=[])
+        
+        with open(conversation_file, 'r', encoding='utf-8') as f:
+            conversation = json.load(f)
+        
+        # Przygotuj dane do wyświetlenia
+        conversation_data = {
+            "id": conversation.get("id", conversation_id),
+            "title": conversation.get("title", "Bez tytułu"),
+            "created_at": conversation.get("created_at", ""),
+            "updated_at": conversation.get("updated_at", ""),
+            "message_count": len(conversation.get("messages", [])),
+            "messages": [],
+            "code_executions": conversation.get("code_executions", [])
+        }
+        
+        # Formatuj daty
+        for date_field in ["created_at", "updated_at"]:
+            if conversation_data[date_field]:
+                try:
+                    dt = datetime.fromisoformat(conversation_data[date_field])
+                    conversation_data[date_field] = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    pass
+        
+        # Przygotuj wiadomości
+        for message in conversation.get("messages", []):
+            message_data = {
+                "role": message.get("role", "system"),
+                "content": message.get("content", ""),
+                "timestamp": ""
+            }
+            
+            # Formatuj datę wiadomości
+            if "timestamp" in message:
+                try:
+                    dt = datetime.fromisoformat(message["timestamp"])
+                    message_data["timestamp"] = dt.strftime("%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    pass
+            
+            # Formatuj treść wiadomości (zamień kod na znaczniki <pre><code>)
+            content = message_data["content"]
+            # Zamień bloki kodu oznaczone ```
+            if "```" in content:
+                parts = content.split("```")
+                formatted_content = parts[0]
+                
+                for i in range(1, len(parts), 2):
+                    if i < len(parts):
+                        code_block = parts[i].strip()
+                        formatted_content += f"<pre><code>{code_block}</code></pre>"
+                        if i + 1 < len(parts):
+                            formatted_content += parts[i+1]
+                
+                message_data["content"] = formatted_content
+            
+            conversation_data["messages"].append(message_data)
+        
+        return render_template('conversation_details.html', conversation=conversation_data)
+    except Exception as e:
+        logger.error(f"Błąd podczas pobierania szczegółów konwersacji: {str(e)}")
+        return render_template('conversations.html', error=f"Wystąpił błąd: {str(e)}", conversations=[])
 
 if __name__ == '__main__':
     # Utwórz katalog templates, jeśli nie istnieje

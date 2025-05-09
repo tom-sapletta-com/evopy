@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Kontenery Docker</h2>
+
+{% if error %}
+<div style="color: red; padding: 10px; background-color: #ffeeee; border: 1px solid #ffaaaa; border-radius: 5px;">
+    <p><strong>Błąd:</strong> {{ error }}</p>
+</div>
+{% endif %}
+
+<div class="docker-command">
+    <h3>Uruchom polecenie Docker</h3>
+    <p>Wprowadź polecenie Docker (bez słowa "docker" na początku):</p>
+    <input type="text" id="docker-command" placeholder="np. ps -a" />
+    <button onclick="runDockerCommand()">Uruchom</button>
+</div>
+
+<div id="command-result" class="result"></div>
+
+{% if containers %}
+<h3>Lista aktywnych kontenerów</h3>
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Obraz</th>
+            <th>Status</th>
+            <th>Nazwa</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for container in containers %}
+        <tr>
+            <td>{{ container.id }}</td>
+            <td>{{ container.image }}</td>
+            <td>{{ container.status }}</td>
+            <td>{{ container.name }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Brak aktywnych kontenerów Docker.</p>
+{% endif %}
+
+<p><a href="/">Powrót do listy modułów</a></p>
+{% endblock %}
