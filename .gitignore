@@ -1,5 +1,6 @@
 .idea
 .env
+logs
 data/
 docs/vendor
 performance/results
