@@ -902,16 +902,26 @@ EOF
         echo "  xdg-open ${REPORT_FILE%.md}.pdf   # Otwórz raport PDF w przeglądarce"
     fi
     
-    echo
-    
-    return 0
 }
 
-# Główna funkcja
-main() {
-    log "INFO" "=== Rozpoczynanie generowania raportu porównawczego ==="
-    log "INFO" "Katalog skryptu: $SCRIPT_DIR"
-    log "INFO" "Plik logów: $LOG_FILE"
+# Funkcja do czyszczenia plików pośrednich
+function cleanup_files() {
+    if [ -f "$SCRIPT_DIR/cleanup.sh" ]; then
+        log "INFO" "Czyszczenie plików pośrednich przed generowaniem raportu..."
+        bash "$SCRIPT_DIR/cleanup.sh"
+    else
+        log "WARNING" "Skrypt cleanup.sh nie istnieje. Pliki pośrednie nie zostaną wyczyszczone."
+    fi
+}
+
+# Główna funkcja skryptu
+function main() {
+    log "INFO" "=== Raport porównawczy modeli LLM dla Evopy ==="
+    log "INFO" "Data: $(date '+%Y-%m-%d %H:%M:%S')"
+    log "INFO" "Wersja Python: $($PYTHON_CMD --version)"
+    
+    # Uruchom czyszczenie plików pośrednich
+    cleanup_files
     
     # Sprawdź dostępne modele
     check_available_models || {
