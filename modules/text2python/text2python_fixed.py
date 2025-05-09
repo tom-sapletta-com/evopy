@@ -340,34 +340,6 @@ class Text2Python(BaseText2XModule):
     def __str__(self):
         """Reprezentacja tekstowa obiektu"""
         return f"Text2Python(model={self.config['model']})"
-        
-    def generate_code(self, prompt: str) -> Dict[str, Any]:
-        """
-        Metoda kompatybilności wstecznej dla starego API
-        Przekierowuje wywołanie do metody process
-        
-        Args:
-            prompt: Tekst wejściowy do przetworzenia
-            
-        Returns:
-            Dict[str, Any]: Wygenerowany kod Python
-        """
-        self.logger.info(f"Wywołanie generate_code przekierowane do process: {prompt[:50]}...")
-        return self.process(prompt)
-        
-    def explain_code(self, code: str) -> str:
-        """
-        Metoda kompatybilności wstecznej dla starego API
-        Przekierowuje wywołanie do metody code_analyzer.explain_code
-        
-        Args:
-            code: Kod Python do wyjaśnienia
-            
-        Returns:
-            str: Wyjaśnienie kodu w języku naturalnym
-        """
-        self.logger.info(f"Wywołanie explain_code przekierowane do code_analyzer.explain_code")
-        return self.code_analyzer.explain_code(code)
 
 
 # Przykład użycia

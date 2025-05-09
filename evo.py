@@ -140,10 +140,10 @@ class EvoAssistant:
         self._initialize_directories()
         
         # Inicjalizacja modułów
-        self.text2python = Text2Python(
-            model_name=self.config.get("model", DEFAULT_MODEL),
-            code_dir=CODE_DIR
-        )
+        self.text2python = Text2Python({
+            "model": self.config.get("model", DEFAULT_MODEL),
+            "code_dir": str(CODE_DIR)
+        })
         
         # Inicjalizacja narzędzi interfejsu konsolowego
         if CONSOLE_UTILS_AVAILABLE:
@@ -1210,10 +1210,10 @@ class EvoAssistant:
             self._save_config()
             
             # Zaktualizuj model w text2python
-            self.text2python = Text2Python(
-                model_name=new_model,
-                code_dir=CODE_DIR
-            )
+            self.text2python = Text2Python({
+                "model": new_model,
+                "code_dir": str(CODE_DIR)
+            })
             
             print(f"{Colors.GREEN}Zmieniono model na: {new_model}{Colors.END}")
         
