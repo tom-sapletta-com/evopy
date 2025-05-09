@@ -65,41 +65,41 @@ def get_available_models() -> List[Dict[str, Any]]:
     ]
     return models
 
-def get_model_config(model_id: str = None) -> Dict[str, Any]:
+def get_model_config(model_name: str = None) -> Dict[str, Any]:
     """
-    Zwraca konfigurację wybranego modelu lub aktywnego modelu
+    Pobiera konfigurację modelu
     
     Args:
-        model_id: Identyfikator modelu (opcjonalnie)
+        model_name: Nazwa modelu (opcjonalnie)
         
     Returns:
-        Dict: Konfiguracja modelu
+        Dict[str, Any]: Konfiguracja modelu
     """
-    if model_id is None:
-        model_id = os.getenv("ACTIVE_MODEL", "deepsek")
+    if model_name is None:
+        model_name = os.getenv("ACTIVE_MODEL", "deepsek")
     
     models = get_available_models()
     for model in models:
-        if model["id"] == model_id:
+        if model["id"] == model_name:
             return model
     
     # Jeśli nie znaleziono modelu, zwróć domyślny
-    logger.warning(f"Nie znaleziono modelu {model_id}, używam domyślnego (deepsek)")
+    logger.warning(f"Nie znaleziono modelu {model_name}, używam domyślnego (deepsek)")
     return next((m for m in models if m["id"] == "deepsek"), models[0])
 
 
 class Text2Python:
     """Klasa do konwersji tekstu na kod Python"""
     
-    def __init__(self, model_id: str = None, code_dir: Path = None):
+    def __init__(self, model_name: str = None, code_dir: Path = None):
         """
         Inicjalizacja konwertera tekst-na-Python
         
         Args:
-            model_id: Identyfikator modelu do użycia (deepsek, llama, bielik)
+            model_name: Nazwa modelu do użycia (deepsek, llama, bielik)
             code_dir: Katalog do zapisywania wygenerowanego kodu
         """
-        self.model_config = get_model_config(model_id)
+        self.model_config = get_model_config(model_name)
         self.model_id = self.model_config["id"]
         self.model_name = self.model_config["name"]
         self.code_dir = code_dir

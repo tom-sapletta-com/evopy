@@ -165,8 +165,8 @@ def get_available_models() -> List[str]:
         filename = os.path.basename(file)
         parts = filename.split('_')
         if len(parts) >= 3:
-            model_id = parts[2]  # Assuming format: test_results_MODEL_TIMESTAMP.json
-            models.add(model_id)
+            model_name = parts[2]  # Assuming format: test_results_MODEL_TIMESTAMP.json
+            models.add(model_name)
     
     return sorted(list(models))
 

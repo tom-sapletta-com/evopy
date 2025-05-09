@@ -272,8 +272,10 @@ def test_text2python_correctness(model_name: str) -> Dict[str, Any]:
     logger.info(f"Testowanie poprawności konwersji tekst -> Python dla modelu {model_name}...")
     
     results = {
-        "model_id": model_name,
+        "model_name": model_name,
         "total_tests": len(CORRECTNESS_TESTS),
+        "passed": 0,
+        "failed": 0,
         "timestamp": datetime.now().isoformat(),
         "details": []
     }
@@ -341,8 +343,10 @@ def test_python2text_correctness(model_name: str) -> Dict[str, Any]:
     logger.info(f"Testowanie poprawności konwersji Python -> tekst dla modelu {model_name}...")
     
     results = {
-        "model_id": model_name,
+        "model_name": model_name,
         "total_tests": len(PYTHON2TEXT_TESTS),
+        "passed": 0,
+        "failed": 0,
         "timestamp": datetime.now().isoformat(),
         "details": []
     }

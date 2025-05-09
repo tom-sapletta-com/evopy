@@ -27,7 +27,18 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # Importuj moduły Evopy
 from modules.text2python import Text2Python
-import argparse
+
+def setup_logging():
+    """Konfiguracja logowania"""
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.StreamHandler(),
+            logging.FileHandler("test_queries.log")
+        ]
+    )
+    return logging.getLogger("evopy-tests")
 
 # Konfiguracja logowania
 logging.basicConfig(
@@ -80,7 +91,7 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
         logger.error("Serwer Ollama nie jest uruchomiony. Uruchom go przed rozpoczęciem testów.")
         logger.info("Możesz uruchomić Ollama poleceniem: ollama serve")
         return {
-            "model_id": model_name,
+            "model_name": model_name,
             "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
             "total_tests": 0,
             "passed_tests": 0,
@@ -95,7 +106,7 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
     except Exception as e:
         logger.error(f"Błąd podczas inicjalizacji Text2Python: {str(e)}")
         return {
-            "model_id": model_name,
+            "model_name": model_name,
             "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
             "total_tests": 0,
             "passed_tests": 0,
@@ -151,7 +162,7 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
         
         # Przygotuj wyniki do zwrócenia
         results = {
-            "model_id": model_name,  # Używamy model_name jako model_id dla kompatybilności
+            "model_name": model_name,
             "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
             "total_tests": total_tests,
             "passed_tests": successful_tests,
@@ -271,12 +282,12 @@ def main():
     results = run_tests(model_name=args.model, timeout=args.timeout)
     
     # Zapisz wyniki
-    output_path = results_dir / f"test_results_{results['model_id']}_{results['timestamp']}.json"
+    output_path = results_dir / f"test_results_{results['model_name']}_{results['timestamp']}.json"
     save_results(results, output_path)
     
     # Wyświetl podsumowanie
     print("\n=== Podsumowanie testów ===\n")
-    print(f"Model: {results['model_id']}")
+    print(f"Model: {results['model_name']}")
     print(f"Przeprowadzono {results['total_tests']} testów")
     print(f"Zaliczone: {results['passed_tests']}")
     print(f"Niezaliczone: {results['failed_tests']}")

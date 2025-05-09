@@ -98,20 +98,20 @@ def execute():
     }
 ]
 
-def test_text2python(model_id: str) -> Dict[str, Any]:
+def test_text2python(model_name: str) -> Dict[str, Any]:
     """
     Testuje wydajność i poprawność modelu w konwersji tekstu na kod Python
     
     Args:
-        model_id: Identyfikator modelu do testowania
+        model_name: Nazwa modelu do testowania
         
     Returns:
         Dict: Wyniki testów
     """
-    logger.info(f"Testowanie modelu {model_id} w konwersji tekst -> Python...")
+    logger.info(f"Testowanie modelu {model_name} w konwersji tekst -> Python...")
     
     results = {
-        "model_id": model_id,
+        "model_name": model_name,
         "total_queries": len(TEXT2PYTHON_TEST_QUERIES),
         "passed": 0,
         "failed": 0,
@@ -121,12 +121,12 @@ def test_text2python(model_id: str) -> Dict[str, Any]:
     }
     
     # Inicjalizacja konwertera text2python
-    text2python = Text2Python(model_id=model_id, code_dir=CODE_DIR)
+    text2python = Text2Python(model_name=model_name, code_dir=CODE_DIR)
     
     # Sprawdź, czy model jest dostępny
     if not text2python.ensure_model_available():
-        logger.error(f"Model {model_id} nie jest dostępny. Testy nie mogą być wykonane.")
-        results["error"] = f"Model {model_id} nie jest dostępny"
+        logger.error(f"Model {model_name} nie jest dostępny. Testy nie mogą być wykonane.")
+        results["error"] = f"Model {model_name} nie jest dostępny"
         return results
     
     # Uruchom testy dla każdego zapytania
@@ -207,20 +207,20 @@ def test_text2python(model_id: str) -> Dict[str, Any]:
     
     return results
 
-def test_python2text(model_id: str) -> Dict[str, Any]:
+def test_python2text(model_name: str) -> Dict[str, Any]:
     """
     Testuje wydajność i poprawność modelu w konwersji kodu Python na tekst
     
     Args:
-        model_id: Identyfikator modelu do testowania
+        model_name: Nazwa modelu do testowania
         
     Returns:
         Dict: Wyniki testów
     """
-    logger.info(f"Testowanie modelu {model_id} w konwersji Python -> tekst...")
+    logger.info(f"Testowanie modelu {model_name} w konwersji Python -> tekst...")
     
     results = {
-        "model_id": model_id,
+        "model_name": model_name,
         "total_codes": len(PYTHON2TEXT_TEST_CODES),
         "passed": 0,
         "failed": 0,
