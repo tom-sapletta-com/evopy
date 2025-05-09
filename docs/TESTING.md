@@ -67,27 +67,51 @@ This script generates a comprehensive comparison report across multiple LLM mode
 #### Usage:
 
 ```bash
-./report.sh
+./report.sh [options]
+```
+
+#### Options:
+
+```
+--model=NAME       Run tests only for the specified model
+--format=FORMAT    Report format: all, md, html, pdf (default: all)
+--trend=DAYS       Number of days for trend analysis (default: 30)
+--compare=MODEL1,MODEL2  Compare only specified models
+--metrics=METRICS  Selected metrics for analysis (default: all)
+--only-report      Generate report without running tests
+--help             Display help information
 ```
 
 #### Features:
 
 - Tests multiple models in sequence
 - Automatically detects available models in your Ollama installation
-- Generates a markdown report comparing all tested models
-- Creates a summary table showing success/failure for each test type
+- Generates reports in multiple formats (Markdown, HTML, PDF)
+- Creates detailed comparison tables for multiple metrics categories
 - Calculates performance metrics across models
+- Visualizes comparisons with radar charts, bar charts, and line charts
+- Tracks performance trends over time
 
 ## Generating Reports
 
 To generate a comprehensive comparison report:
 
-1. Run the report script:
+1. Run the report script with desired options:
    ```bash
+   # Generate a standard report for all models
    ./report.sh
+   
+   # Compare only specific models
+   ./report.sh --compare=llama,bielik
+   
+   # Generate only HTML report without running tests
+   ./report.sh --format=html --only-report
+   
+   # Analyze trends for the last 60 days
+   ./report.sh --trend=60
    ```
 
-2. Select which models to test:
+2. If no options are specified, you'll be prompted to select which models to test:
    - Enter specific model numbers (e.g., `1 3 5`)
    - Enter `all` to test all available models
    - Select the "All models" option
@@ -155,17 +179,30 @@ flowchart LR
 
 ## Report Structure
 
-The generated report includes:
+The enhanced report includes:
 
-1. **Summary Table**: A comparison table showing test results for all models:
-   - Basic query tests (✅/❌)
-   - Correctness tests (✅/❌)
-   - Performance tests (✅/❌)
-   - Total score for each model
+1. **Executive Summary**: Overview of the best performing models and key findings
 
-2. **Detailed Results**: For each model, detailed test results including:
-   - Execution times
-   - Success rates
+2. **Performance Dashboard**: Comprehensive tables comparing models across multiple metrics:
+   - **Overall Performance**: Basic query tests, correctness tests, performance tests, execution time, and total score
+   - **Text-to-Code Conversion Accuracy**: Code correctness score, syntax error rate, semantic error rate, and prompt adherence
+   - **Code Efficiency**: Time complexity, space complexity, code size efficiency, and resource usage
+   - **Code Quality and Explanation**: Documentation quality, explanation clarity, code readability, and maintainability index
+   - **User Intent Alignment**: Requirement fulfillment, edge case handling, user feedback, and overall alignment
+
+3. **Visualizations**: Multiple chart types for better data interpretation:
+   - **Radar Charts**: Multi-dimensional comparison of models across all metrics
+   - **Bar Charts**: Comparative performance on specific metrics
+   - **Line Charts**: Execution time and performance metrics
+
+4. **Trend Analysis**: Performance trends over time for each model:
+   - Progress indicators showing improvement or regression
+   - Historical data analysis for key metrics
+
+5. **Detailed Results**: For each model, comprehensive test results including:
+   - Execution times and performance statistics
+   - Success rates across different test categories
+   - Code samples with analysis
    - Specific test case results
 
 ## Report Formats

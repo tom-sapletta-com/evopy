@@ -130,10 +130,30 @@ evopy/
 Evopy zawiera zaawansowany system testowania i porównywania różnych modeli LLM:
 
 - **test.sh** - skrypt do testowania pojedynczego modelu z interaktywnym wyborem
-- **report.sh** - skrypt generujący raporty porównawcze dla wielu modeli
+- **report.sh** - skrypt generujący zaawansowane raporty porównawcze dla wielu modeli
 - **Automatyczne wykrywanie dostępnych modeli** - system wykrywa modele dostępne w Ollama
-- **Generowanie raportów w formacie Markdown** - przejrzyste raporty z wynikami testów
-- **Porównanie wydajności i poprawności** - kompleksowe porównanie różnych modeli
+- **Generowanie raportów w wielu formatach** - raporty w formatach Markdown, HTML i PDF
+- **Kompleksowe metryki porównawcze** - obejmujące:
+  - Dokładność konwersji tekst-na-kod
+  - Wydajność generowanego kodu
+  - Jakość wyjaśnień i dokumentacji kodu
+  - Zgodność z intencjami użytkownika
+- **Zaawansowane wizualizacje** - wykresy radarowe, słupkowe i liniowe dla lepszego porównania modeli
+- **Analiza trendów** - śledzenie postępów i zmian wydajności modeli w czasie
+- **Elastyczne opcje raportowania** - możliwość wyboru formatów, modeli do porównania i okresu analizy trendów
+
+Przykładowe użycie:
+
+```bash
+# Generowanie pełnego raportu porównawczego
+./report.sh
+
+# Porównanie tylko wybranych modeli
+./report.sh --compare=llama,bielik --format=html
+
+# Analiza trendów z ostatnich 60 dni
+./report.sh --trend=60 --only-report
+```
 
 Szczegółowa dokumentacja systemu testowego znajduje się w pliku [docs/TESTING.md](docs/TESTING.md).
 

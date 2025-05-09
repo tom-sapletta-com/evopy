@@ -129,73 +129,110 @@ function run_tests_for_model() {
 function generate_comparison_report() {
     local timestamp=$(date +"%Y%m%d_%H%M%S")
     local report_file="$REPORT_DIR/comparison_report_${timestamp}.md"
+    local format="${1:-all}"  # Format raportu: all, md, html, pdf
+    local days="${2:-30}"     # Liczba dni do analizy trendów
     
-    echo -e "${GREEN}${BOLD}=== Generowanie raportu porównawczego ===${NC}"
+    echo -e "${GREEN}${BOLD}=== Generowanie zaawansowanego raportu porównawczego ===${NC}"
     
-    # Nagłówek raportu
-    echo "# Raport porównawczy modeli LLM dla Evopy" > "$report_file"
-    echo "Data wygenerowania: $(date '+%Y-%m-%d %H:%M:%S')" >> "$report_file"
-    echo "" >> "$report_file"
+    # Użyj nowego skryptu Python do generowania raportu
+    $PYTHON_CMD "$SCRIPT_DIR/generate_report.py" \
+        --format="$format" \
+        --days="$days" \
+        --output="$report_file"
     
-    # Tabela wyników
-    echo "## Podsumowanie wyników" >> "$report_file"
-    echo "" >> "$report_file"
-    echo "| Model | Testy zapytań | Testy poprawności | Testy wydajności | Całkowity wynik |" >> "$report_file"
-    echo "|-------|--------------|-------------------|------------------|-----------------|" >> "$report_file"
-    
-    # Zbierz najnowsze wyniki dla każdego modelu
-    for model in "${MODELS[@]}"; do
-        local latest_result=$(ls -t "$REPORT_DIR"/results_${model}_*.json 2>/dev/null | head -n 1)
+    # Sprawdź czy generowanie się powiodło
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}Raport porównawczy wygenerowany: ${YELLOW}$report_file${NC}"
         
-        if [ -n "$latest_result" ] && [ -f "$latest_result" ]; then
-            local queries_result=$(grep -o '"queries_result": [0-9]*' "$latest_result" | awk '{print $2}')
-            local correctness_result=$(grep -o '"correctness_result": [0-9]*' "$latest_result" | awk '{print $2}')
-            local performance_result=$(grep -o '"performance_result": [0-9]*' "$latest_result" | awk '{print $2}')
-            
-            # Konwertuj kody wyjścia na symbole
-            local queries_symbol=$([ "$queries_result" -eq 0 ] && echo "✅" || echo "❌")
-            local correctness_symbol=$([ "$correctness_result" -eq 0 ] && echo "✅" || echo "❌")
-            local performance_symbol=$([ "$performance_result" -eq 0 ] && echo "✅" || echo "❌")
-            
-            # Oblicz całkowity wynik
-            local total_score=0
-            [ "$queries_result" -eq 0 ] && ((total_score++))
-            [ "$correctness_result" -eq 0 ] && ((total_score++))
-            [ "$performance_result" -eq 0 ] && ((total_score++))
-            
-            # Dodaj wiersz do tabeli
-            echo "| $model | $queries_symbol | $correctness_symbol | $performance_symbol | $total_score/3 |" >> "$report_file"
-        else
-            echo "| $model | ❓ | ❓ | ❓ | 0/3 |" >> "$report_file"
+        # Utwórz link do najnowszego raportu
+        ln -sf "$report_file" "$REPORT_DIR/comparison_report_latest.md"
+        
+        # Jeśli wygenerowano HTML, wyświetl informację
+        if [[ "$format" == "all" || "$format" == "html" ]]; then
+            local html_file="${report_file%.md}.html"
+            if [ -f "$html_file" ]; then
+                echo -e "${GREEN}Raport HTML wygenerowany: ${YELLOW}$html_file${NC}"
+            fi
         fi
-    done
-    
-    # Dodaj szczegółowe wyniki z plików JSON
-    echo "" >> "$report_file"
-    echo "## Szczegółowe wyniki testów" >> "$report_file"
-    echo "" >> "$report_file"
-    
-    # Zbierz dane z plików wyników testów
-    for model in "${MODELS[@]}"; do
-        echo "### Model: $model" >> "$report_file"
+        
+        # Jeśli wygenerowano PDF, wyświetl informację
+        if [[ "$format" == "all" || "$format" == "pdf" ]]; then
+            local pdf_file="${report_file%.md}.pdf"
+            if [ -f "$pdf_file" ]; then
+                echo -e "${GREEN}Raport PDF wygenerowany: ${YELLOW}$pdf_file${NC}"
+            fi
+        fi
+    else
+        echo -e "${RED}Błąd podczas generowania raportu!${NC}"
+        
+        # Awaryjne generowanie prostego raportu w przypadku błędu
+        echo -e "${YELLOW}Generowanie uproszczonego raportu awaryjnego...${NC}"
+        
+        # Nagłówek raportu
+        echo "# Raport porównawczy modeli LLM dla Evopy" > "$report_file"
+        echo "Data wygenerowania: $(date '+%Y-%m-%d %H:%M:%S')" >> "$report_file"
         echo "" >> "$report_file"
         
-        # Znajdź najnowsze pliki wyników dla danego modelu
-        local queries_file=$(ls -t "$RESULTS_DIR"/test_results_${model}_*.json 2>/dev/null | head -n 1)
+        # Tabela wyników
+        echo "## Podsumowanie wyników" >> "$report_file"
+        echo "" >> "$report_file"
+        echo "| Model | Testy zapytań | Testy poprawności | Testy wydajności | Całkowity wynik |" >> "$report_file"
+        echo "|-------|--------------|-------------------|------------------|-----------------|" >> "$report_file"
         
-        if [ -n "$queries_file" ] && [ -f "$queries_file" ]; then
-            echo "#### Wyniki testów zapytań" >> "$report_file"
-            echo '```json' >> "$report_file"
-            cat "$queries_file" >> "$report_file"
-            echo '```' >> "$report_file"
+        # Zbierz najnowsze wyniki dla każdego modelu
+        for model in "${MODELS[@]}"; do
+            local latest_result=$(ls -t "$REPORT_DIR"/results_${model}_*.json 2>/dev/null | head -n 1)
+            
+            if [ -n "$latest_result" ] && [ -f "$latest_result" ]; then
+                local queries_result=$(grep -o '"queries_result": [0-9]*' "$latest_result" | awk '{print $2}')
+                local correctness_result=$(grep -o '"correctness_result": [0-9]*' "$latest_result" | awk '{print $2}')
+                local performance_result=$(grep -o '"performance_result": [0-9]*' "$latest_result" | awk '{print $2}')
+                
+                # Konwertuj kody wyjścia na symbole
+                local queries_symbol=$([ "$queries_result" -eq 0 ] && echo "✅" || echo "❌")
+                local correctness_symbol=$([ "$correctness_result" -eq 0 ] && echo "✅" || echo "❌")
+                local performance_symbol=$([ "$performance_result" -eq 0 ] && echo "✅" || echo "❌")
+                
+                # Oblicz całkowity wynik
+                local total_score=0
+                [ "$queries_result" -eq 0 ] && ((total_score++))
+                [ "$correctness_result" -eq 0 ] && ((total_score++))
+                [ "$performance_result" -eq 0 ] && ((total_score++))
+                
+                # Dodaj wiersz do tabeli
+                echo "| $model | $queries_symbol | $correctness_symbol | $performance_symbol | $total_score/3 |" >> "$report_file"
+            else
+                echo "| $model | ❓ | ❓ | ❓ | 0/3 |" >> "$report_file"
+            fi
+        done
+        
+        # Dodaj szczegółowe wyniki z plików JSON
+        echo "" >> "$report_file"
+        echo "## Szczegółowe wyniki testów" >> "$report_file"
+        echo "" >> "$report_file"
+        
+        # Zbierz dane z plików wyników testów
+        for model in "${MODELS[@]}"; do
+            echo "### Model: $model" >> "$report_file"
             echo "" >> "$report_file"
-        else
-            echo "Brak wyników testów zapytań dla modelu $model." >> "$report_file"
-            echo "" >> "$report_file"
-        fi
-    done
-    
-    echo -e "${GREEN}Raport porównawczy wygenerowany: ${YELLOW}$report_file${NC}"
+            
+            # Znajdź najnowsze pliki wyników dla danego modelu
+            local queries_file=$(ls -t "$RESULTS_DIR"/test_results_${model}_*.json 2>/dev/null | head -n 1)
+            
+            if [ -n "$queries_file" ] && [ -f "$queries_file" ]; then
+                echo "#### Wyniki testów zapytań" >> "$report_file"
+                echo '```json' >> "$report_file"
+                cat "$queries_file" >> "$report_file"
+                echo '```' >> "$report_file"
+                echo "" >> "$report_file"
+            else
+                echo "Brak wyników testów zapytań dla modelu $model." >> "$report_file"
+                echo "" >> "$report_file"
+            fi
+        done
+        
+        echo -e "${YELLOW}Uproszczony raport wygenerowany: ${GREEN}$report_file${NC}"
+    fi
     
     # Wyświetl raport w terminalu
     echo -e "\n${CYAN}${BOLD}=== Podsumowanie porównawcze wszystkich modeli ===${NC}"
@@ -256,42 +293,74 @@ function main() {
         echo -e "$((i+1))) ${CYAN}${MODELS[$i]}${NC}"
     done
     echo -e "$((${#MODELS[@]}+1))) ${CYAN}Wszystkie modele${NC}"
-    
-    echo -e "\n${YELLOW}Wybierz modele do testowania (np. 1 3 5 lub 'all' dla wszystkich):${NC} "
-    read -r model_choices
-    
-    if [[ "$model_choices" == "all" ]]; then
-        # Testuj wszystkie modele
-        for model in "${MODELS[@]}"; do
-            run_tests_for_model "$model"
-        done
-    else
-        # Testuj wybrane modele
-        for choice in $model_choices; do
-            if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#MODELS[@]}" ]; then
-                run_tests_for_model "${MODELS[$((choice-1))]}"
-            elif [[ "$choice" -eq $((${#MODELS[@]}+1)) ]]; then
-                # Testuj wszystkie modele
-                for model in "${MODELS[@]}"; do
-                    run_tests_for_model "$model"
                 done
-                break
-            fi
-        done
+                shift
+                ;;
+            --metrics=*)
+                metrics="${1#*=}"
+                shift
+                ;;
+            --only-report)
+                only_report=true
+                shift
+                ;;
+            --help)
+                echo -e "${BLUE}Użycie: $0 [opcje]${NC}"
+                echo -e "${BLUE}Opcje:${NC}"
+                echo -e "  ${GREEN}--model=NAZWA${NC}       Uruchom testy tylko dla wybranego modelu"
+                echo -e "  ${GREEN}--format=FORMAT${NC}     Format raportu: all, md, html, pdf (domyślnie: all)"
+                echo -e "  ${GREEN}--trend=DNI${NC}         Liczba dni do analizy trendów (domyślnie: 30)"
+                echo -e "  ${GREEN}--compare=MODEL1,MODEL2${NC} Porównaj tylko wybrane modele"
+                echo -e "  ${GREEN}--metrics=METRYKI${NC}   Wybrane metryki do analizy (domyślnie: all)"
+                echo -e "  ${GREEN}--only-report${NC}       Wygeneruj tylko raport bez uruchamiania testów"
+                echo -e "  ${GREEN}--help${NC}              Wyświetl tę pomoc"
+                exit 0
+                ;;
+            *)
+                echo -e "${RED}Błąd: Nieznana opcja '$1'${NC}"
+                echo -e "${BLUE}Użyj '$0 --help' aby wyświetlić dostępne opcje${NC}"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Wyświetl informacje o uruchamianych testach
+    if [ "$only_report" = false ]; then
+        if [ -n "$specific_model" ]; then
+            echo -e "${BLUE}Uruchamianie testów dla modelu: ${YELLOW}$specific_model${NC}\n"
+            run_tests_for_model "$specific_model"
+        else
+            echo -e "${BLUE}Uruchamianie testów dla modeli: ${YELLOW}${MODELS[*]}${NC}\n"
+            # Uruchom testy dla wszystkich modeli
+            for model in "${MODELS[@]}"; do
+                run_tests_for_model "$model"
+            done
+        fi
+    else
+        echo -e "${BLUE}Pomijanie testów, generowanie tylko raportu...${NC}\n"
     fi
     
     # Wygeneruj raport porównawczy
-    generate_comparison_report
-    
-    # Aktualizuj link do najnowszego raportu
-    if [ -f "$SCRIPT_DIR/update_latest_report_link.sh" ]; then
-        echo -e "${BLUE}Aktualizacja linku do najnowszego raportu...${NC}"
-        bash "$SCRIPT_DIR/update_latest_report_link.sh"
+    if [ ${#compare_models[@]} -gt 0 ]; then
+        # Tymczasowo zachowaj oryginalne modele
+        local original_models=("${MODELS[@]}")
+        # Ustaw tylko wybrane modele do porównania
+        MODELS=("${compare_models[@]}")
+        # Wygeneruj raport
+        generate_comparison_report "$report_format" "$trend_days"
+        # Przywróć oryginalne modele
+        MODELS=("${original_models[@]}")
     else
-        echo -e "${YELLOW}Skrypt update_latest_report_link.sh nie istnieje. Link do najnowszego raportu nie zostanie zaktualizowany.${NC}"
+        # Wygeneruj raport dla wszystkich modeli
+        generate_comparison_report "$report_format" "$trend_days"
     fi
     
-    echo -e "${BLUE}Najnowszy raport jest dostępny pod linkiem: ${CYAN}$REPORT_DIR/comparison_report_latest.md${NC}"
+    # Wyświetl podsumowanie
+    echo -e "\n${GREEN}${BOLD}=== Wszystkie operacje zakończone ===${NC}"
+    if [ "$only_report" = false ]; then
+        echo -e "${BLUE}Wyniki testów zapisane w katalogu: ${YELLOW}$RESULTS_DIR${NC}"
+    fi
+    echo -e "${BLUE}Raporty porównawcze zapisane w katalogu: ${YELLOW}$REPORT_DIR${NC}"
 }
 
 # Uruchom główną funkcję skryptu

@@ -647,12 +647,78 @@ Data wygenerowania: {timestamp}
         # Add row to table
         md_content += f"| {model} | {basic_status} | {correctness_status} | {perf_status} | {avg_time:.2f} | {total_passed}/{total_possible} ({total_percent:.1f}%) |\n"
     
+    # Add new metrics tables
+    md_content += "\n### Dokładność konwersji tekst-na-kod\n\n"
+    md_content += "| Model | Poprawność kodu | Błędy składniowe | Błędy semantyczne | Zgodność z intencją |\n"
+    md_content += "|-------|----------------|-----------------|-------------------|----------------------|\n"
+    
+    for model in models:
+        # Get text-to-code accuracy metrics
+        accuracy_metrics = calculate_text_to_code_accuracy(model)
+        
+        correctness = f"{accuracy_metrics['code_correctness_score']:.1f}%"
+        syntax_errors = f"{accuracy_metrics['syntax_error_rate']:.1f}%"
+        semantic_errors = f"{accuracy_metrics['semantic_error_rate']:.1f}%"
+        adherence = f"{accuracy_metrics['prompt_adherence_score']:.1f}%"
+        
+        md_content += f"| {model} | {correctness} | {syntax_errors} | {semantic_errors} | {adherence} |\n"
+    
+    md_content += "\n### Wydajność generowanego kodu\n\n"
+    md_content += "| Model | Złożoność czasowa | Złożoność pamięciowa | Efektywność rozmiaru | Wykorzystanie zasobów |\n"
+    md_content += "|-------|-----------------|---------------------|---------------------|----------------------|\n"
+    
+    for model in models:
+        # Get code efficiency metrics
+        efficiency_metrics = analyze_code_efficiency(model)
+        
+        time_complexity = f"{efficiency_metrics['time_complexity_score']:.1f}%"
+        space_complexity = f"{efficiency_metrics['space_complexity_score']:.1f}%"
+        code_size = f"{efficiency_metrics['code_size_efficiency']:.1f}%"
+        resource_usage = f"{efficiency_metrics['resource_usage_score']:.1f}%"
+        
+        md_content += f"| {model} | {time_complexity} | {space_complexity} | {code_size} | {resource_usage} |\n"
+    
+    md_content += "\n### Jakość wyjaśnień i kodu\n\n"
+    md_content += "| Model | Jakość dokumentacji | Klarowność wyjaśnień | Czytelność kodu | Indeks utrzymywalności |\n"
+    md_content += "|-------|---------------------|----------------------|----------------|------------------------|\n"
+    
+    for model in models:
+        # Get code quality metrics
+        quality_metrics = evaluate_code_quality(model)
+        
+        doc_quality = f"{quality_metrics['documentation_quality']:.1f}%"
+        explanation = f"{quality_metrics['explanation_clarity']:.1f}%"
+        readability = f"{quality_metrics['code_readability']:.1f}%"
+        maintainability = f"{quality_metrics['maintainability_index']:.1f}%"
+        
+        md_content += f"| {model} | {doc_quality} | {explanation} | {readability} | {maintainability} |\n"
+    
+    md_content += "\n### Zgodność z intencjami użytkownika\n\n"
+    md_content += "| Model | Spełnienie wymagań | Obsługa przypadków brzegowych | Ocena użytkownika | Ogólna zgodność |\n"
+    md_content += "|-------|-------------------|-------------------------------|------------------|----------------|\n"
+    
+    for model in models:
+        # Get user intent alignment metrics
+        intent_metrics = measure_user_intent_alignment(model)
+        
+        requirements = f"{intent_metrics['requirement_fulfillment']:.1f}%"
+        edge_cases = f"{intent_metrics['edge_case_handling']:.1f}%"
+        user_feedback = f"{intent_metrics['user_feedback_score']:.1f}%"
+        overall = f"{intent_metrics['overall_intent_alignment']:.1f}%"
+        
+        md_content += f"| {model} | {requirements} | {edge_cases} | {user_feedback} | {overall} |\n"
+    
     # Generate chart data for visualization
     chart_data = {
         "models": [],
         "basic_test_scores": [],
         "correctness_scores": [],
-        "performance_times": []
+        "performance_times": [],
+        # New chart data for additional metrics
+        "code_correctness": [],
+        "explanation_quality": [],
+        "code_efficiency": [],
+        "user_alignment": []
     }
     
     for model in models:
@@ -660,6 +726,12 @@ Data wygenerowania: {timestamp}
         basic_results = load_test_results(model)
         correctness_passed, correctness_total = load_correctness_results(model)
         performance_results = load_performance_results(model)
+        
+        # Get additional metrics
+        accuracy_metrics = calculate_text_to_code_accuracy(model)
+        efficiency_metrics = analyze_code_efficiency(model)
+        quality_metrics = evaluate_code_quality(model)
+        intent_metrics = measure_user_intent_alignment(model)
         
         # Calculate percentages
         basic_percent = (basic_results['passed_tests'] / basic_results['total_tests'] * 100) if basic_results['total_tests'] > 0 else 0
@@ -671,6 +743,12 @@ Data wygenerowania: {timestamp}
         chart_data["basic_test_scores"].append(basic_percent)
         chart_data["correctness_scores"].append(correctness_percent)
         chart_data["performance_times"].append(avg_time)
+        
+        # Add new metrics to chart data
+        chart_data["code_correctness"].append(accuracy_metrics["code_correctness_score"])
+        chart_data["explanation_quality"].append(quality_metrics["explanation_clarity"])
+        chart_data["code_efficiency"].append(efficiency_metrics["overall_efficiency_score"])
+        chart_data["user_alignment"].append(intent_metrics["overall_intent_alignment"])
     
     # Create chart HTML
     bar_chart_html = f"""
@@ -756,11 +834,149 @@ Data wygenerowania: {timestamp}
 </div>
 """
     
+    # Add radar chart for comprehensive model comparison
+    radar_chart_html = f"""
+<div style="width: 80%; margin: 20px auto;">
+    <canvas id="radar-chart" class="evopy-chart" data-chart='{{
+        "type": "radar",
+        "data": {{
+            "labels": [
+                "Poprawność kodu", 
+                "Jakość wyjaśnień", 
+                "Wydajność kodu", 
+                "Zgodność z intencjami",
+                "Testy podstawowe"
+            ],
+            "datasets": [
+                {{
+                    "label": "{chart_data['models'][0] if len(chart_data['models']) > 0 else 'Model 1'}",
+                    "data": [
+                        {chart_data['code_correctness'][0] if len(chart_data['code_correctness']) > 0 else 0},
+                        {chart_data['explanation_quality'][0] if len(chart_data['explanation_quality']) > 0 else 0},
+                        {chart_data['code_efficiency'][0] if len(chart_data['code_efficiency']) > 0 else 0},
+                        {chart_data['user_alignment'][0] if len(chart_data['user_alignment']) > 0 else 0},
+                        {chart_data['basic_test_scores'][0] if len(chart_data['basic_test_scores']) > 0 else 0}
+                    ],
+                    "fill": true,
+                    "backgroundColor": "rgba(54, 162, 235, 0.2)",
+                    "borderColor": "rgba(54, 162, 235, 1)",
+                    "pointBackgroundColor": "rgba(54, 162, 235, 1)",
+                    "pointBorderColor": "#fff",
+                    "pointHoverBackgroundColor": "#fff",
+                    "pointHoverBorderColor": "rgba(54, 162, 235, 1)"
+                }},
+                {{
+                    "label": "{chart_data['models'][1] if len(chart_data['models']) > 1 else 'Model 2'}",
+                    "data": [
+                        {chart_data['code_correctness'][1] if len(chart_data['code_correctness']) > 1 else 0},
+                        {chart_data['explanation_quality'][1] if len(chart_data['explanation_quality']) > 1 else 0},
+                        {chart_data['code_efficiency'][1] if len(chart_data['code_efficiency']) > 1 else 0},
+                        {chart_data['user_alignment'][1] if len(chart_data['user_alignment']) > 1 else 0},
+                        {chart_data['basic_test_scores'][1] if len(chart_data['basic_test_scores']) > 1 else 0}
+                    ],
+                    "fill": true,
+                    "backgroundColor": "rgba(255, 99, 132, 0.2)",
+                    "borderColor": "rgba(255, 99, 132, 1)",
+                    "pointBackgroundColor": "rgba(255, 99, 132, 1)",
+                    "pointBorderColor": "#fff",
+                    "pointHoverBackgroundColor": "#fff",
+                    "pointHoverBorderColor": "rgba(255, 99, 132, 1)"
+                }}
+            ]
+        }},
+        "options": {{
+            "elements": {{
+                "line": {{
+                    "borderWidth": 3
+                }}
+            }},
+            "scales": {{
+                "r": {{
+                    "angleLines": {{
+                        "display": true
+                    }},
+                    "suggestedMin": 0,
+                    "suggestedMax": 100
+                }}
+            }},
+            "plugins": {{
+                "title": {{
+                    "display": true,
+                    "text": "Porównanie modeli w różnych kategoriach"
+                }}
+            }}
+        }}
+    }}'></canvas>
+</div>
+"""
+    
     # Add visualization section
     md_content += "\n## Wizualizacja wyników\n\n"
     md_content += "### Wykresy porównawcze\n\n"
+    md_content += radar_chart_html + "\n\n"
     md_content += bar_chart_html + "\n\n"
     md_content += line_chart_html + "\n\n"
+    
+    # Add trend analysis section
+    md_content += "\n## Analiza trendów\n\n"
+    md_content += "### Postępy w czasie\n\n"
+    
+    # Generate trend data for each model
+    for model in models:
+        history = load_historical_data(model, days=30)
+        if history:
+            md_content += f"#### Model: {model}\n\n"
+            
+            # Create trend indicators
+            pass_rate_trend = []
+            time_trend = []
+            efficiency_trend = []
+            
+            for i in range(1, len(history)):
+                # Pass rate trend
+                prev_pass = history[i-1].get("pass_rate", 0)
+                curr_pass = history[i].get("pass_rate", 0)
+                if curr_pass > prev_pass:
+                    pass_rate_trend.append("↑")
+                elif curr_pass < prev_pass:
+                    pass_rate_trend.append("↓")
+                else:
+                    pass_rate_trend.append("→")
+                
+                # Time trend (lower is better)
+                prev_time = history[i-1].get("avg_time", 0)
+                curr_time = history[i].get("avg_time", 0)
+                if curr_time < prev_time and prev_time > 0:
+                    time_trend.append("↑")
+                elif curr_time > prev_time and prev_time > 0:
+                    time_trend.append("↓")
+                else:
+                    time_trend.append("→")
+                
+                # Efficiency trend
+                prev_eff = history[i-1].get("code_efficiency_score", 0)
+                curr_eff = history[i].get("code_efficiency_score", 0)
+                if curr_eff > prev_eff:
+                    efficiency_trend.append("↑")
+                elif curr_eff < prev_eff:
+                    efficiency_trend.append("↓")
+                else:
+                    efficiency_trend.append("→")
+            
+            # Display trend indicators
+            if pass_rate_trend:
+                pass_trend_str = "".join(pass_rate_trend[-5:]) if len(pass_rate_trend) > 5 else "".join(pass_rate_trend)
+                time_trend_str = "".join(time_trend[-5:]) if len(time_trend) > 5 else "".join(time_trend)
+                eff_trend_str = "".join(efficiency_trend[-5:]) if len(efficiency_trend) > 5 else "".join(efficiency_trend)
+                
+                md_content += f"- **Poprawność kodu**: {pass_trend_str} (ostatnie {min(5, len(pass_rate_trend))} testów)\n"
+                md_content += f"- **Czas wykonania**: {time_trend_str} (ostatnie {min(5, len(time_trend))} testów)\n"
+                md_content += f"- **Wydajność kodu**: {eff_trend_str} (ostatnie {min(5, len(efficiency_trend))} testów)\n\n"
+            else:
+                md_content += "- Brak wystarczających danych historycznych do analizy trendów\n\n"
+        else:
+            md_content += f"#### Model: {model}\n\n"
+            md_content += "- Brak danych historycznych\n\n"
     
     # Add detailed results section
     md_content += "\n## Szczegółowe wyniki testów\n\n"
