@@ -36,12 +36,14 @@ LOG_FILE = LOG_DIR / "resource_monitor.log"
 os.makedirs(LOG_DIR, exist_ok=True)
 
 # Konfiguracja logowania z rotacją
+from logging.handlers import RotatingFileHandler
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.handlers.RotatingFileHandler(
+        RotatingFileHandler(
             LOG_FILE, 
             maxBytes=LOG_ROTATION_SIZE, 
             backupCount=LOG_ROTATION_COUNT

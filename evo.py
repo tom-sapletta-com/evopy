@@ -1322,6 +1322,169 @@ class EvoAssistant:
         except Exception as e:
             print(f"{Colors.RED}Błąd podczas wyświetlania informacji o zasobach: {e}{Colors.END}")
     
+    def _docker_command(self, operation: str, args: List[str]):
+        """Wykonuje operacje Docker
+        
+        Args:
+            operation: Rodzaj operacji (ps, images, network, info)
+            args: Dodatkowe argumenty dla operacji
+        """
+        try:
+            # Sprawdź, czy Docker jest zainstalowany
+            try:
+                subprocess.run(["docker", "--version"], check=True, capture_output=True)
+            except (subprocess.CalledProcessError, FileNotFoundError):
+                print(f"{Colors.RED}Docker nie jest zainstalowany lub nie jest dostępny.{Colors.END}")
+                return
+            
+            # Wykonaj odpowiednią operację Docker
+            if operation == "ps":
+                # Listowanie kontenerów
+                cmd = ["docker", "ps", "--format", "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"]
+                if args and args[0] == "-a":
+                    cmd = ["docker", "ps", "-a", "--format", "table {{.ID}}\t{{.Image}}\t{{.Status}}\t{{.Names}}"]
+                
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Aktywne kontenery Docker:{Colors.END}")
+                    print(f"{Colors.CYAN}{result.stdout}{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas listowania kontenerów: {result.stderr}{Colors.END}")
+            
+            elif operation == "images":
+                # Listowanie obrazów
+                cmd = ["docker", "images", "--format", "table {{.Repository}}\t{{.Tag}}\t{{.ID}}\t{{.Size}}"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Obrazy Docker:{Colors.END}")
+                    print(f"{Colors.CYAN}{result.stdout}{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas listowania obrazów: {result.stderr}{Colors.END}")
+            
+            elif operation == "network":
+                # Listowanie sieci
+                cmd = ["docker", "network", "ls", "--format", "table {{.ID}}\t{{.Name}}\t{{.Driver}}"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Sieci Docker:{Colors.END}")
+                    print(f"{Colors.CYAN}{result.stdout}{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas listowania sieci: {result.stderr}{Colors.END}")
+            
+            elif operation == "info":
+                # Informacje o systemie Docker
+                cmd = ["docker", "info"]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Informacje o systemie Docker:{Colors.END}")
+                    print(f"{Colors.CYAN}{result.stdout}{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas pobierania informacji: {result.stderr}{Colors.END}")
+            
+            elif operation == "logs":
+                # Logi kontenera
+                if not args:
+                    print(f"{Colors.RED}Nie podano nazwy kontenera. Użyj: /docker logs <nazwa_kontenera>{Colors.END}")
+                    return
+                
+                container_name = args[0]
+                cmd = ["docker", "logs", container_name]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Logi kontenera {container_name}:{Colors.END}")
+                    print(f"{Colors.CYAN}{result.stdout}{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas pobierania logów: {result.stderr}{Colors.END}")
+            
+            elif operation == "stop":
+                # Zatrzymanie kontenera
+                if not args:
+                    print(f"{Colors.RED}Nie podano nazwy kontenera. Użyj: /docker stop <nazwa_kontenera>{Colors.END}")
+                    return
+                
+                container_name = args[0]
+                cmd = ["docker", "stop", container_name]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Kontener {container_name} został zatrzymany.{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas zatrzymywania kontenera: {result.stderr}{Colors.END}")
+            
+            elif operation == "start":
+                # Uruchomienie kontenera
+                if not args:
+                    print(f"{Colors.RED}Nie podano nazwy kontenera. Użyj: /docker start <nazwa_kontenera>{Colors.END}")
+                    return
+                
+                container_name = args[0]
+                cmd = ["docker", "start", container_name]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Kontener {container_name} został uruchomiony.{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas uruchamiania kontenera: {result.stderr}{Colors.END}")
+            
+            elif operation == "rm":
+                # Usunięcie kontenera
+                if not args:
+                    print(f"{Colors.RED}Nie podano nazwy kontenera. Użyj: /docker rm <nazwa_kontenera>{Colors.END}")
+                    return
+                
+                container_name = args[0]
+                cmd = ["docker", "rm", container_name]
+                result = subprocess.run(cmd, capture_output=True, text=True)
+                if result.returncode == 0:
+                    print(f"{Colors.GREEN}Kontener {container_name} został usunięty.{Colors.END}")
+                else:
+                    print(f"{Colors.RED}Błąd podczas usuwania kontenera: {result.stderr}{Colors.END}")
+            
+            elif operation == "modules":
+                # Uruchom serwer modułów konwersji
+                print(f"{Colors.BLUE}Uruchamianie serwera modułów konwersji...{Colors.END}")
+                
+                # Sprawdź, czy katalog modułów istnieje
+                modules_dir = os.path.join(APP_DIR, "modules")
+                if not os.path.exists(modules_dir):
+                    print(f"{Colors.RED}Katalog modułów nie istnieje: {modules_dir}{Colors.END}")
+                    return
+                
+                # Sprawdź, czy skrypt uruchomieniowy istnieje w nowej strukturze
+                run_script = os.path.join(modules_dir, "run_server.sh")
+                
+                # Jeśli nie istnieje w nowej strukturze, sprawdź starą strukturę
+                if not os.path.exists(run_script):
+                    old_modules_dir = os.path.join(modules_dir, "converters")
+                    if os.path.exists(old_modules_dir):
+                        run_script = os.path.join(old_modules_dir, "run.sh")
+                        if not os.path.exists(run_script):
+                            run_script = os.path.join(old_modules_dir, "run_server.sh")
+                            if not os.path.exists(run_script):
+                                run_script = os.path.join(old_modules_dir, "run.py")
+                                if not os.path.exists(run_script):
+                                    print(f"{Colors.RED}Nie znaleziono skryptu uruchomieniowego w katalogu modułów.{Colors.END}")
+                                    return
+                        modules_dir = old_modules_dir
+                    else:
+                        print(f"{Colors.RED}Nie znaleziono skryptu uruchomieniowego w katalogu modułów.{Colors.END}")
+                        return
+                
+                # Uruchom skrypt w tle
+                if run_script.endswith(".sh"):
+                    subprocess.Popen(["bash", run_script], cwd=modules_dir)
+                else:
+                    subprocess.Popen([sys.executable, run_script], cwd=modules_dir)
+                
+                print(f"{Colors.GREEN}Serwer modułów konwersji został uruchomiony.{Colors.END}")
+                print(f"{Colors.GREEN}Interfejs dostępny pod adresem: http://localhost:5000{Colors.END}")
+            
+            else:
+                print(f"{Colors.RED}Nieznana operacja Docker: {operation}{Colors.END}")
+                print(f"{Colors.YELLOW}Dostępne operacje: ps, images, network, info, logs, stop, start, rm, modules{Colors.END}")
+        
+        except Exception as e:
+            logger.error(f"Błąd podczas wykonywania komendy Docker: {str(e)}")
+            print(f"{Colors.RED}Wystąpił błąd: {str(e)}{Colors.END}")
+    
     def _format_bytes(self, bytes_value):
         """Formatuje bajty do czytelnej postaci"""
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
