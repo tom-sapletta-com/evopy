@@ -3,6 +3,21 @@ layout: default
 title: Umiejętności Junior Programisty
 ---
 
+
+<!-- MENU_START -->
+<div class="navigation-menu">
+  <ul>
+    <li><a href="index.md">📚 Główna dokumentacja</a></li>
+    <li><a href="reports/index.md">📊 Raporty testów</a></li>
+    <li><a href="TESTING.md">🧪 Instrukcja testowania</a></li>
+    <li><a href="sandbox_architecture.md">🏗️ Architektura piaskownic</a></li>
+    <li class="current"><a href="junior_programmer_skills.md">💻 Umiejętności programistyczne</a></li>
+    <li><a href="project_guidelines.md">📝 Wytyczne projektu</a></li>
+    <li><a href="cross_platform.md">🖥️ Wsparcie cross-platform</a></li>
+    <li><a href="mermaid_test.md">📊 Testy diagramów Mermaid</a></li>
+  </ul>
+</div>
+<!-- MENU_END -->
 # 100 Umiejętności Junior Programisty i Implementacja w Evopy
 
 Poniżej znajduje się lista 100 umiejętności, które powinien posiadać junior programista, wraz z opisem jak platforma evopy może implementować te umiejętności jako usługi w środowisku private sandbox.

@@ -3,6 +3,21 @@ layout: default
 title: Evopy Documentation
 ---
 
+
+<!-- MENU_START -->
+<div class="navigation-menu">
+  <ul>
+    <li class="current"><a href="index.md">📚 Główna dokumentacja</a></li>
+    <li><a href="reports/index.md">📊 Raporty testów</a></li>
+    <li><a href="TESTING.md">🧪 Instrukcja testowania</a></li>
+    <li><a href="sandbox_architecture.md">🏗️ Architektura piaskownic</a></li>
+    <li><a href="junior_programmer_skills.md">💻 Umiejętności programistyczne</a></li>
+    <li><a href="project_guidelines.md">📝 Wytyczne projektu</a></li>
+    <li><a href="cross_platform.md">🖥️ Wsparcie cross-platform</a></li>
+    <li><a href="mermaid_test.md">📊 Testy diagramów Mermaid</a></li>
+  </ul>
+</div>
+<!-- MENU_END -->
 # Evopy Documentation
 
 Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewoluować z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker. Asystent wspiera konwersję tekstu na kod Python i zarządzanie projektami w kontenerach Docker.

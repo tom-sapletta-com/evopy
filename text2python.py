@@ -8,18 +8,19 @@ wyrażonych w języku naturalnym na funkcje Python.
 
 import os
 import re
-import ast
+import sys
 import json
+import time
 import logging
 import subprocess
-from pathlib import Path
-from typing import Dict, List, Any, Optional, Union, Tuple
-from datetime import datetime
+from typing import Dict, List, Any, Optional, Tuple, Union
 
-# Import modułu drzewa decyzyjnego
-from decision_tree import create_decision_tree, DecisionTree
-
-logger = logging.getLogger("evo-assistant.text2python")
+# Konfiguracja logowania
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('text2python')
 
 class Text2Python:
     """Klasa do konwersji tekstu na kod Python"""
@@ -525,3 +526,6 @@ Podaj krótką analizę w formacie JSON z polami: 'is_logical' (true/false), 'ma
             logger.error(f"Błąd podczas generowania wyjaśnienia: {e}")
             return f"Nie udało się wygenerować wyjaśnienia: {str(e)}"
 
+    def __str__(self):
+        """Reprezentacja tekstowa obiektu"""
+        return f"Text2Python(model={self.model_name})"

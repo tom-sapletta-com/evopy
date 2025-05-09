@@ -3,6 +3,21 @@ layout: default
 title: Cross-Platform Guide
 ---
 
+
+<!-- MENU_START -->
+<div class="navigation-menu">
+  <ul>
+    <li><a href="index.md">📚 Główna dokumentacja</a></li>
+    <li><a href="reports/index.md">📊 Raporty testów</a></li>
+    <li><a href="TESTING.md">🧪 Instrukcja testowania</a></li>
+    <li><a href="sandbox_architecture.md">🏗️ Architektura piaskownic</a></li>
+    <li><a href="junior_programmer_skills.md">💻 Umiejętności programistyczne</a></li>
+    <li><a href="project_guidelines.md">📝 Wytyczne projektu</a></li>
+    <li class="current"><a href="cross_platform.md">🖥️ Wsparcie cross-platform</a></li>
+    <li><a href="mermaid_test.md">📊 Testy diagramów Mermaid</a></li>
+  </ul>
+</div>
+<!-- MENU_END -->
 # Cross-Platform Guide for Evopy
 
 Evopy now works seamlessly across different operating systems including Linux (Fedora), Windows 11, and macOS. This guide explains how to install and use Evopy on different platforms.
