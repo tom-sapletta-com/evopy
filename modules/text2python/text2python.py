@@ -18,6 +18,13 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, Union
 
+# Import math_expressions module
+try:
+    from modules.utils.math_expressions import is_math_expression, handle_math_expression
+except ImportError:
+    # Jeśli ścieżka jest inna, dostosuj import
+    from math_expressions import is_math_expression, handle_math_expression
+
 # Próba importu modułu decision_tree
 try:
     from decision_tree import create_decision_tree
@@ -140,8 +147,18 @@ class Text2Python:
             # Sprawdź czy zapytanie jest prostym wyrażeniem arytmetycznym
             # W klasie Text2Python, w metodzie generate_code, znajdź i zmodyfikuj ten fragment:
 
-            # Sprawdź czy zapytanie jest prostym wyrażeniem arytmetycznym
-            import re
+            # Sprawdź czy zapytanie jest wyrażeniem matematycznym
+            if is_math_expression(prompt):
+                logger.info(f"Wykryto wyrażenie matematyczne: '{prompt}'")
+                math_result = handle_math_expression(prompt)
+                
+                # Jeśli potrzebne, dostosuj ścieżkę do pliku kodu
+                if self.code_dir and math_result.get("code_file"):
+                    math_result["code_file"] = str(self.code_dir / f"{math_result['code_id']}.py")
+                
+                return math_result
+
+            # Oryginalny kod dla prostych wyrażeń arytmetycznych (pozostawiony jako fallback)
             arithmetic_pattern = re.compile(r'^\s*(\d+\s*[+\-*/]\s*\d+)\s*$')
             match = arithmetic_pattern.match(prompt)
 
@@ -150,49 +167,8 @@ class Text2Python:
                 expression = match.group(1).strip()
                 logger.info(f"Wykryto proste wyrażenie arytmetyczne: {expression}")
 
-                # Rozdziel wyrażenie na operandy i operator
-                match_parts = re.match(r'\s*(\d+)\s*([+\-*/])\s*(\d+)\s*', expression)
-                if match_parts:
-                    x, operator, y = match_parts.groups()
-                    # Zawsze używaj wersji z zmiennymi x i y
-                    code = f"def execute():\n    # Obliczenie wyrażenia {expression} przy użyciu zmiennych\n    x = {x}\n    y = {y}\n    result = x {operator} y\n    return result"
-                    # Generuj wyjaśnienie z użyciem zmiennych
-                    explanation = f"Ten kod wykonuje proste obliczenie matematyczne: {expression}.\n\nFunkcja 'execute':\n1. Definiuje zmienne x = {x} i y = {y}\n2. Oblicza wynik operacji x {operator} y\n3. Zwraca obliczony wynik\n\nTakie podejście z użyciem zmiennych jest bardziej czytelne i pozwala na łatwą modyfikację wartości w przyszłości.\n\nCzy to jest to, czego oczekiwałeś?"
-                else:
-                    # Fallback jeśli nie uda się rozdzielić wyrażenia
-                    code = f"def execute():\n    # Obliczenie wyrażenia {expression}\n    result = {expression}\n    return result"
-                    # Generuj wyjaśnienie dla prostego obliczenia
-                    explanation = f"Ten kod wykonuje proste obliczenie matematyczne: {expression}.\n\nFunkcja 'execute' oblicza wartość wyrażenia {expression} i zwraca wynik.\n\nCzy to jest to, czego oczekiwałeś?"
-
-                # Utwórz analizę
-                analysis = {
-                    "is_logical": True,
-                    "matches_intent": True,
-                    "issues": [],
-                    "suggestions": []
-                }
-
-                # Zapisz kod do pliku jeśli podano katalog
-                code_id = str(uuid.uuid4())
-                code_file = None
-                if self.code_dir:
-                    code_file = self.code_dir / f"{code_id}.py"
-                    with open(code_file, "w", encoding="utf-8") as f:
-                        f.write(code)
-
-                return {
-                    "success": True,
-                    "code": code,
-                    "code_id": code_id,
-                    "code_file": str(code_file) if code_file else None,
-                    "explanation": explanation,
-                    "analysis": "Kod wydaje się poprawny i zgodny z intencją.",
-                    "analysis_details": analysis,
-                    "matches_intent": True,
-                    "is_logical": True,
-                    "suggestions": [],
-                    "timestamp": datetime.now().isoformat()
-                }
+                # Użyj funkcji handle_math_expression zamiast oryginalnego kodu
+                return handle_math_expression(expression)
 
             # Upewnij się, że model jest dostępny
             if not self.ensure_model_available():
