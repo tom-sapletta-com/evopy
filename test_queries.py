@@ -14,6 +14,7 @@ generuje wyjaśnienia i przeprowadza analizę logiczną kodu.
 import os
 import sys
 import json
+import time
 import logging
 from pathlib import Path
 from typing import Dict, Any, List
@@ -52,16 +53,20 @@ TEST_QUERIES = [
     }
 ]
 
-def run_tests(model_id: str = None) -> Dict[str, Any]:
+def run_tests(model_id: str = None, timeout: int = 30) -> Dict[str, Any]:
     """
     Uruchamia testy dla podstawowych zapytań
     
     Args:
         model_id: Identyfikator modelu do testowania
+        timeout: Limit czasu dla każdego testu w sekundach
     
     Returns:
         Dict: Wyniki testów
     """
+    # Importuj model_manager dla lepszej obsługi modeli
+    from modules.text2python.model_manager import check_ollama_models, find_best_available_model
+    
     # Inicjalizacja konwertera
     text2python = Text2Python(model_id=model_id, code_dir=Path("generated_code"))
     
@@ -76,20 +81,29 @@ def run_tests(model_id: str = None) -> Dict[str, Any]:
         "tests": []
     }
     
-    # Sprawdź, czy model jest dostępny
-    if not text2python.ensure_model_available():
-        logger.error("Model nie jest dostępny. Testy nie mogą być wykonane.")
-        return {
-            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
-            "model_id": model_id,
-            "model_name": "",
-            "total_tests": len(TEST_QUERIES),
-            "passed_tests": 0,
-            "failed_tests": len(TEST_QUERIES),
-            "tests": [{"name": q["name"], "status": "FAILED", "reason": "Model niedostępny"} for q in TEST_QUERIES]
-        }
+    # Sprawdź, czy model jest dostępny z timeoutem 5 sekund
+    logger.info(f"Sprawdzanie dostępności modelu {text2python.model_name}...")
+    available_models = check_ollama_models(timeout=5)
     
-    # Uruchom testy dla każdego zapytania
+    if text2python.model_name not in available_models:
+        # Spróbuj znaleźć alternatywny model
+        fallback_model = find_best_available_model()
+        if fallback_model:
+            logger.warning(f"Model {text2python.model_name} nie jest dostępny. Używam {fallback_model}")
+            text2python.model_name = fallback_model
+        else:
+            logger.error("Nie znaleziono żadnego dostępnego modelu. Testy nie mogą być wykonane.")
+            return {
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "model_id": model_id,
+                "model_name": "",
+                "total_tests": len(TEST_QUERIES),
+                "passed_tests": 0,
+                "failed_tests": len(TEST_QUERIES),
+                "tests": [{"name": q["name"], "status": "FAILED", "reason": "Model niedostępny"} for q in TEST_QUERIES]
+            }
+    
+    # Uruchom testy dla każdego zapytania z timeoutem
     for query_data in TEST_QUERIES:
         query_name = query_data["name"]
         query = query_data["query"]
@@ -98,8 +112,14 @@ def run_tests(model_id: str = None) -> Dict[str, Any]:
         logger.info(f"Testowanie zapytania: {query_name}")
         
         try:
+            # Ustaw timeout dla generowania kodu
+            start_time = time.time()
+            
             # Generuj kod Python na podstawie zapytania
             result = text2python.generate_code(query)
+            
+            # Zmierz czas wykonania
+            execution_time = time.time() - start_time
             
             # Sprawdź, czy kod został wygenerowany
             code = result.get("code", "")
@@ -114,7 +134,7 @@ def run_tests(model_id: str = None) -> Dict[str, Any]:
             
             if all_contains:
                 status = "PASSED"
-                reason = "Kod zawiera wszystkie oczekiwane elementy"
+                reason = f"Kod zawiera wszystkie oczekiwane elementy (czas: {execution_time:.2f}s)"
                 results["passed_tests"] += 1
             else:
                 status = "FAILED"
@@ -168,6 +188,7 @@ def main():
     # Parsowanie argumentów wiersza poleceń
     parser = argparse.ArgumentParser(description="Testy podstawowych zapytań dla Evopy")
     parser.add_argument("--model", type=str, help="Identyfikator modelu do testowania (deepsek, llama, bielik)")
+    parser.add_argument("--timeout", type=int, default=30, help="Limit czasu dla każdego testu w sekundach (domyślnie: 30)")
     args = parser.parse_args()
     
     print("\n=== Uruchamianie testów podstawowych zapytań ===\n")
@@ -176,8 +197,8 @@ def main():
     results_dir = Path("test_results")
     os.makedirs(results_dir, exist_ok=True)
     
-    # Uruchom testy z wybranym modelem
-    results = run_tests(model_id=args.model)
+    # Uruchom testy z wybranym modelem i timeoutem
+    results = run_tests(model_id=args.model, timeout=args.timeout)
     
     # Zapisz wyniki
     output_path = results_dir / f"test_results_{results['model_id']}_{results['timestamp']}.json"

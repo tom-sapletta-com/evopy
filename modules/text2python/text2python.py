@@ -122,50 +122,23 @@ class Text2Python:
             bool: True jeśli model jest dostępny, False w przeciwnym przypadku
         """
         try:
-            # Sprawdź czy model jest dostępny
+            # Użyj nowego model_manager do sprawdzenia dostępności modelu
+            from .model_manager import check_ollama_models, pull_model, find_best_available_model
+            
+            # Sprawdź czy model jest dostępny (z timeoutem 5 sekund)
             logger.info(f"Sprawdzanie dostępności modelu {self.model_name}...")
-            check_cmd = ["ollama", "list"]
-            result = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            
-            if result.returncode != 0:
-                logger.error(f"Błąd podczas sprawdzania modeli Ollama: {result.stderr}")
-                return self._fallback_to_default_model("Błąd podczas sprawdzania modeli Ollama")
-            
-            # Pobierz listę dostępnych modeli
-            available_models_raw = result.stdout.strip().split('\n')[1:] if result.stdout.strip() else []
-            available_models = []
-            
-            # Przetwórz listę dostępnych modeli
-            for model_line in available_models_raw:
-                if not model_line.strip():
-                    continue
-                model_parts = model_line.split()
-                if len(model_parts) > 0:
-                    model_name = model_parts[0].split(':')[0]
-                    available_models.append(model_name)
+            available_models = check_ollama_models(timeout=5)
             
             # Sprawdź czy model jest na liście
             if self.model_name not in available_models:
                 logger.warning(f"Model {self.model_name} nie jest dostępny. Próba pobrania...")
                 
-                # Próba pobrania modelu
-                try:
-                    pull_cmd = ["ollama", "pull", self.model_name]
-                    pull_result = subprocess.run(pull_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
-                    
-                    if pull_result.returncode != 0:
-                        error_msg = f"Błąd podczas pobierania modelu: {pull_result.stderr}"
-                        logger.error(error_msg)
-                        return self._fallback_to_default_model(error_msg, available_models)
-                    
+                # Próba pobrania modelu (z timeoutem 60 sekund)
+                if pull_model(self.model_name, timeout=60):
                     logger.info(f"Model {self.model_name} został pomyślnie pobrany")
                     return True
-                except subprocess.TimeoutExpired:
-                    error_msg = f"Przekroczono limit czasu podczas pobierania modelu {self.model_name}"
-                    logger.error(error_msg)
-                    return self._fallback_to_default_model(error_msg, available_models)
-                except Exception as e:
-                    error_msg = f"Nie można pobrać modelu {self.model_name}: {str(e)}"
+                else:
+                    error_msg = f"Nie można pobrać modelu {self.model_name}"
                     logger.error(error_msg)
                     return self._fallback_to_default_model(error_msg, available_models)
             else:
@@ -187,55 +160,25 @@ class Text2Python:
         Returns:
             bool: True jeśli udało się znaleźć model zastępczy, False w przeciwnym przypadku
         """
+        # Użyj nowego model_manager do znalezienia najlepszego dostępnego modelu
+        from .model_manager import find_best_available_model, check_ollama_models
+        
         # Preferowana kolejność modeli zastępczych
-        preferred_models = ["llama3", "deepseek-coder", "phi", "mistral", "llama2"]
+        preferred_models = ["llama3", "deepseek-coder", "phi3", "mistral", "bielik"]
         
         if available_models is None:
-            # Spróbuj ponownie pobrać listę modeli
-            try:
-                check_cmd = ["ollama", "list"]
-                result = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                
-                if result.returncode == 0:
-                    available_models_raw = result.stdout.strip().split('\n')[1:] if result.stdout.strip() else []
-                    available_models = []
-                    
-                    for model_line in available_models_raw:
-                        if not model_line.strip():
-                            continue
-                        model_parts = model_line.split()
-                        if len(model_parts) > 0:
-                            model_name = model_parts[0].split(':')[0]
-                            available_models.append(model_name)
-                else:
-                    logger.error(f"Nie można pobrać listy modeli: {result.stderr}")
-                    available_models = []
-            except Exception as e:
-                logger.error(f"Błąd podczas pobierania listy modeli: {str(e)}")
-                available_models = []
+            # Pobierz listę dostępnych modeli z timeoutem
+            available_models = check_ollama_models(timeout=5)
         
-        # Jeśli nie ma dostępnych modeli, zwróć False
-        if not available_models:
-            logger.error("Brak dostępnych modeli Ollama")
-            return False
-        
-        # Znajdź pierwszy preferowany model, który jest dostępny
-        fallback_model = None
-        for model in preferred_models:
-            if model in available_models and model != self.model_name:
-                fallback_model = model
-                break
-        
-        # Jeśli nie znaleziono preferowanego modelu, użyj pierwszego dostępnego
-        if fallback_model is None and available_models:
-            fallback_model = available_models[0]
+        # Znajdź najlepszy dostępny model
+        fallback_model = find_best_available_model(preferred_models)
         
         if fallback_model:
-            logger.warning(f"Używanie alternatywnego modelu: {fallback_model} (powód: {error_reason})")
+            logger.warning(f"Nie znaleziono modelu {self.model_name}, używam domyślnego ({fallback_model})")
             self.model_name = fallback_model
             return True
         else:
-            logger.error("Nie znaleziono odpowiedniego modelu zastępczego")
+            logger.error(f"Nie znaleziono żadnego dostępnego modelu zastępczego")
             return False
     
     def _calculate_complexity(self, text: str) -> float:
@@ -345,24 +288,19 @@ class Text2Python:
                 parent_id=root_node_id
             )
             
-            # Wywołaj model Ollama dla generowania kodu
-            cmd = [
-                "ollama", "run", self.model_name,
-                combined_prompt_code
-            ]
+            # Użyj nowego model_manager do uruchomienia modelu z timeoutem
+            from .model_manager import run_model_with_timeout
             
             logger.info(f"Generowanie kodu dla zapytania: {prompt[:50]}...")
             
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+            # Uruchom model z timeoutem 30 sekund
+            returncode, stdout, stderr = run_model_with_timeout(
+                model_name=self.model_name,
+                prompt=combined_prompt_code,
+                timeout=30
             )
             
-            stdout, stderr = process.communicate()
-            
-            if process.returncode != 0:
+            if returncode != 0:
                 logger.error(f"Błąd podczas generowania kodu: {stderr}")
                 self.decision_tree.set_node_result(code_node_id, False, f"Błąd: {stderr}")
                 return {
@@ -402,29 +340,26 @@ class Text2Python:
                 parent_id=code_node_id
             )
             
-            # Wywołaj model Ollama dla wyjaśnienia kodu
-            cmd_explain = [
-                "ollama", "run", self.model_name,
-                combined_prompt_explain
-            ]
+            # Użyj nowego model_manager do uruchomienia modelu z timeoutem
+            from .model_manager import run_model_with_timeout
             
-            process_explain = subprocess.Popen(
-                cmd_explain,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+            logger.info("Generowanie wyjaśnienia kodu...")
+            
+            # Uruchom model z timeoutem 20 sekund (wyjaśnienie powinno być szybsze niż generowanie kodu)
+            returncode, stdout, stderr = run_model_with_timeout(
+                model_name=self.model_name,
+                prompt=combined_prompt_explain,
+                timeout=20
             )
             
-            stdout_explain, stderr_explain = process_explain.communicate()
-            
-            explanation = ""
-            if process_explain.returncode == 0:
-                explanation = stdout_explain.strip()
-                self.decision_tree.set_node_result(explain_node_id, True, "Wygenerowano wyjaśnienie")
-            else:
-                logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr_explain}")
+            if returncode != 0:
+                logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr}")
+                self.decision_tree.set_node_result(explain_node_id, False, f"Błąd: {stderr}")
                 explanation = "Nie udało się wygenerować wyjaśnienia kodu."
-                self.decision_tree.set_node_result(explain_node_id, False, f"Błąd: {stderr_explain}")
+            else:
+                explanation = stdout.strip()
+                self.decision_tree.set_node_result(explain_node_id, True, "Wygenerowano wyjaśnienie")
+                self.decision_tree.add_node_metric(explain_node_id, "explanation_length", len(explanation))
             
             # Zapisz kod do pliku jeśli podano katalog
             code_id = str(uuid.uuid4())
@@ -532,24 +467,19 @@ Wyjaśnienie powinno być krótkie, ale kompletne, opisujące co kod robi krok p
             # Łączymy system prompt z właściwym promptem
             combined_prompt = f"{system_prompt}\n\n{prompt}"
             
-            # Wywołaj model Ollama
-            cmd = [
-                "ollama", "run", self.model_name,
-                combined_prompt
-            ]
+            # Użyj nowego model_manager do uruchomienia modelu z timeoutem
+            from .model_manager import run_model_with_timeout
             
             logger.info("Generowanie wyjaśnienia kodu...")
             
-            process = subprocess.Popen(
-                cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+            # Uruchom model z timeoutem 20 sekund (wyjaśnienie powinno być szybsze niż generowanie kodu)
+            returncode, stdout, stderr = run_model_with_timeout(
+                model_name=self.model_name,
+                prompt=combined_prompt,
+                timeout=20
             )
             
-            stdout, stderr = process.communicate()
-            
-            if process.returncode != 0:
+            if returncode != 0:
                 logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr}")
                 return f"Nie udało się wygenerować wyjaśnienia: {stderr}"
             
