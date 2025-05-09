@@ -8,14 +8,16 @@ wyrażonych w języku naturalnym na funkcje Python.
 
 import os
 import re
+import ast
 import json
-import time
-import uuid
 import logging
 import subprocess
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Tuple
 from datetime import datetime
+
+# Import modułu drzewa decyzyjnego
+from decision_tree import create_decision_tree, DecisionTree
 
 logger = logging.getLogger("evo-assistant.text2python")
 
@@ -35,6 +37,9 @@ class Text2Python:
         
         if self.code_dir:
             os.makedirs(self.code_dir, exist_ok=True)
+        
+        # Inicjalizacja drzewa decyzyjnego
+        self.decision_tree = create_decision_tree(name=f"Text2Python-{model_name}")
         
         # Upewnij się, że model jest dostępny
         self.ensure_model_available()
@@ -89,17 +94,50 @@ class Text2Python:
         Returns:
             Dict: Wygenerowany kod, metadane i wyjaśnienie kodu
         """
-        try:
-            # Walidacja i analiza zapytania
-            logger.info(f"Analizowanie zapytania: '{prompt}'")
+        logger.info(f"Analizowanie zapytania: '{prompt}'")
+        
+        # Oblicz złożoność zapytania
+        complexity = self._calculate_complexity(prompt)
+        
+        # Utwórz węzeł główny dla zapytania w drzewie decyzyjnym
+        root_node_id = self.decision_tree.add_node(
+            query=prompt,
+            decision_type="query_analysis",
+            content=f"Analizowanie zapytania: {prompt}"
+        )
+        
+        # Dodaj metrykę złożoności do węzła
+        self.decision_tree.add_node_metric(root_node_id, "complexity", complexity)
+        self.decision_tree.add_node_metric(root_node_id, "query_length", len(prompt))
+        
+        # Sprawdź, czy model jest dostępny
+        if not self.ensure_model_available():
+            # Zapisz informację o błędzie w drzewie decyzyjnym
+            self.decision_tree.set_node_result(root_node_id, False, "Model językowy nie jest dostępny")
+            self.decision_tree.save()
             
-            # Sprawdź czy zapytanie jest puste lub zawiera tylko znaki specjalne
-            if not prompt or prompt.strip() == "" or all(not c.isalnum() for c in prompt):
-                logger.warning(f"Otrzymano nieprawidłowe zapytanie: '{prompt}'")
-                return {
-                    "success": False,
-                    "code": "def execute():\n    return 'Proszę podać prawidłowe zapytanie'",
-                    "error": "Zapytanie jest puste lub zawiera tylko znaki specjalne",
+            return {
+                "success": False,
+                "code": "",
+                "error": "Model językowy nie jest dostępny"
+            }
+        
+        # Sprawdź czy zapytanie jest puste lub zawiera tylko znaki specjalne
+        if not prompt or prompt.strip() == "" or all(not c.isalnum() for c in prompt):
+            logger.warning(f"Otrzymano nieprawidłowe zapytanie: '{prompt}'")
+            return {
+                "success": False,
+                "code": "def execute():\n    return 'Proszę podać prawidłowe zapytanie'",
+                "error": "Zapytanie jest puste lub zawiera tylko znaki specjalne",
+                "analysis": "Nieprawidłowe zapytanie",
+                "explanation": "Twoje zapytanie nie zawierało wystarczających informacji do wygenerowania kodu."
+            }
+        
+        logger.info(f"Generowanie kodu dla zapytania: {prompt}...")
+        
+        # KROK 1: Konwersja tekstu na kod Python
+        # Przygotuj zapytanie do modelu dla generowania kodu
+        system_prompt_code = """Jesteś ekspertem w konwersji opisu w języku naturalnym na kod Python.
                     "analysis": "Nieprawidłowe zapytanie",
                     "explanation": "Twoje zapytanie nie zawierało wystarczających informacji do wygenerowania kodu."
                 }
@@ -354,6 +392,40 @@ Podaj krótką analizę w formacie JSON z polami: 'is_logical' (true/false), 'ma
 """
         
         return wrapped_code
+    
+    def _calculate_complexity(self, text: str) -> float:
+        """
+        Oblicza złożoność zapytania na podstawie różnych metryk
+        
+        Args:
+            text: Tekst zapytania
+            
+        Returns:
+            float: Wartość złożoności od 0.0 do 1.0
+        """
+        # Prosta heurystyka złożoności oparta na długości, liczbie słów kluczowych i strukturze
+        complexity = 0.0
+        
+        # Długość tekstu (0.0-0.3)
+        length_score = min(len(text) / 500.0, 1.0) * 0.3
+        complexity += length_score
+        
+        # Liczba słów kluczowych technicznych (0.0-0.4)
+        tech_keywords = ['plik', 'dane', 'oblicz', 'algorytm', 'funkcja', 'klasa', 'obiekt', 
+                       'lista', 'słownik', 'iteracja', 'rekurencja', 'sortowanie', 'filtrowanie',
+                       'API', 'baza danych', 'HTTP', 'JSON', 'XML', 'CSV', 'SQL', 'wykres',
+                       'analiza', 'statystyka', 'uczenie maszynowe', 'AI', 'sieć neuronowa']
+        
+        keyword_count = sum(1 for keyword in tech_keywords if keyword.lower() in text.lower())
+        keyword_score = min(keyword_count / 10.0, 1.0) * 0.4
+        complexity += keyword_score
+        
+        # Złożoność strukturalna (0.0-0.3) - liczba zdań, przecinków, nawiasów
+        structure_indicators = len(re.findall(r'[.!?]', text)) + len(re.findall(r',', text)) + len(re.findall(r'[()]', text))
+        structure_score = min(structure_indicators / 20.0, 1.0) * 0.3
+        complexity += structure_score
+        
+        return round(complexity, 2)
     
     def _create_default_analysis(self, text: str) -> dict:
         """

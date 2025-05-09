@@ -481,9 +481,23 @@ python -m evopy.monitor --script ./evopy/evo.py
 
 ## Rozwiązywanie problemów
 
+### Automatyczna naprawa zależności
+
+System Evopy zawiera wbudowany mechanizm autonaprawy zależności, który automatycznie rozwiązuje większość problemów związanych z brakującymi importami. Jeśli jednak nadal występują problemy, możesz:
+
+1. Sprawdzić logi błędów w katalogu `logs/`
+2. Zweryfikować, czy wszystkie wymagane pakiety są zainstalowane: `pip install -r requirements.txt`
+3. Uruchomić system w trybie debugowania: `./debug.sh`
+
+#### Typowe problemy z zależnościami
+
+- **Błąd `name 'X' is not defined`** - System powinien automatycznie naprawić ten błąd. Jeśli nadal występuje, dodaj ręcznie brakujący import na początku kodu.
+- **Błąd `ImportError: No module named X`** - Sprawdź, czy moduł jest dostępny w środowisku Python. Możesz go zainstalować za pomocą `pip install X`.
+- **Błędy w piaskownicy Docker** - Sprawdź, czy Docker jest poprawnie skonfigurowany i ma dostęp do internetu, aby pobrać potrzebne pakiety.
+
 ### Problemy z uruchomieniem modelu
 
-Jeśli wystąpią problemy z uruchomieniem modelu DeepSeek Coder, spróbuj:
+Jeśli wystąpią problemy z uruchomieniem modelu llama3, spróbuj:
 
 ```bash
 # Zatrzymaj wszystkie kontenery Ollama
