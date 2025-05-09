@@ -6,13 +6,13 @@ Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewolu
 
 | Sekcja | Opis |
 |--------|------|
-| [📊 Raporty testów](https://tom-sapletta-com.github.io/evopy/reports/) | Raporty porównawcze modeli LLM |
-| [🧪 Instrukcja testowania](https://tom-sapletta-com.github.io/evopy/TESTING) | Dokumentacja systemu testowego |
-| [🏗️ Architektura piaskownic](https://tom-sapletta-com.github.io/evopy/sandbox_architecture) | Opis architektury piaskownic Docker |
-| [💻 Umiejętności programistyczne](https://tom-sapletta-com.github.io/evopy/junior_programmer_skills) | Lista umiejętności junior programisty |
-| [📝 Wytyczne projektu](https://tom-sapletta-com.github.io/evopy/project_guidelines) | Wytyczne rozwoju projektu |
-| [🖥️ Wsparcie cross-platform](https://tom-sapletta-com.github.io/evopy/cross_platform) | Informacje o wsparciu dla różnych systemów |
-| [📊 Testy diagramów Mermaid](https://tom-sapletta-com.github.io/evopy/mermaid_test) | Przykłady diagramów Mermaid |
+| [📊 Raporty testów](https://tom-sapletta-com.github.io/evopy/reports/index.html) | Raporty porównawcze modeli LLM |
+| [🧪 Instrukcja testowania](https://tom-sapletta-com.github.io/evopy/TESTING.md) | Dokumentacja systemu testowego |
+| [🏗️ Architektura piaskownic](https://tom-sapletta-com.github.io/evopy/sandbox_architecture.md) | Opis architektury piaskownic Docker |
+| [💻 Umiejętności programistyczne](https://tom-sapletta-com.github.io/evopy/junior_programmer_skills.md) | Lista umiejętności junior programisty |
+| [📝 Wytyczne projektu](https://tom-sapletta-com.github.io/evopy/project_guidelines.md) | Wytyczne rozwoju projektu |
+| [🖥️ Wsparcie cross-platform](https://tom-sapletta-com.github.io/evopy/cross_platform.md) | Informacje o wsparciu dla różnych systemów |
+| [📊 Testy diagramów Mermaid](https://tom-sapletta-com.github.io/evopy/mermaid_test.md) | Przykłady diagramów Mermaid |
 
 [📚 Pełna dokumentacja online](https://tom-sapletta-com.github.io/evopy/)
 
@@ -35,7 +35,7 @@ Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewolu
 
 System został zaprojektowany w oparciu o architekturę ewolucyjną, która rozwija się w miarę użytkowania:
 
-![Diagram ewolucji asystenta](evolution_diagram)
+![Diagram ewolucji asystenta](docs/images/evolution_diagram.png)
 
 ```mermaid
 flowchart TB
