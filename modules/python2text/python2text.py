@@ -129,42 +129,113 @@ class Python2Text:
             
             if result.returncode != 0:
                 logger.error(f"Błąd podczas sprawdzania modeli Ollama: {result.stderr}")
-                return False
+                return self._fallback_to_default_model("Błąd podczas sprawdzania modeli Ollama")
+            
+            # Pobierz listę dostępnych modeli
+            available_models_raw = result.stdout.strip().split('\n')[1:] if result.stdout.strip() else []
+            available_models = []
+            
+            # Przetwórz listę dostępnych modeli
+            for model_line in available_models_raw:
+                if not model_line.strip():
+                    continue
+                model_parts = model_line.split()
+                if len(model_parts) > 0:
+                    model_name = model_parts[0].split(':')[0]
+                    available_models.append(model_name)
             
             # Sprawdź czy model jest na liście
-            if self.model_name not in result.stdout:
+            if self.model_name not in available_models:
                 logger.warning(f"Model {self.model_name} nie jest dostępny. Próba pobrania...")
                 
                 # Próba pobrania modelu
                 try:
                     pull_cmd = ["ollama", "pull", self.model_name]
-                    pull_result = subprocess.run(pull_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+                    pull_result = subprocess.run(pull_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=60)
                     
                     if pull_result.returncode != 0:
-                        raise Exception(f"Błąd podczas pobierania modelu: {pull_result.stderr}")
+                        error_msg = f"Błąd podczas pobierania modelu: {pull_result.stderr}"
+                        logger.error(error_msg)
+                        return self._fallback_to_default_model(error_msg, available_models)
                     
                     logger.info(f"Model {self.model_name} został pomyślnie pobrany")
+                    return True
+                except subprocess.TimeoutExpired:
+                    error_msg = f"Przekroczono limit czasu podczas pobierania modelu {self.model_name}"
+                    logger.error(error_msg)
+                    return self._fallback_to_default_model(error_msg, available_models)
                 except Exception as e:
-                    logger.error(f"Nie można pobrać modelu {self.model_name}: {str(e)}")
-                    
-                    # Próba znalezienia alternatywnego modelu
-                    available_models = result.stdout.strip().split('\n')[1:] if result.stdout.strip() else []
-                    if available_models:
-                        # Wybierz pierwszy dostępny model
-                        alt_model = available_models[0].split()[0].split(':')[0]
-                        logger.warning(f"Używanie alternatywnego modelu: {alt_model}")
-                        self.model_name = alt_model
-                        return True
-                    else:
-                        logger.error("Brak dostępnych modeli Ollama")
-                        return False
+                    error_msg = f"Nie można pobrać modelu {self.model_name}: {str(e)}"
+                    logger.error(error_msg)
+                    return self._fallback_to_default_model(error_msg, available_models)
             else:
                 logger.info(f"Model {self.model_name} jest dostępny")
-            
-            return True
+                return True
             
         except Exception as e:
             logger.error(f"Nieoczekiwany błąd podczas sprawdzania modelu: {str(e)}")
+            return self._fallback_to_default_model(f"Nieoczekiwany błąd: {str(e)}")
+    
+    def _fallback_to_default_model(self, error_reason: str, available_models: list = None) -> bool:
+        """
+        Próbuje użyć alternatywnego modelu w przypadku problemów z wybranym modelem
+        
+        Args:
+            error_reason: Powód, dla którego potrzebny jest model zastępczy
+            available_models: Lista dostępnych modeli (opcjonalnie)
+            
+        Returns:
+            bool: True jeśli udało się znaleźć model zastępczy, False w przeciwnym przypadku
+        """
+        # Preferowana kolejność modeli zastępczych
+        preferred_models = ["llama3", "deepseek-coder", "phi", "mistral", "llama2"]
+        
+        if available_models is None:
+            # Spróbuj ponownie pobrać listę modeli
+            try:
+                check_cmd = ["ollama", "list"]
+                result = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                
+                if result.returncode == 0:
+                    available_models_raw = result.stdout.strip().split('\n')[1:] if result.stdout.strip() else []
+                    available_models = []
+                    
+                    for model_line in available_models_raw:
+                        if not model_line.strip():
+                            continue
+                        model_parts = model_line.split()
+                        if len(model_parts) > 0:
+                            model_name = model_parts[0].split(':')[0]
+                            available_models.append(model_name)
+                else:
+                    logger.error(f"Nie można pobrać listy modeli: {result.stderr}")
+                    available_models = []
+            except Exception as e:
+                logger.error(f"Błąd podczas pobierania listy modeli: {str(e)}")
+                available_models = []
+        
+        # Jeśli nie ma dostępnych modeli, zwróć False
+        if not available_models:
+            logger.error("Brak dostępnych modeli Ollama")
+            return False
+        
+        # Znajdź pierwszy preferowany model, który jest dostępny
+        fallback_model = None
+        for model in preferred_models:
+            if model in available_models and model != self.model_name:
+                fallback_model = model
+                break
+        
+        # Jeśli nie znaleziono preferowanego modelu, użyj pierwszego dostępnego
+        if fallback_model is None and available_models:
+            fallback_model = available_models[0]
+        
+        if fallback_model:
+            logger.warning(f"Używanie alternatywnego modelu: {fallback_model} (powód: {error_reason})")
+            self.model_name = fallback_model
+            return True
+        else:
+            logger.error("Nie znaleziono odpowiedniego modelu zastępczego")
             return False
     
     def _calculate_complexity(self, code: str) -> float:
