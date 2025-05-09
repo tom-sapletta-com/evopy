@@ -7,32 +7,8 @@ url: "https://tom-sapletta-com.github.io" # the base hostname & protocol for you
 markdown: kramdown
 remote_theme: pages-themes/primer@v0.6.0
 
-# Markdown processing
-kramdown:
-  math_engine: mathjax
-  syntax_highlighter: rouge
-  input: GFM
-  auto_ids: true
-  toc_levels: 1..3
-
 # GitHub metadata settings
 repository: tom-sapletta-com/evopy
-
-# Plugins
-plugins:
-  - jekyll-github-metadata
-  - jekyll-seo-tag
-  - jekyll-sitemap
-  - jekyll-feed
-  - jekyll-coffeescript
-  - jekyll-commonmark-ghpages
-  - jekyll-gist
-  - jekyll-paginate
-  - jekyll-relative-links
-  - jekyll-optional-front-matter
-  - jekyll-readme-index
-  - jekyll-default-layout
-  - jekyll-titles-from-headings
 
 # Exclude from processing
 exclude:
