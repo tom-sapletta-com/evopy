@@ -164,9 +164,15 @@ def run_tests(model_name="llama3", timeout=None, test_case=None):
     else:
         # Uruchom wszystkie testy
         successful_tests = 0
+        test_results = []
+        
         for case_name, case_data in test_cases.items():
-            success = run_test_case(text2python, case_name, case_data)
-            if success:
+            # Uruchom test i pobierz szczegółowe wyniki
+            test_result = run_test_case(text2python, case_name, case_data)
+            test_results.append(test_result)
+            
+            # Zliczaj udane testy
+            if test_result["status"] == "PASSED":
                 successful_tests += 1
         
         # Podsumowanie testów
@@ -181,7 +187,7 @@ def run_tests(model_name="llama3", timeout=None, test_case=None):
             "total_tests": total_tests,
             "passed_tests": successful_tests,
             "failed_tests": total_tests - successful_tests,
-            "details": []
+            "tests": test_results  # Dodajemy szczegółowe wyniki testów
         }
         
         return results
@@ -197,7 +203,7 @@ def run_test_case(text2python, case_name, case_data):
         case_data: Dane przypadku testowego
     
     Returns:
-        bool: True jeśli test zakończył się sukcesem, False w przeciwnym przypadku
+        dict: Słownik z informacjami o wyniku testu
     """
     logger.info(f"Testowanie przypadku: {case_name}")
     
@@ -250,15 +256,34 @@ def run_test_case(text2python, case_name, case_data):
             pass
         
         logger.info(f"Test {case_name} zakończony sukcesem (czas: {execution_time:.2f}s)")
-        return True
+        return {
+            "name": case_name,
+            "status": "PASSED",
+            "reason": f"Test zakończony sukcesem (czas: {execution_time:.2f}s)",
+            "execution_time": execution_time,
+            "code": code,
+            "explanation": explanation
+        }
         
     except subprocess.TimeoutExpired:
-        logger.error(f"Przekroczono limit czasu podczas generowania kodu dla zapytania: {query}")
-        return False
+        error_msg = f"Przekroczono limit czasu podczas generowania kodu dla zapytania: {query}"
+        logger.error(error_msg)
+        return {
+            "name": case_name,
+            "status": "FAILED",
+            "reason": error_msg,
+            "execution_time": time.time() - start_time
+        }
     except Exception as e:
-        logger.error(f"Błąd podczas testowania przypadku {case_name}: {str(e)}")
+        error_msg = f"Błąd podczas testowania przypadku {case_name}: {str(e)}"
+        logger.error(error_msg)
         logger.debug(f"Szczegóły błędu:", exc_info=True)
-        return False
+        return {
+            "name": case_name,
+            "status": "FAILED",
+            "reason": error_msg,
+            "execution_time": time.time() - start_time
+        }
 
 def save_results(results: Dict[str, Any], output_path: str = None) -> None:
     """
