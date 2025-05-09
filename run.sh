@@ -70,6 +70,20 @@ done
 # Display active model
 echo -e "${GREEN}Using model: ${YELLOW}$ACTIVE_MODEL${NC}"
 
+# Uruchom monitor zasobów w tle
+echo -e "${BLUE}Uruchamianie monitora zasobów systemowych...${NC}"
+if [ -f "$SCRIPT_DIR/resource_monitor.sh" ]; then
+    # Sprawdź, czy monitor już działa
+    if "$SCRIPT_DIR/resource_monitor.sh" status | grep -q "Monitor zasobów jest uruchomiony"; then
+        echo -e "${YELLOW}Monitor zasobów już działa.${NC}"
+    else
+        # Uruchom monitor w tle
+        "$SCRIPT_DIR/resource_monitor.sh" start
+    fi
+else
+    echo -e "${YELLOW}Skrypt monitora zasobów nie istnieje. Pomijanie...${NC}"
+fi
+
 # Run assistant
 echo -e "${GREEN}Starting Evopy Assistant...${NC}"
 if [ "$MODEL_SPECIFIED" = false ]; then
@@ -77,3 +91,5 @@ if [ "$MODEL_SPECIFIED" = false ]; then
 else
     $PYTHON_CMD "$SCRIPT_DIR/evo.py" "$@"
 fi
+
+# Nie zatrzymuj monitora zasobów po zakończeniu pracy - będzie działał w tle

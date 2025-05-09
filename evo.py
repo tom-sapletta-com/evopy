@@ -41,13 +41,20 @@ except ImportError:
     from text2python import Text2Python
     from docker_sandbox import DockerSandbox
 
-# Konfiguracja logowania
+# Konfiguracja logowania z rotacją
+LOG_DIR = APP_DIR / "logs"
+os.makedirs(LOG_DIR, exist_ok=True)
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler(),
-        logging.FileHandler("assistant.log")
+        logging.handlers.RotatingFileHandler(
+            "assistant.log", 
+            maxBytes=100*1024*1024,  # 100MB
+            backupCount=5
+        )
     ]
 )
 logger = logging.getLogger("evo-assistant")
