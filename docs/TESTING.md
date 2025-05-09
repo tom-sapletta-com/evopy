@@ -1,5 +1,8 @@
 # Evopy Testing System Documentation
 
+> [!TIP]
+> **Najnowszy raport porównawczy**: [Raport porównawczy modeli LLM](../reports/comparison_report_latest.md)
+
 ## Overview
 
 The Evopy testing system provides comprehensive testing capabilities for both the `text2python` and `python2text` modules. It allows you to test different language models (LLMs) and compare their performance, accuracy, and capabilities.

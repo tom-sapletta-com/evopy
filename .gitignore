@@ -1,5 +1,8 @@
 .idea
 .env
+performance/results
+tests/correctness
+test_results
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

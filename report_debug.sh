@@ -351,8 +351,8 @@ Data wygenerowania: $(date '+%Y-%m-%d %H:%M:%S')
 
 ## Podsumowanie wyników
 
-| Model | Testy zapytań (linie kodu) | Testy poprawności (%) | Testy wydajności (s) | Całkowity wynik |
-|-------|----------------------------|----------------------|----------------------|------------------|
+| Model | Wersja | Rozmiar | Parametry | Testy zapytań (linie kodu) | Testy poprawności (%) | Testy wydajności (s) | Całkowity wynik |
+|-------|--------|---------|-----------|----------------------------|----------------------|----------------------|------------------|
 EOF
     
     # Pobierz listę przetestowanych modeli
@@ -479,8 +479,88 @@ EOF
             SCORE=$((SCORE + 1))
         fi
         
+        # Pobierz szczegółowe informacje o modelu
+        log "DEBUG" "Pobieranie szczegółowych informacji o modelu $model..."
+        MODEL_INFO=$(ollama show $model 2>/dev/null)
+        
+        # Wyodrębnij informacje o modelu
+        MODEL_VERSION="-"
+        MODEL_SIZE="-"
+        MODEL_PARAMS="-"
+        
+        # Pobierz wersję modelu
+        if echo "$MODEL_INFO" | grep -q "Version:"; then
+            MODEL_VERSION=$(echo "$MODEL_INFO" | grep "Version:" | awk '{print $2}')
+        elif echo "$MODEL_INFO" | grep -q "version:"; then
+            MODEL_VERSION=$(echo "$MODEL_INFO" | grep "version:" | awk '{print $2}')
+        fi
+        
+        # Pobierz rozmiar modelu
+        if echo "$MODEL_INFO" | grep -q "Size:"; then
+            MODEL_SIZE=$(echo "$MODEL_INFO" | grep "Size:" | awk '{print $2" "$3}')
+        elif echo "$MODEL_INFO" | grep -q "size:"; then
+            MODEL_SIZE=$(echo "$MODEL_INFO" | grep "size:" | awk '{print $2" "$3}')
+        fi
+        
+        # Pobierz liczbę parametrów modelu
+        if echo "$MODEL_INFO" | grep -q "Parameters:"; then
+            MODEL_PARAMS=$(echo "$MODEL_INFO" | grep "Parameters:" | awk '{print $2" "$3}')
+        elif echo "$MODEL_INFO" | grep -q "parameters:"; then
+            MODEL_PARAMS=$(echo "$MODEL_INFO" | grep "parameters:" | awk '{print $2" "$3}')
+        fi
+        
+        # Sprawdź w pliku .env, jeśli informacje nie są dostępne
+        if [ "$MODEL_VERSION" = "-" ] || [ "$MODEL_SIZE" = "-" ] || [ "$MODEL_PARAMS" = "-" ]; then
+            log "DEBUG" "Sprawdzanie informacji o modelu w pliku .env..."
+            if [ -f "$CONFIG_DIR/.env" ]; then
+                # Pobierz informacje z pliku .env
+                MODEL_UPPER=$(echo "$model" | tr '[:lower:]' '[:upper:]')
+                
+                # Sprawdź wersję
+                if [ "$MODEL_VERSION" = "-" ] && grep -q "${MODEL_UPPER}_VERSION=" "$CONFIG_DIR/.env"; then
+                    MODEL_VERSION=$(grep "${MODEL_UPPER}_VERSION=" "$CONFIG_DIR/.env" | cut -d'=' -f2)
+                fi
+                
+                # Sprawdź parametry
+                if [ "$MODEL_PARAMS" = "-" ]; then
+                    # Sprawdź różne formaty zapisów parametrów
+                    if grep -q "${MODEL_UPPER}_PARAMS=" "$CONFIG_DIR/.env"; then
+                        MODEL_PARAMS=$(grep "${MODEL_UPPER}_PARAMS=" "$CONFIG_DIR/.env" | cut -d'=' -f2)
+                    elif grep -q "${MODEL_UPPER}_PARAMETERS=" "$CONFIG_DIR/.env"; then
+                        MODEL_PARAMS=$(grep "${MODEL_UPPER}_PARAMETERS=" "$CONFIG_DIR/.env" | cut -d'=' -f2)
+                    fi
+                fi
+            fi
+        fi
+        
+        # Dodatkowe informacje o znanych modelach
+        case "$model" in
+            "llama3")
+                if [ "$MODEL_PARAMS" = "-" ]; then MODEL_PARAMS="8B"; fi
+                if [ "$MODEL_VERSION" = "-" ]; then MODEL_VERSION="3.0"; fi
+                ;;
+            "llama3.2")
+                if [ "$MODEL_PARAMS" = "-" ]; then MODEL_PARAMS="8B"; fi
+                if [ "$MODEL_VERSION" = "-" ]; then MODEL_VERSION="3.2"; fi
+                ;;
+            "deepseek-coder")
+                if [ "$MODEL_PARAMS" = "-" ]; then MODEL_PARAMS="6.7B"; fi
+                if [ "$MODEL_VERSION" = "-" ]; then MODEL_VERSION="instruct"; fi
+                ;;
+            "phi")
+                if [ "$MODEL_PARAMS" = "-" ]; then MODEL_PARAMS="2.7B"; fi
+                if [ "$MODEL_VERSION" = "-" ]; then MODEL_VERSION="2.0"; fi
+                ;;
+            "mistral")
+                if [ "$MODEL_PARAMS" = "-" ]; then MODEL_PARAMS="7B"; fi
+                if [ "$MODEL_VERSION" = "-" ]; then MODEL_VERSION="instruct"; fi
+                ;;
+        esac
+        
+        log "DEBUG" "Informacje o modelu $model: Wersja=$MODEL_VERSION, Rozmiar=$MODEL_SIZE, Parametry=$MODEL_PARAMS"
+        
         # Dodaj wiersz do tabeli
-        echo "| $model | $CODE_LINES | $CORRECTNESS_PERCENT | $PERFORMANCE_TIME | $SCORE/$MAX_SCORE |" >> "$REPORT_FILE"
+        echo "| $model | $MODEL_VERSION | $MODEL_SIZE | $MODEL_PARAMS | $CODE_LINES | $CORRECTNESS_PERCENT | $PERFORMANCE_TIME | $SCORE/$MAX_SCORE |" >> "$REPORT_FILE"
     done
     
     # Dodaj sekcję szczegółowych wyników
@@ -500,15 +580,42 @@ EOF
         # Pobierz wyniki testów zapytań
         QUERIES_RESULTS_FILE=$(ls "$SCRIPT_DIR/test_results"/test_results_"${model}"_*.json 2>/dev/null | sort -r | head -n 1)
         
+        echo "#### Wyniki testów zapytań" >> "$REPORT_FILE"
+        
+        # Dodaj linki do wszystkich plików wyników testów zapytań
+        echo "##### Pliki wyników:" >> "$REPORT_FILE"
+        
+        # Znajdź wszystkie pliki wyników testów zapytań dla tego modelu
+        ALL_QUERY_FILES=$(find "$SCRIPT_DIR/test_results" -name "test_results_${model}_*.json" -type f | sort -r)
+        
+        if [ -n "$ALL_QUERY_FILES" ]; then
+            echo "Lista plików wyników testów zapytań:" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            
+            while IFS= read -r file; do
+                # Utwórz relatywną ścieżkę do pliku
+                REL_PATH=$(realpath --relative-to="$SCRIPT_DIR" "$file")
+                FILENAME=$(basename "$file")
+                TIMESTAMP=$(echo "$FILENAME" | grep -o "[0-9]\{8\}_[0-9]\{6\}")
+                
+                echo "- [$FILENAME]($REL_PATH) - $(date -d "${TIMESTAMP:0:8} ${TIMESTAMP:9:2}:${TIMESTAMP:11:2}:${TIMESTAMP:13:2}" '+%Y-%m-%d %H:%M:%S')" >> "$REPORT_FILE"
+            done <<< "$ALL_QUERY_FILES"
+            echo "" >> "$REPORT_FILE"
+        else
+            echo "Brak plików wyników testów zapytań." >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Wyświetl zawartość najnowszego pliku wyników
         if [ -n "$QUERIES_RESULTS_FILE" ] && [ -f "$QUERIES_RESULTS_FILE" ]; then
-            echo "#### Wyniki testów zapytań" >> "$REPORT_FILE"
+            echo "##### Najnowsze wyniki:" >> "$REPORT_FILE"
             echo '```json' >> "$REPORT_FILE"
             cat "$QUERIES_RESULTS_FILE" >> "$REPORT_FILE"
             echo '```' >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         else
             log "WARNING" "Nie znaleziono wyników testów zapytań dla modelu $model."
-            echo "#### Wyniki testów zapytań" >> "$REPORT_FILE"
+            echo "##### Najnowsze wyniki:" >> "$REPORT_FILE"
             echo "Brak wyników testów zapytań." >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         fi
@@ -519,28 +626,83 @@ EOF
         
         echo "#### Wyniki testów poprawności" >> "$REPORT_FILE"
         
+        # Dodaj linki do wszystkich plików wyników testów poprawności
+        echo "##### Pliki wyników:" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        
+        # Text2Python
+        echo "###### Text2Python:" >> "$REPORT_FILE"
+        
+        # Znajdź wszystkie pliki wyników testów poprawności Text2Python dla tego modelu
+        ALL_T2P_FILES=$(find "$SCRIPT_DIR/tests/correctness/results" -name "text2python_correctness_${model}_*.json" -type f | sort -r)
+        
+        if [ -n "$ALL_T2P_FILES" ]; then
+            echo "Lista plików wyników testów poprawności Text2Python:" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            
+            while IFS= read -r file; do
+                # Utwórz relatywną ścieżkę do pliku
+                REL_PATH=$(realpath --relative-to="$SCRIPT_DIR" "$file")
+                FILENAME=$(basename "$file")
+                TIMESTAMP=$(echo "$FILENAME" | grep -o "[0-9]\{8\}_[0-9]\{6\}")
+                
+                echo "- [$FILENAME]($REL_PATH) - $(date -d "${TIMESTAMP:0:8} ${TIMESTAMP:9:2}:${TIMESTAMP:11:2}:${TIMESTAMP:13:2}" '+%Y-%m-%d %H:%M:%S')" >> "$REPORT_FILE"
+            done <<< "$ALL_T2P_FILES"
+            echo "" >> "$REPORT_FILE"
+        else
+            echo "Brak plików wyników testów poprawności Text2Python." >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Python2Text
+        echo "###### Python2Text:" >> "$REPORT_FILE"
+        
+        # Znajdź wszystkie pliki wyników testów poprawności Python2Text dla tego modelu
+        ALL_P2T_FILES=$(find "$SCRIPT_DIR/tests/correctness/results" -name "python2text_correctness_${model}_*.json" -type f | sort -r)
+        
+        if [ -n "$ALL_P2T_FILES" ]; then
+            echo "Lista plików wyników testów poprawności Python2Text:" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            
+            while IFS= read -r file; do
+                # Utwórz relatywną ścieżkę do pliku
+                REL_PATH=$(realpath --relative-to="$SCRIPT_DIR" "$file")
+                FILENAME=$(basename "$file")
+                TIMESTAMP=$(echo "$FILENAME" | grep -o "[0-9]\{8\}_[0-9]\{6\}")
+                
+                echo "- [$FILENAME]($REL_PATH) - $(date -d "${TIMESTAMP:0:8} ${TIMESTAMP:9:2}:${TIMESTAMP:11:2}:${TIMESTAMP:13:2}" '+%Y-%m-%d %H:%M:%S')" >> "$REPORT_FILE"
+            done <<< "$ALL_P2T_FILES"
+            echo "" >> "$REPORT_FILE"
+        else
+            echo "Brak plików wyników testów poprawności Python2Text." >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Wyświetl zawartość najnowszych plików wyników
+        echo "##### Najnowsze wyniki:" >> "$REPORT_FILE"
+        
         if [ -n "$T2P_CORRECTNESS_FILE" ] && [ -f "$T2P_CORRECTNESS_FILE" ]; then
-            echo "##### Text2Python" >> "$REPORT_FILE"
+            echo "###### Text2Python" >> "$REPORT_FILE"
             echo '```json' >> "$REPORT_FILE"
             cat "$T2P_CORRECTNESS_FILE" >> "$REPORT_FILE"
             echo '```' >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         else
             log "WARNING" "Nie znaleziono wyników testów poprawności Text2Python dla modelu $model."
-            echo "##### Text2Python" >> "$REPORT_FILE"
+            echo "###### Text2Python" >> "$REPORT_FILE"
             echo "Brak wyników testów poprawności Text2Python." >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         fi
         
         if [ -n "$P2T_CORRECTNESS_FILE" ] && [ -f "$P2T_CORRECTNESS_FILE" ]; then
-            echo "##### Python2Text" >> "$REPORT_FILE"
+            echo "###### Python2Text" >> "$REPORT_FILE"
             echo '```json' >> "$REPORT_FILE"
             cat "$P2T_CORRECTNESS_FILE" >> "$REPORT_FILE"
             echo '```' >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         else
             log "WARNING" "Nie znaleziono wyników testów poprawności Python2Text dla modelu $model."
-            echo "##### Python2Text" >> "$REPORT_FILE"
+            echo "###### Python2Text" >> "$REPORT_FILE"
             echo "Brak wyników testów poprawności Python2Text." >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         fi
@@ -551,28 +713,106 @@ EOF
         
         echo "#### Wyniki testów wydajności" >> "$REPORT_FILE"
         
+        # Dodaj linki do wszystkich plików wyników testów wydajności
+        echo "##### Pliki wyników:" >> "$REPORT_FILE"
+        echo "" >> "$REPORT_FILE"
+        
+        # Text2Python
+        echo "###### Text2Python:" >> "$REPORT_FILE"
+        
+        # Znajdź wszystkie pliki wyników testów wydajności Text2Python dla tego modelu
+        ALL_T2P_PERF_FILES=$(find "$SCRIPT_DIR/tests/performance/results" -name "text2python_${model}_*.json" -type f | sort -r)
+        
+        if [ -n "$ALL_T2P_PERF_FILES" ]; then
+            echo "Lista plików wyników testów wydajności Text2Python:" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            
+            while IFS= read -r file; do
+                # Utwórz relatywną ścieżkę do pliku
+                REL_PATH=$(realpath --relative-to="$SCRIPT_DIR" "$file")
+                FILENAME=$(basename "$file")
+                TIMESTAMP=$(echo "$FILENAME" | grep -o "[0-9]\{8\}_[0-9]\{6\}")
+                
+                echo "- [$FILENAME]($REL_PATH) - $(date -d "${TIMESTAMP:0:8} ${TIMESTAMP:9:2}:${TIMESTAMP:11:2}:${TIMESTAMP:13:2}" '+%Y-%m-%d %H:%M:%S')" >> "$REPORT_FILE"
+            done <<< "$ALL_T2P_PERF_FILES"
+            echo "" >> "$REPORT_FILE"
+        else
+            echo "Brak plików wyników testów wydajności Text2Python." >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Python2Text
+        echo "###### Python2Text:" >> "$REPORT_FILE"
+        
+        # Znajdź wszystkie pliki wyników testów wydajności Python2Text dla tego modelu
+        ALL_P2T_PERF_FILES=$(find "$SCRIPT_DIR/tests/performance/results" -name "python2text_${model}_*.json" -type f | sort -r)
+        
+        if [ -n "$ALL_P2T_PERF_FILES" ]; then
+            echo "Lista plików wyników testów wydajności Python2Text:" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            
+            while IFS= read -r file; do
+                # Utwórz relatywną ścieżkę do pliku
+                REL_PATH=$(realpath --relative-to="$SCRIPT_DIR" "$file")
+                FILENAME=$(basename "$file")
+                TIMESTAMP=$(echo "$FILENAME" | grep -o "[0-9]\{8\}_[0-9]\{6\}")
+                
+                echo "- [$FILENAME]($REL_PATH) - $(date -d "${TIMESTAMP:0:8} ${TIMESTAMP:9:2}:${TIMESTAMP:11:2}:${TIMESTAMP:13:2}" '+%Y-%m-%d %H:%M:%S')" >> "$REPORT_FILE"
+            done <<< "$ALL_P2T_PERF_FILES"
+            echo "" >> "$REPORT_FILE"
+        else
+            echo "Brak plików wyników testów wydajności Python2Text." >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Dodaj linki do plików wygenerowanego kodu i wyników
+        echo "##### Wygenerowany kod i wyniki:" >> "$REPORT_FILE"
+        
+        # Znajdź pliki wygenerowanego kodu dla tego modelu
+        GEN_CODE_FILES=$(find "$SCRIPT_DIR/generated_code" -name "*${model}*" -type f 2>/dev/null | sort -r)
+        
+        if [ -n "$GEN_CODE_FILES" ]; then
+            echo "Lista plików wygenerowanego kodu:" >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+            
+            while IFS= read -r file; do
+                # Utwórz relatywną ścieżkę do pliku
+                REL_PATH=$(realpath --relative-to="$SCRIPT_DIR" "$file")
+                FILENAME=$(basename "$file")
+                
+                echo "- [$FILENAME]($REL_PATH)" >> "$REPORT_FILE"
+            done <<< "$GEN_CODE_FILES"
+            echo "" >> "$REPORT_FILE"
+        else
+            echo "Brak plików wygenerowanego kodu dla tego modelu." >> "$REPORT_FILE"
+            echo "" >> "$REPORT_FILE"
+        fi
+        
+        # Wyświetl zawartość najnowszych plików wyników
+        echo "##### Najnowsze wyniki:" >> "$REPORT_FILE"
+        
         if [ -n "$T2P_PERFORMANCE_FILE" ] && [ -f "$T2P_PERFORMANCE_FILE" ]; then
-            echo "##### Text2Python" >> "$REPORT_FILE"
+            echo "###### Text2Python" >> "$REPORT_FILE"
             echo '```json' >> "$REPORT_FILE"
             cat "$T2P_PERFORMANCE_FILE" >> "$REPORT_FILE"
             echo '```' >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         else
             log "WARNING" "Nie znaleziono wyników testów wydajności Text2Python dla modelu $model."
-            echo "##### Text2Python" >> "$REPORT_FILE"
+            echo "###### Text2Python" >> "$REPORT_FILE"
             echo "Brak wyników testów wydajności Text2Python." >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         fi
         
         if [ -n "$P2T_PERFORMANCE_FILE" ] && [ -f "$P2T_PERFORMANCE_FILE" ]; then
-            echo "##### Python2Text" >> "$REPORT_FILE"
+            echo "###### Python2Text" >> "$REPORT_FILE"
             echo '```json' >> "$REPORT_FILE"
             cat "$P2T_PERFORMANCE_FILE" >> "$REPORT_FILE"
             echo '```' >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         else
             log "WARNING" "Nie znaleziono wyników testów wydajności Python2Text dla modelu $model."
-            echo "##### Python2Text" >> "$REPORT_FILE"
+            echo "###### Python2Text" >> "$REPORT_FILE"
             echo "Brak wyników testów wydajności Python2Text." >> "$REPORT_FILE"
             echo "" >> "$REPORT_FILE"
         fi
@@ -696,8 +936,17 @@ main() {
     # Generuj raport porównawczy
     generate_comparison_report
     
+    # Aktualizuj link do najnowszego raportu
+    if [ -f "$SCRIPT_DIR/update_latest_report_link.sh" ]; then
+        log "INFO" "Aktualizacja linku do najnowszego raportu..."
+        bash "$SCRIPT_DIR/update_latest_report_link.sh"
+    else
+        log "WARNING" "Skrypt update_latest_report_link.sh nie istnieje. Link do najnowszego raportu nie zostanie zaktualizowany."
+    fi
+    
     log "SUCCESS" "=== Generowanie raportu zakończone ==="
     log "INFO" "Pełne logi dostępne w pliku: $LOG_FILE"
+    log "INFO" "Najnowszy raport jest dostępny pod linkiem: $REPORTS_DIR/comparison_report_latest.md"
     
     return 0
 }
