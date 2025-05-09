@@ -2,6 +2,20 @@
 
 Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewoluować z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker. Asystent wspiera konwersję tekstu na kod Python i zarządzanie projektami w kontenerach Docker.
 
+## Dokumentacja
+
+| Sekcja | Opis |
+|--------|------|
+| [📊 Raporty testów](https://tom-sapletta-com.github.io/evopy/reports/) | Raporty porównawcze modeli LLM |
+| [🧪 Instrukcja testowania](https://tom-sapletta-com.github.io/evopy/TESTING) | Dokumentacja systemu testowego |
+| [🏗️ Architektura piaskownic](https://tom-sapletta-com.github.io/evopy/sandbox_architecture) | Opis architektury piaskownic Docker |
+| [💻 Umiejętności programistyczne](https://tom-sapletta-com.github.io/evopy/junior_programmer_skills) | Lista umiejętności junior programisty |
+| [📝 Wytyczne projektu](https://tom-sapletta-com.github.io/evopy/project_guidelines) | Wytyczne rozwoju projektu |
+| [🖥️ Wsparcie cross-platform](https://tom-sapletta-com.github.io/evopy/cross_platform) | Informacje o wsparciu dla różnych systemów |
+| [📊 Testy diagramów Mermaid](https://tom-sapletta-com.github.io/evopy/mermaid_test) | Przykłady diagramów Mermaid |
+
+[📚 Pełna dokumentacja online](https://tom-sapletta-com.github.io/evopy/)
+
 ## Funkcjonalności
 
 - **Automatyczna konfiguracja** - sprawdza i instaluje wymagane zależności (Docker, Ollama, model llama3)
