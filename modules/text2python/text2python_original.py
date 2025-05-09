@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 """
 Text2Python - Moduł do konwersji tekstu na kod Python
 
 Ten moduł wykorzystuje model językowy do konwersji żądań użytkownika
 wyrażonych w języku naturalnym na funkcje Python.
-Zaimplementowany zgodnie z nową architekturą bazową Evopy.
 """
 
 import os
@@ -21,27 +18,12 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple, Union
 
-# Dodaj katalog główny projektu do ścieżki Pythona
-PROJECT_ROOT = Path(__file__).parent.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
-
-# Importuj klasy bazowe
-from modules.base import BaseText2XModule, ConfigManager, ErrorCorrector
-
 # Import math_expressions module
 try:
     from modules.utils.math_expressions import is_math_expression, handle_math_expression
 except ImportError:
     # Jeśli ścieżka jest inna, dostosuj import
-    try:
-        from math_expressions import is_math_expression, handle_math_expression
-    except ImportError:
-        # Jeśli nie udało się zaimportować, dostarczamy zaślepki
-        def is_math_expression(text):
-            return False
-            
-        def handle_math_expression(text):
-            return {"success": False, "error": "Moduł math_expressions nie jest dostępny"}
+    from math_expressions import is_math_expression, handle_math_expression
 
 # Próba importu modułu decision_tree
 try:
@@ -53,57 +35,35 @@ except ImportError:
         return None
 
 # Konfiguracja logowania
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger('text2python')
 
 
-class Text2Python(BaseText2XModule):
+class Text2Python:
     """Klasa do konwersji tekstu na kod Python"""
 
-    def initialize(self) -> None:
+    def __init__(self, model_name: str = "llama3", code_dir: Optional[Path] = None):
         """
-        Inicjalizacja specyficzna dla modułu TEXT2PYTHON
+        Inicjalizacja konwertera tekst-na-Python
+
+        Args:
+            model_name: Nazwa modelu Ollama do użycia
+            code_dir: Katalog do zapisywania wygenerowanego kodu
         """
-        super().initialize()
-        
-        # Domyślna konfiguracja
-        default_config = {
-            "model": "llama3",
-            "dependencies": ["numpy", "pandas", "matplotlib"],
-            "max_tokens": 1000,
-            "temperature": 0.7,
-            "use_sandbox": True,
-            "sandbox_type": "docker",
-            "code_dir": None
-        }
-        
-        # Aktualizacja konfiguracji
-        for key, value in default_config.items():
-            if key not in self.config:
-                self.config[key] = value
-        
-        # Ładowanie konfiguracji z pliku
-        self.load_config()
-        
-        # Inicjalizacja menedżera konfiguracji
-        self.config_manager = ConfigManager()
-        
-        # Załaduj konfigurację modułu z centralnego menedżera
-        module_config = self.config_manager.get_module_config("text2python")
-        self.config.update(module_config)
-        
-        # Ustawienie katalogu dla wygenerowanego kodu
-        self.code_dir = self.config.get("code_dir")
+        self.model_name = model_name
+        self.code_dir = code_dir
+
         if self.code_dir:
-            self.code_dir = Path(self.code_dir)
             os.makedirs(self.code_dir, exist_ok=True)
-        
+
         # Inicjalizacja drzewa decyzyjnego
-        self.decision_tree = create_decision_tree(name=f"Text2Python-{self.config['model']}")
-        
+        self.decision_tree = create_decision_tree(name=f"Text2Python-{model_name}")
+
         # Upewnij się, że model jest dostępny
         self.ensure_model_available()
-        
-        self.logger.info(f"Moduł TEXT2PYTHON zainicjalizowany z modelem: {self.config['model']}")
 
     def ensure_model_available(self) -> bool:
         """
@@ -114,48 +74,35 @@ class Text2Python(BaseText2XModule):
         """
         try:
             # Sprawdź czy model jest dostępny
-            self.logger.info(f"Sprawdzanie dostępności modelu {self.config['model']}...")
+            logger.info(f"Sprawdzanie dostępności modelu {self.model_name}...")
             check_cmd = ["ollama", "list"]
             result = subprocess.run(check_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
             if result.returncode != 0:
-                self.logger.error(f"Błąd podczas sprawdzania modeli Ollama: {result.stderr}")
+                logger.error(f"Błąd podczas sprawdzania modeli Ollama: {result.stderr}")
                 return False
 
             # Sprawdź czy model jest na liście
-            if self.config['model'] not in result.stdout:
-                self.logger.warning(f"Model {self.config['model']} nie jest dostępny. Próba pobrania...")
+            if self.model_name not in result.stdout:
+                logger.warning(f"Model {self.model_name} nie jest dostępny. Próba pobrania...")
 
                 # Pobierz model
-                pull_cmd = ["ollama", "pull", self.config['model']]
+                pull_cmd = ["ollama", "pull", self.model_name]
                 pull_result = subprocess.run(pull_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
                 if pull_result.returncode != 0:
-                    self.logger.error(f"Błąd podczas pobierania modelu {self.config['model']}: {pull_result.stderr}")
+                    logger.error(f"Błąd podczas pobierania modelu {self.model_name}: {pull_result.stderr}")
                     return False
 
-                self.logger.info(f"Model {self.config['model']} został pomyślnie pobrany")
+                logger.info(f"Model {self.model_name} został pomyślnie pobrany")
             else:
-                self.logger.info(f"Model {self.config['model']} jest dostępny")
+                logger.info(f"Model {self.model_name} jest dostępny")
 
             return True
 
         except Exception as e:
-            self.logger.error(f"Nieoczekiwany błąd podczas sprawdzania modelu: {str(e)}")
+            logger.error(f"Nieoczekiwany błąd podczas sprawdzania modelu: {str(e)}")
             return False
-
-    def process(self, text: str, **kwargs) -> Dict[str, Any]:
-        """
-        Przetwarza tekst na kod Python
-        
-        Args:
-            text: Tekst wejściowy do przetworzenia
-            **kwargs: Dodatkowe parametry
-            
-        Returns:
-            Dict[str, Any]: Wygenerowany kod Python
-        """
-        return self.generate_code(text)
 
     def generate_code(self, prompt: str) -> Dict[str, Any]:
         """
@@ -169,7 +116,7 @@ class Text2Python(BaseText2XModule):
             Dict: Wygenerowany kod, metadane i wyjaśnienie kodu
         """
         try:
-            self.logger.info(f"Analizowanie zapytania: '{prompt}'")
+            logger.info(f"Analizowanie zapytania: '{prompt}'")
 
             # Oblicz złożoność zapytania
             complexity = self._calculate_complexity(prompt)
@@ -188,7 +135,7 @@ class Text2Python(BaseText2XModule):
 
             # Sprawdź czy zapytanie jest puste lub zawiera tylko znaki specjalne
             if not prompt or prompt.strip() == "" or all(not c.isalnum() for c in prompt):
-                self.logger.warning(f"Otrzymano nieprawidłowe zapytanie: '{prompt}'")
+                logger.warning(f"Otrzymano nieprawidłowe zapytanie: '{prompt}'")
                 return {
                     "success": False,
                     "code": "def execute():\n    return 'Proszę podać prawidłowe zapytanie'",
@@ -197,9 +144,12 @@ class Text2Python(BaseText2XModule):
                     "explanation": "Twoje zapytanie nie zawierało wystarczających informacji do wygenerowania kodu."
                 }
 
+            # Sprawdź czy zapytanie jest prostym wyrażeniem arytmetycznym
+            # W klasie Text2Python, w metodzie generate_code, znajdź i zmodyfikuj ten fragment:
+
             # Sprawdź czy zapytanie jest wyrażeniem matematycznym
             if is_math_expression(prompt):
-                self.logger.info(f"Wykryto wyrażenie matematyczne: '{prompt}'")
+                logger.info(f"Wykryto wyrażenie matematyczne: '{prompt}'")
                 math_result = handle_math_expression(prompt)
                 
                 # Jeśli potrzebne, dostosuj ścieżkę do pliku kodu
@@ -216,22 +166,22 @@ class Text2Python(BaseText2XModule):
             if match:
                 # Wyodrębnij wyrażenie arytmetyczne
                 expression = match.group(1).strip()
-                self.logger.info(f"Wykryto proste wyrażenie arytmetyczne: {expression}")
+                logger.info(f"Wykryto proste wyrażenie arytmetyczne: {expression}")
 
                 # Użyj funkcji handle_math_expression zamiast oryginalnego kodu
                 return handle_math_expression(expression)
 
             # Upewnij się, że model jest dostępny
             if not self.ensure_model_available():
-                self.logger.error(f"Model {self.config['model']} nie jest dostępny")
+                logger.error(f"Model {self.model_name} nie jest dostępny")
                 return {
                     "success": False,
                     "code": "",
-                    "error": f"Model {self.config['model']} nie jest dostępny",
+                    "error": f"Model {self.model_name} nie jest dostępny",
                     "analysis": "Problem z modelem"
                 }
 
-            self.logger.info(f"Generowanie kodu dla zapytania: {prompt}...")
+            logger.info(f"Generowanie kodu dla zapytania: {prompt}...")
 
             # KROK 1: Konwersja tekstu na kod Python
             # Przygotuj zapytanie do modelu dla generowania kodu
@@ -246,11 +196,11 @@ Zapewnij, że kod jest logiczny i realizuje dokładnie to, o co prosi użytkowni
 
             # Wywołaj model Ollama dla generowania kodu
             cmd = [
-                "ollama", "run", self.config['model'],
+                "ollama", "run", self.model_name,
                 combined_prompt_code
             ]
 
-            self.logger.info(f"Generowanie kodu dla zapytania: {prompt[:50]}...")
+            logger.info(f"Generowanie kodu dla zapytania: {prompt[:50]}...")
 
             process = subprocess.Popen(
                 cmd,
@@ -262,7 +212,7 @@ Zapewnij, że kod jest logiczny i realizuje dokładnie to, o co prosi użytkowni
             stdout, stderr = process.communicate()
 
             if process.returncode != 0:
-                self.logger.error(f"Błąd podczas generowania kodu: {stderr}")
+                logger.error(f"Błąd podczas generowania kodu: {stderr}")
                 return {
                     "success": False,
                     "code": "",
@@ -277,7 +227,7 @@ Zapewnij, że kod jest logiczny i realizuje dokładnie to, o co prosi użytkowni
                 code = self._wrap_in_execute_function(code)
 
             # KROK 2: Konwersja kodu z powrotem na tekst w celu weryfikacji intencji
-            self.logger.info("Generowanie wyjaśnienia kodu w celu weryfikacji intencji użytkownika...")
+            logger.info("Generowanie wyjaśnienia kodu w celu weryfikacji intencji użytkownika...")
 
             # Przygotuj zapytanie do modelu dla wyjaśnienia kodu
             system_prompt_explain = """Jesteś ekspertem w wyjaśnianiu kodu Python.
@@ -290,7 +240,7 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
 
             # Wywołaj model Ollama dla wyjaśnienia kodu
             cmd_explain = [
-                "ollama", "run", self.config['model'],
+                "ollama", "run", self.model_name,
                 combined_prompt_explain
             ]
 
@@ -307,26 +257,82 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
             if process_explain.returncode == 0:
                 explanation = stdout_explain.strip()
             else:
-                self.logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr_explain}")
+                logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr_explain}")
                 explanation = "Nie udało się wygenerować wyjaśnienia kodu."
 
             # KROK 3: Analiza logiczna kodu
-            self.logger.info("Analizowanie logiki kodu...")
+            logger.info("Analizowanie logiki kodu...")
 
-            # Implementacja analizy kodu lokalnie, ponieważ ErrorCorrector nie ma metody analyze_code
-            analysis = self._analyze_code(code, prompt)
-            
-            # Sprawdź czy kod wymaga korekcji
-            if not analysis.get("is_logical", True) or not analysis.get("matches_intent", True) or analysis.get("issues"):
-                # Popraw kod używając ErrorCorrector jeśli mamy konkretny błąd
-                if analysis.get("error_message"):
-                    corrected_code, corrections = ErrorCorrector.correct_code(code, analysis.get("error_message"))
-                else:
-                    corrections = []
-                    corrected_code = code
-                if corrections:
-                    self.logger.info(f"Zastosowano {len(corrections)} korekcji kodu")
-                    code = corrected_code
+            # Przygotuj zapytanie do modelu dla analizy logicznej kodu
+            system_prompt_analyze = """Jesteś ekspertem w analizie kodu Python.
+Twoim zadaniem jest sprawdzenie, czy podany kod Python jest logiczny i realizuje dokładnie to, o co prosił użytkownik.
+Zwróć uwagę na potencjalne błędy logiczne, nieefektywne rozwiązania lub niezgodności z intencją użytkownika.
+Podaj krótką analizę w formacie JSON z polami: 'is_logical' (true/false), 'matches_intent' (true/false), 'issues' (lista problemów) i 'suggestions' (lista sugestii)."""
+
+            combined_prompt_analyze = f"{system_prompt_analyze}\n\nZapytanie użytkownika: {prompt}\n\nWygenerowany kod Python:\n```python\n{code}\n```\n\nAnaliza JSON:"
+
+            # Wywołaj model Ollama dla analizy logicznej kodu
+            cmd_analyze = [
+                "ollama", "run", self.model_name,
+                combined_prompt_analyze
+            ]
+
+            process_analyze = subprocess.Popen(
+                cmd_analyze,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            stdout_analyze, stderr_analyze = process_analyze.communicate()
+
+            analysis = {}
+            if process_analyze.returncode == 0:
+                try:
+                    # Próba wyodrębnienia JSON z odpowiedzi
+                    import re
+                    import json
+
+                    # Bardziej zaawansowany sposób wyodrębniania JSON
+                    # Szukamy tekstu pomiędzy nawiasami klamrowymi, ale upewniamy się, że są one zbalansowane
+                    text = stdout_analyze.strip()
+
+                    # Najpierw spróbujmy znaleźć pełny JSON
+                    json_match = re.search(r'\{[^{}]*((\{[^{}]*\})[^{}]*)*\}', text)
+
+                    if json_match:
+                        json_str = json_match.group(0)
+                        # Spróbujmy naprawić typowe problemy z JSON
+                        json_str = json_str.replace("'", '"')  # Zamień pojedyncze cudzysłowy na podwójne
+                        json_str = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":',
+                                          json_str)  # Dodaj cudzysłowy do kluczy
+
+                        try:
+                            analysis = json.loads(json_str)
+                        except json.JSONDecodeError:
+                            # Jeśli nadal nie możemy sparsować, utwórzmy prosty JSON
+                            logger.warning(f"Nie można sparsować JSON po naprawie: {json_str}")
+                            analysis = self._create_default_analysis(text)
+                    else:
+                        # Jeśli nie znaleziono JSON, utwórzmy go na podstawie tekstu
+                        logger.warning(f"Nie znaleziono JSON w odpowiedzi: {text[:100]}...")
+                        analysis = self._create_default_analysis(text)
+                except Exception as e:
+                    logger.error(f"Błąd podczas parsowania analizy JSON: {str(e)}")
+                    analysis = {
+                        "is_logical": True,
+                        "matches_intent": True,
+                        "issues": [],
+                        "suggestions": []
+                    }
+            else:
+                logger.error(f"Błąd podczas generowania analizy: {stderr_analyze}")
+                analysis = {
+                    "is_logical": True,
+                    "matches_intent": True,
+                    "issues": [],
+                    "suggestions": []
+                }
 
             # Zapisz kod do pliku jeśli podano katalog
             code_id = str(uuid.uuid4())
@@ -363,7 +369,7 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
             }
 
         except Exception as e:
-            self.logger.error(f"Błąd podczas generowania kodu: {e}")
+            logger.error(f"Błąd podczas generowania kodu: {e}")
             return {
                 "success": False,
                 "code": "",
@@ -417,97 +423,6 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
 
         return wrapped_code
 
-    def _analyze_code(self, code: str, prompt: str) -> Dict[str, Any]:
-        """
-        Analizuje kod pod kątem logiczności i zgodności z intencją użytkownika
-        
-        Args:
-            code: Kod do analizy
-            prompt: Oryginalne zapytanie użytkownika
-            
-        Returns:
-            Dict[str, Any]: Wynik analizy
-        """
-        # Inicjalizacja wyniku analizy
-        analysis = {
-            "is_logical": True,
-            "matches_intent": True,
-            "issues": [],
-            "suggestions": []
-        }
-        
-        # Sprawdź podstawowe problemy składniowe
-        try:
-            compile(code, '<string>', 'exec')
-        except SyntaxError as e:
-            analysis["is_logical"] = False
-            analysis["issues"].append(f"Błąd składni: {str(e)}")
-            analysis["error_message"] = f"SyntaxError: {str(e)}"
-        
-        # Sprawdź czy kod zawiera funkcję execute
-        if "def execute" not in code:
-            analysis["issues"].append("Brak funkcji execute")
-            analysis["suggestions"].append("Dodaj funkcję execute")
-        
-        # Sprawdź czy kod zawiera return
-        if "return" not in code:
-            analysis["issues"].append("Brak instrukcji return")
-            analysis["suggestions"].append("Dodaj instrukcję return w funkcji execute")
-        
-        # Sprawdź czy kod zawiera podstawowe elementy związane z zapytaniem
-        keywords = self._extract_keywords(prompt)
-        code_lower = code.lower()
-        missing_keywords = []
-        
-        for keyword in keywords:
-            if keyword.lower() not in code_lower:
-                missing_keywords.append(keyword)
-        
-        if missing_keywords:
-            analysis["matches_intent"] = False
-            analysis["issues"].append(f"Brak kluczowych elementów: {', '.join(missing_keywords)}")
-            analysis["suggestions"].append(f"Dodaj obsługę dla: {', '.join(missing_keywords)}")
-        
-        # Sprawdź czy kod zawiera potencjalnie niebezpieczne operacje
-        dangerous_patterns = [
-            (r'os\.system', "Bezpośrednie wywołanie poleceń systemowych"),
-            (r'subprocess\.', "Wywołanie procesów zewnętrznych"),
-            (r'eval\(', "Użycie funkcji eval"),
-            (r'exec\(', "Użycie funkcji exec"),
-            (r'__import__\(', "Dynamiczny import modułów"),
-            (r'open\(.+?\,\s*[\'\"]w[\'\"]', "Zapisywanie do plików")
-        ]
-        
-        for pattern, description in dangerous_patterns:
-            if re.search(pattern, code):
-                analysis["issues"].append(f"Potencjalnie niebezpieczna operacja: {description}")
-                analysis["suggestions"].append(f"Rozważ alternatywne podejście zamiast: {description}")
-        
-        return analysis
-    
-    def _extract_keywords(self, text: str) -> List[str]:
-        """
-        Wyodrębnia słowa kluczowe z tekstu
-        
-        Args:
-            text: Tekst do analizy
-            
-        Returns:
-            List[str]: Lista słów kluczowych
-        """
-        # Usuń znaki interpunkcyjne i zamień na małe litery
-        text = re.sub(r'[^\w\s]', ' ', text.lower())
-        
-        # Podziel na słowa
-        words = text.split()
-        
-        # Usuń słowa stop (krótkie, powszechne słowa)
-        stop_words = ['i', 'w', 'na', 'z', 'do', 'dla', 'jest', 'są', 'to', 'a', 'o', 'że', 'by']
-        keywords = [word for word in words if word not in stop_words and len(word) > 2]
-        
-        # Zwróć unikalne słowa kluczowe
-        return list(set(keywords))
-    
     def _calculate_complexity(self, text: str) -> float:
         """
         Oblicza złożoność zapytania na podstawie różnych metryk
@@ -543,6 +458,54 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
 
         return round(complexity, 2)
 
+    def _create_default_analysis(self, text: str) -> dict:
+        """
+        Tworzy domyślną analizę na podstawie tekstu odpowiedzi
+
+        Args:
+            text: Tekst odpowiedzi modelu
+
+        Returns:
+            dict: Domyślna analiza w formacie słownika
+        """
+        # Spróbujmy wyciągnąć informacje z tekstu
+        is_logical = True
+        matches_intent = True
+        issues = []
+        suggestions = []
+
+        # Szukamy typowych słów kluczowych wskazujących na problemy
+        if re.search(r'nie\s+jest\s+logiczn', text, re.IGNORECASE) or \
+                re.search(r'bł[aę]d\s+logiczn', text, re.IGNORECASE) or \
+                re.search(r'nielogiczn', text, re.IGNORECASE):
+            is_logical = False
+
+        if re.search(r'nie\s+realizuje', text, re.IGNORECASE) or \
+                re.search(r'nie\s+spełnia', text, re.IGNORECASE) or \
+                re.search(r'nie\s+odpowiada', text, re.IGNORECASE) or \
+                re.search(r'nie\s+zgodn', text, re.IGNORECASE):
+            matches_intent = False
+
+        # Szukamy problemów i sugestii
+        problem_lines = re.findall(r'(?:problem|błąd|issue|error)[^.]*\.', text, re.IGNORECASE)
+        for line in problem_lines:
+            issues.append(line.strip())
+
+        suggestion_lines = re.findall(r'(?:sugestia|propozycja|suggestion|recommend)[^.]*\.', text, re.IGNORECASE)
+        for line in suggestion_lines:
+            suggestions.append(line.strip())
+
+        # Jeśli nie znaleziono problemów ani sugestii, ale tekst wskazuje na problemy
+        if not issues and (not is_logical or not matches_intent):
+            issues.append("Wykryto potencjalne problemy z kodem, ale nie można ich dokładnie określić.")
+
+        return {
+            "is_logical": is_logical,
+            "matches_intent": matches_intent,
+            "issues": issues[:3],  # Ograniczamy liczbę problemów do 3
+            "suggestions": suggestions[:3]  # Ograniczamy liczbę sugestii do 3
+        }
+
     def explain_code(self, code: str) -> str:
         """
         Generuje wyjaśnienie kodu w języku naturalnym
@@ -556,7 +519,7 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
         try:
             # Upewnij się, że model jest dostępny
             if not self.ensure_model_available():
-                return f"Nie można wygenerować wyjaśnienia, ponieważ model {self.config['model']} nie jest dostępny."
+                return f"Nie można wygenerować wyjaśnienia, ponieważ model {self.model_name} nie jest dostępny."
 
             # Przygotuj zapytanie do modelu
             system_prompt = 'Jesteś ekspertem w wyjaśnianiu kodu Python. Twoim zadaniem jest wyjaśnienie działania podanego kodu w prosty i zrozumiały sposób. Wyjaśnienie powinno być krótkie, ale kompletne, opisujące co kod robi krok po kroku.'
@@ -568,11 +531,11 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
 
             # Wywołaj model Ollama
             cmd = [
-                "ollama", "run", self.config['model'],
+                "ollama", "run", self.model_name,
                 combined_prompt
             ]
 
-            self.logger.info("Generowanie wyjaśnienia kodu...")
+            logger.info("Generowanie wyjaśnienia kodu...")
 
             process = subprocess.Popen(
                 cmd,
@@ -584,151 +547,15 @@ Na końcu zapytaj użytkownika, czy to jest to, czego oczekiwał."""
             stdout, stderr = process.communicate()
 
             if process.returncode != 0:
-                self.logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr}")
+                logger.error(f"Błąd podczas generowania wyjaśnienia: {stderr}")
                 return f"Nie udało się wygenerować wyjaśnienia: {stderr}"
 
             return stdout.strip()
 
         except Exception as e:
-            self.logger.error(f"Błąd podczas generowania wyjaśnienia: {e}")
+            logger.error(f"Błąd podczas generowania wyjaśnienia: {e}")
             return f"Nie udało się wygenerować wyjaśnienia: {str(e)}"
-
-    def validate_input(self, text: str, **kwargs) -> Tuple[bool, Optional[str]]:
-        """
-        Walidacja danych wejściowych
-        
-        Args:
-            text: Tekst wejściowy do walidacji
-            **kwargs: Dodatkowe parametry do walidacji
-            
-        Returns:
-            Tuple[bool, Optional[str]]: (czy_poprawne, komunikat_błędu)
-        """
-        if not text or not isinstance(text, str):
-            return False, "Tekst wejściowy musi być niepustym ciągiem znaków"
-            
-        if len(text) < 3:
-            return False, "Tekst jest zbyt krótki (minimum 3 znaki)"
-            
-        return True, None
-
-    def execute_code(self, code: str, use_sandbox: bool = None) -> Dict[str, Any]:
-        """
-        Wykonuje wygenerowany kod Python
-        
-        Args:
-            code: Kod do wykonania
-            use_sandbox: Czy użyć piaskownicy (opcjonalne)
-            
-        Returns:
-            Dict[str, Any]: Wynik wykonania kodu
-        """
-        if use_sandbox is None:
-            use_sandbox = self.config.get('use_sandbox', True)
-        
-        self.logger.info(f"Wykonywanie kodu (use_sandbox={use_sandbox})...")
-        
-        if use_sandbox:
-            # W rzeczywistej implementacji tutaj byłoby wywołanie piaskownicy Docker
-            try:
-                from modules.docker_sandbox import DockerSandbox
-                sandbox = DockerSandbox()
-                return sandbox.run_code(code)
-            except ImportError:
-                self.logger.error("Nie można zaimportować modułu DockerSandbox")
-                return {
-                    "success": False,
-                    "error": "Moduł DockerSandbox nie jest dostępny"
-                }
-        else:
-            # Wykonanie kodu bezpośrednio (niebezpieczne!)
-            try:
-                import tempfile
-                import subprocess
-                
-                # Zapisz kod do tymczasowego pliku
-                with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:
-                    f.write(code)
-                    temp_file = f.name
-                
-                # Wykonaj kod
-                result = subprocess.run(
-                    [sys.executable, temp_file],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                
-                # Usuń tymczasowy plik
-                os.unlink(temp_file)
-                
-                return {
-                    "success": result.returncode == 0,
-                    "output": result.stdout,
-                    "error": result.stderr if result.returncode != 0 else None,
-                    "execution_time": 0.5  # Symulowany czas wykonania
-                }
-            except Exception as e:
-                self.logger.error(f"Błąd podczas wykonywania kodu: {e}")
-                return {
-                    "success": False,
-                    "error": str(e)
-                }
-
-    def correct_code(self, code: str, error_message: str) -> Dict[str, Any]:
-        """
-        Koryguje kod na podstawie komunikatu o błędzie
-        
-        Args:
-            code: Kod do skorygowania
-            error_message: Komunikat o błędzie
-            
-        Returns:
-            Dict[str, Any]: Skorygowany kod i zastosowane korekcje
-        """
-        self.logger.info(f"Korygowanie kodu na podstawie błędu: {error_message[:50]}...")
-        
-        # Użyj systemu korekcji błędów
-        corrected_code, corrections = ErrorCorrector.correct_code(code, error_message)
-        
-        # Analiza błędu
-        error_analysis = ErrorCorrector.analyze_error(error_message)
-        
-        return {
-            "success": True,
-            "original_code": code,
-            "corrected_code": corrected_code,
-            "corrections": corrections,
-            "error_analysis": error_analysis
-        }
 
     def __str__(self):
         """Reprezentacja tekstowa obiektu"""
-        return f"Text2Python(model={self.config['model']})"
-
-
-# Przykład użycia
-if __name__ == "__main__":
-    # Konfiguracja logowania
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-        handlers=[logging.StreamHandler()]
-    )
-    
-    # Tworzenie instancji modułu
-    text2python = Text2Python()
-    
-    # Przetwarzanie tekstu
-    query = "Napisz funkcję, która sumuje dwie liczby"
-    result = text2python.execute(query)
-    
-    # Wyświetlenie wyniku
-    print(json.dumps(result, indent=2, ensure_ascii=False))
-    
-    # Wykonanie wygenerowanego kodu
-    if result["success"]:
-        code = result["result"]["code"]
-        execution_result = text2python.execute_code(code, use_sandbox=True)
-        print("\nWynik wykonania kodu:")
-        print(json.dumps(execution_result, indent=2, ensure_ascii=False))
+        return f"Text2Python(model={self.model_name})"
