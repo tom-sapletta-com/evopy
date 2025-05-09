@@ -56,9 +56,9 @@ Evopy now works seamlessly across different operating systems:
 
 ## Documentation Sections
 
-- [Testing Guide](TESTING.html)
-- [Sandbox Architecture](sandbox_architecture.html)
-- [Mermaid Diagram Test](mermaid_test.html)
+- [Testing Guide](TESTING.md)
+- [Sandbox Architecture](sandbox_architecture.md)
+- [Mermaid Diagram Test](mermaid_test.md)
 
 ## Installation
 
