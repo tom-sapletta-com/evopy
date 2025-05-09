@@ -320,7 +320,8 @@ function main() {
         echo -e "$((${#MODELS[@]}+1))) ${CYAN}Wszystkie modele${NC}"
         
         # Pobierz wybór użytkownika
-        read -p "${YELLOW}Wybierz model (1-$((${#MODELS[@]}+1))): ${NC}" choice
+        echo -e "${YELLOW}Wybierz model (1-$((${#MODELS[@]}+1))): ${NC}"
+        read choice
         echo
         
         # Sprawdź wybór użytkownika

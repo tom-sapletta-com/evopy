@@ -10,43 +10,65 @@
  */
 
 document.addEventListener("DOMContentLoaded", function() {
-  // Initialize mermaid with configuration
-  mermaid.initialize({
-    startOnLoad: true,
-    theme: 'default',
-    securityLevel: 'loose',
-    flowchart: { 
-      useMaxWidth: true, 
-      htmlLabels: true,
-      curve: 'basis'
-    },
-    sequence: {
-      diagramMarginX: 50,
-      diagramMarginY: 10,
-      boxMargin: 10,
-      noteMargin: 10,
-      messageMargin: 35
+  // Wait a bit to ensure the page is fully loaded
+  setTimeout(function() {
+    // Find all code blocks with mermaid content and convert them
+    convertMermaidCodeBlocks();
+    
+    // Try to initialize any existing mermaid diagrams
+    try {
+      if (typeof mermaid !== 'undefined') {
+        // Force re-render all mermaid diagrams
+        mermaid.init(undefined, '.mermaid');
+        console.log('Mermaid diagrams initialized from mermaid-init.js');
+      }
+    } catch (e) {
+      console.error('Error initializing mermaid from mermaid-init.js:', e);
+    }
+  }, 1000);
+});
+
+/**
+ * Converts code blocks with mermaid syntax to mermaid diagram containers
+ */
+function convertMermaidCodeBlocks() {
+  // Method 1: Find code blocks with class 'language-mermaid'
+  document.querySelectorAll('pre code.language-mermaid').forEach(convertToMermaidDiv);
+  
+  // Method 2: Find code blocks with mermaid fence but missing the class
+  document.querySelectorAll('pre code').forEach(function(element) {
+    if (element.textContent.trim().startsWith('graph ') ||
+        element.textContent.trim().startsWith('flowchart ') ||
+        element.textContent.trim().startsWith('sequenceDiagram ') ||
+        element.textContent.trim().startsWith('classDiagram ') ||
+        element.textContent.trim().startsWith('stateDiagram ') ||
+        element.textContent.trim().startsWith('gantt ') ||
+        element.textContent.trim().startsWith('pie ')) {
+      convertToMermaidDiv(element);
     }
   });
   
-  // Find all code blocks with class 'language-mermaid' and render them
-  document.querySelectorAll('pre code.language-mermaid').forEach(function(element) {
-    // Create a div to hold the rendered diagram
+  // Method 3: Find GitHub-style rendered mermaid blocks
+  document.querySelectorAll('.highlight.mermaid').forEach(function(element) {
     const div = document.createElement('div');
     div.classList.add('mermaid');
     div.textContent = element.textContent;
-    
-    // Replace the <pre><code> with the div
-    const pre = element.parentElement;
-    pre.parentElement.replaceChild(div, pre);
+    element.parentElement.replaceChild(div, element);
   });
+}
+
+/**
+ * Converts a code element to a mermaid div
+ */
+function convertToMermaidDiv(element) {
+  // Create a div to hold the rendered diagram
+  const div = document.createElement('div');
+  div.classList.add('mermaid');
+  div.textContent = element.textContent;
   
-  // Initialize mermaid
-  mermaid.init(undefined, '.mermaid');
-  
-  // Add a class to indicate that mermaid has been initialized
-  document.body.classList.add('mermaid-initialized');
-  
-  // Log success message
-  console.log('Mermaid diagrams initialized successfully');
-});
+  // Replace the <pre><code> with the div
+  const pre = element.parentElement;
+  if (pre && pre.parentElement) {
+    pre.parentElement.replaceChild(div, pre);
+  }
+}

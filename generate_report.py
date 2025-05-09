@@ -1305,14 +1305,12 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
             border-collapse: collapse;
             width: 100%;
             margin: 20px 0;
-            table-layout: fixed;
-            overflow-x: auto;
-            display: block;
+            table-layout: auto;
         }
-        @media (min-width: 768px) {
-            table {
-                display: table;
-            }
+        .table-wrapper {
+            overflow-x: auto;
+            width: 100%;
+            margin-bottom: 20px;
         }
         th, td {
             border: 1px solid #ddd;
@@ -1368,13 +1366,13 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
         }
         canvas {
             max-width: 100%;
-            height: auto !important;
         }
         .chart-container {
             position: relative;
+            height: 400px;
             width: 100%;
             max-width: 800px;
-            margin: 0 auto;
+            margin: 20px auto;
         }
     </style>
 </head>
@@ -1383,41 +1381,63 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
         
         # Add Mermaid support for diagrams and charts
         mermaid_script = """
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@9/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         // Fix for tables - ensure they're properly displayed
         const tables = document.querySelectorAll('table');
         tables.forEach(function(table) {
+            // Remove display:block from tables to fix rendering
+            table.style.display = 'table';
+            table.style.width = '100%';
+            
             // Create a wrapper div for the table if it doesn't exist
             if (!table.parentElement.classList.contains('table-wrapper')) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'table-wrapper';
                 wrapper.style.overflowX = 'auto';
+                wrapper.style.width = '100%';
+                wrapper.style.marginBottom = '20px';
                 table.parentNode.insertBefore(wrapper, table);
                 wrapper.appendChild(table);
             }
         });
 
         // Initialize Mermaid diagrams
-        mermaid.initialize({
-            startOnLoad: true,
-            theme: 'default',
-            securityLevel: 'loose',
-            flowchart: { useMaxWidth: true, htmlLabels: true },
-            sequence: { useMaxWidth: true, showSequenceNumbers: true }
-        });
+        if (typeof mermaid !== 'undefined') {
+            mermaid.initialize({
+                startOnLoad: true,
+                theme: 'default',
+                securityLevel: 'loose',
+                flowchart: { useMaxWidth: true, htmlLabels: true },
+                sequence: { useMaxWidth: true, showSequenceNumbers: true }
+            });
+            try {
+                mermaid.init(undefined, document.querySelectorAll('.mermaid'));
+            } catch (e) {
+                console.error('Mermaid initialization error:', e);
+            }
+        }
         
         // Initialize Chart.js charts
         setTimeout(function() {
             const chartElements = document.querySelectorAll('.evopy-chart');
             chartElements.forEach(function(element) {
-                // Create a container for the chart
+                // Create a container for the chart with fixed dimensions
                 const container = document.createElement('div');
                 container.className = 'chart-container';
+                container.style.position = 'relative';
+                container.style.height = '400px';
+                container.style.width = '100%';
+                container.style.maxWidth = '800px';
+                container.style.margin = '20px auto';
                 element.parentNode.insertBefore(container, element);
                 container.appendChild(element);
+                
+                // Set canvas dimensions
+                element.style.width = '100%';
+                element.style.height = '100%';
                 
                 try {
                     const ctx = element.getContext('2d');
@@ -1425,6 +1445,7 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
                     new Chart(ctx, chartData);
                 } catch (e) {
                     console.error('Error initializing chart:', e);
+                    console.error('Chart data:', element.getAttribute('data-chart'));
                     // Create a fallback message
                     const fallback = document.createElement('p');
                     fallback.textContent = 'Chart rendering failed. Please check the data format.';
@@ -1432,7 +1453,7 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
                     element.parentNode.insertBefore(fallback, element);
                 }
             });
-        }, 500);
+        }, 1000);
         
         // Fix for code blocks - ensure they don't overflow
         const preElements = document.querySelectorAll('pre');

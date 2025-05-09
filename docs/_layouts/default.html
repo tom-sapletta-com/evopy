@@ -27,7 +27,32 @@
     </div>
     
     <!-- Mermaid JS -->
-    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@8.14.0/dist/mermaid.min.js"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        // Initialize mermaid with configuration
+        mermaid.initialize({
+          startOnLoad: true,
+          theme: 'default',
+          securityLevel: 'loose',
+          flowchart: { 
+            useMaxWidth: true, 
+            htmlLabels: true,
+            curve: 'basis'
+          }
+        });
+        
+        // Force render all mermaid diagrams
+        setTimeout(function() {
+          try {
+            mermaid.init(undefined, '.mermaid');
+            console.log('Mermaid diagrams initialized successfully');
+          } catch (e) {
+            console.error('Mermaid initialization error:', e);
+          }
+        }, 500);
+      });
+    </script>
     <script src="{{ '/assets/js/mermaid-init.js' | relative_url }}"></script>
   </body>
 </html>
