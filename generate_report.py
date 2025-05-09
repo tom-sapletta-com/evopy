@@ -63,15 +63,15 @@ def check_dependencies() -> bool:
     
     return True
 
-def load_test_results(model_id: str) -> Dict[str, Any]:
+def load_test_results(model_name: str) -> Dict[str, Any]:
     """Load the most recent test results for a specific model."""
     # Find the most recent results file for this model
-    pattern = f"{TEST_RESULTS_DIR}/test_results_{model_id}_*.json"
+    pattern = f"{TEST_RESULTS_DIR}/test_results_{model_name}_*.json"
     files = sorted(glob.glob(pattern), reverse=True)
     
     default_results = {
         "timestamp": datetime.datetime.now().strftime("%Y%m%d_%H%M%S"),
-        "model_id": model_id,
+        "model_name": model_name,
         "passed_tests": 0,
         "failed_tests": 0,
         "total_tests": 0,
@@ -79,7 +79,7 @@ def load_test_results(model_id: str) -> Dict[str, Any]:
     }
     
     if not files:
-        logger.warning(f"No test results found for model: {model_id}")
+        logger.warning(f"No test results found for model: {model_name}")
         return default_results
     
     try:
@@ -94,14 +94,14 @@ def load_test_results(model_id: str) -> Dict[str, Any]:
                 
         return data
     except (json.JSONDecodeError, IOError) as e:
-        logger.error(f"Error loading test results for {model_id}: {e}")
+        logger.error(f"Error loading test results for {model_name}: {e}")
         return default_results
 
-def load_correctness_results(model_id: str) -> Tuple[int, int]:
+def load_correctness_results(model_name: str) -> Tuple[int, int]:
     """Load correctness test results for a specific model."""
     # Look for text2python and python2text results
-    t2p_pattern = f"{CORRECTNESS_RESULTS_DIR}/text2python_correctness_{model_id}_*.json"
-    p2t_pattern = f"{CORRECTNESS_RESULTS_DIR}/python2text_correctness_{model_id}_*.json"
+    t2p_pattern = f"{CORRECTNESS_RESULTS_DIR}/text2python_correctness_{model_name}_*.json"
+    p2t_pattern = f"{CORRECTNESS_RESULTS_DIR}/python2text_correctness_{model_name}_*.json"
     
     t2p_files = sorted(glob.glob(t2p_pattern), reverse=True)
     p2t_files = sorted(glob.glob(p2t_pattern), reverse=True)
@@ -117,7 +117,7 @@ def load_correctness_results(model_id: str) -> Tuple[int, int]:
                 passed += data.get("passed_tests", 0)
                 total += data.get("total_tests", 0)
         except (json.JSONDecodeError, IOError) as e:
-            logger.error(f"Error loading text2python correctness results for {model_id}: {e}")
+            logger.error(f"Error loading text2python correctness results for {model_name}: {e}")
     
     # Process python2text results
     if p2t_files:
@@ -127,13 +127,13 @@ def load_correctness_results(model_id: str) -> Tuple[int, int]:
                 passed += data.get("passed_tests", 0)
                 total += data.get("total_tests", 0)
         except (json.JSONDecodeError, IOError) as e:
-            logger.error(f"Error loading python2text correctness results for {model_id}: {e}")
+            logger.error(f"Error loading python2text correctness results for {model_name}: {e}")
     
     return passed, total
 
-def load_performance_results(model_id: str) -> Dict[str, Any]:
+def load_performance_results(model_name: str) -> Dict[str, Any]:
     """Load performance test results for a specific model."""
-    pattern = f"{PERFORMANCE_RESULTS_DIR}/performance_{model_id}_*.json"
+    pattern = f"{PERFORMANCE_RESULTS_DIR}/performance_{model_name}_*.json"
     files = sorted(glob.glob(pattern), reverse=True)
     
     default_results = {"avg_time": 0, "tests": 0}
@@ -150,7 +150,7 @@ def load_performance_results(model_id: str) -> Dict[str, Any]:
                     data[key] = default_results[key]
             return data
     except (json.JSONDecodeError, IOError) as e:
-        logger.error(f"Error loading performance results for {model_id}: {e}")
+        logger.error(f"Error loading performance results for {model_name}: {e}")
         return default_results
 
 def get_available_models() -> List[str]:

@@ -259,33 +259,32 @@ def validate_python2text_result(result: Dict[str, Any], criteria: List[Dict[str,
     
     return validation_result
 
-def test_text2python_correctness(model_id: str) -> Dict[str, Any]:
+def test_text2python_correctness(model_name: str) -> Dict[str, Any]:
     """
     Testuje poprawność konwersji tekst -> Python dla danego modelu
     
     Args:
-        model_id: Identyfikator modelu do testowania
+        model_name: Nazwa modelu do testowania
         
     Returns:
         Dict: Wyniki testów
     """
-    logger.info(f"Testowanie poprawności konwersji tekst -> Python dla modelu {model_id}...")
+    logger.info(f"Testowanie poprawności konwersji tekst -> Python dla modelu {model_name}...")
     
     results = {
-        "model_id": model_id,
+        "model_id": model_name,
         "total_tests": len(CORRECTNESS_TESTS),
-        "passed": 0,
-        "failed": 0,
+        "timestamp": datetime.now().isoformat(),
         "details": []
     }
     
     # Inicjalizacja konwertera
-    text2python = Text2Python(model_id=model_id, code_dir=CODE_DIR)
+    text2python = Text2Python(model_name=model_name, code_dir=CODE_DIR)
     
     # Sprawdź, czy model jest dostępny
     if not text2python.ensure_model_available():
-        logger.error(f"Model {model_id} nie jest dostępny. Testy nie mogą być wykonane.")
-        results["error"] = f"Model {model_id} nie jest dostępny"
+        logger.error(f"Model {model_name} nie jest dostępny. Testy nie mogą być wykonane.")
+        results["error"] = f"Model {model_name} nie jest dostępny"
         return results
     
     # Uruchom testy dla każdego przypadku
@@ -329,33 +328,32 @@ def test_text2python_correctness(model_id: str) -> Dict[str, Any]:
     
     return results
 
-def test_python2text_correctness(model_id: str) -> Dict[str, Any]:
+def test_python2text_correctness(model_name: str) -> Dict[str, Any]:
     """
     Testuje poprawność konwersji Python -> tekst dla danego modelu
     
     Args:
-        model_id: Identyfikator modelu do testowania
+        model_name: Nazwa modelu do testowania
         
     Returns:
         Dict: Wyniki testów
     """
-    logger.info(f"Testowanie poprawności konwersji Python -> tekst dla modelu {model_id}...")
+    logger.info(f"Testowanie poprawności konwersji Python -> tekst dla modelu {model_name}...")
     
     results = {
-        "model_id": model_id,
+        "model_id": model_name,
         "total_tests": len(PYTHON2TEXT_TESTS),
-        "passed": 0,
-        "failed": 0,
+        "timestamp": datetime.now().isoformat(),
         "details": []
     }
     
     # Inicjalizacja konwertera
-    python2text = Python2Text(model_id=model_id, output_dir=DESCRIPTION_DIR)
+    python2text = Python2Text(model_name=model_name, output_dir=DESCRIPTION_DIR)
     
     # Sprawdź, czy model jest dostępny
     if not python2text.ensure_model_available():
-        logger.error(f"Model {model_id} nie jest dostępny. Testy nie mogą być wykonane.")
-        results["error"] = f"Model {model_id} nie jest dostępny"
+        logger.error(f"Model {model_name} nie jest dostępny. Testy nie mogą być wykonane.")
+        results["error"] = f"Model {model_name} nie jest dostępny"
         return results
     
     # Uruchom testy dla każdego przypadku
