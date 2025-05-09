@@ -2,6 +2,7 @@
 .env
 performance/results
 tests/correctness
+tests/performance
 test_results
 # Byte-compiled / optimized / DLL files
 __pycache__/

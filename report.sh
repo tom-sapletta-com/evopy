@@ -229,11 +229,25 @@ function generate_comparison_report() {
     done
 }
 
+# Funkcja do czyszczenia plików pośrednich
+function cleanup_files() {
+    if [ -f "$SCRIPT_DIR/cleanup.sh" ]; then
+        echo -e "${YELLOW}Czyszczenie plików pośrednich przed generowaniem raportu...${NC}"
+        bash "$SCRIPT_DIR/cleanup.sh"
+    else
+        echo -e "${RED}Skrypt cleanup.sh nie istnieje. Pliki pośrednie nie zostaną wyczyszczone.${NC}"
+    fi
+}
+
 # Główna funkcja skryptu
 function main() {
     echo -e "${GREEN}${BOLD}=== Raport porównawczy modeli LLM dla Evopy ===${NC}"
     echo -e "${BLUE}Data: $(date '+%Y-%m-%d %H:%M:%S')${NC}"
     echo -e "${BLUE}Wersja Python: $($PYTHON_CMD --version)${NC}"
+    
+    # Uruchom czyszczenie plików pośrednich
+    cleanup_files
+    
     echo
     
     # Zapytaj, które modele testować

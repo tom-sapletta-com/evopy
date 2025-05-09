@@ -180,8 +180,8 @@ Data wygenerowania: {timestamp}
 
 ## Podsumowanie wyników
 
-| Model | Testy zapytań | Testy poprawności | Testy wydajności | Całkowity wynik |
-|-------|--------------|-------------------|------------------|-----------------|
+| Model | Testy zapytań | Testy poprawności | Testy wydajności | Średni czas (s) | Całkowity wynik |
+|-------|--------------|-------------------|------------------|----------------|------------------|
 """
     
     # Add a row for each model
@@ -191,25 +191,32 @@ Data wygenerowania: {timestamp}
         correctness_passed, correctness_total = load_correctness_results(model)
         performance_results = load_performance_results(model)
         
-        # Calculate basic test status
-        basic_status = "✅" if basic_results["passed_tests"] > 0 else "❌"
-        if basic_results["total_tests"] == 0:
-            basic_status = "❓"
+        # Calculate basic test metrics
+        basic_passed = basic_results["passed_tests"]
+        basic_total = basic_results["total_tests"]
+        basic_percent = (basic_passed / basic_total * 100) if basic_total > 0 else 0
+        basic_status = f"{basic_passed}/{basic_total} ({basic_percent:.1f}%)"
         
-        # Calculate correctness test status
-        correctness_status = "✅" if correctness_passed > 0 else "❌"
-        if correctness_total == 0:
-            correctness_status = "❓"
+        # Calculate correctness test metrics
+        correctness_percent = (correctness_passed / correctness_total * 100) if correctness_total > 0 else 0
+        correctness_status = f"{correctness_passed}/{correctness_total} ({correctness_percent:.1f}%)"
         
-        # Calculate performance test status
-        performance_status = "✅" if performance_results.get("tests", 0) > 0 else "❌"
+        # Calculate performance test metrics
+        perf_tests = performance_results.get("tests", 0)
+        perf_passed = performance_results.get("passed_tests", 0)
+        perf_percent = (perf_passed / perf_tests * 100) if perf_tests > 0 else 0
+        perf_status = f"{perf_passed}/{perf_tests} ({perf_percent:.1f}%)"
         
-        # Calculate total score
-        total_passed = (basic_results["passed_tests"] > 0) + (correctness_passed > 0) + (performance_results.get("tests", 0) > 0)
-        total_possible = 3  # Three categories of tests
+        # Get average execution time
+        avg_time = performance_results.get("avg_time", 0)
+        
+        # Calculate total score as a percentage
+        total_passed = basic_passed + correctness_passed + perf_passed
+        total_possible = basic_total + correctness_total + perf_tests
+        total_percent = (total_passed / total_possible * 100) if total_possible > 0 else 0
         
         # Add row to table
-        md_content += f"| {model} | {basic_status} | {correctness_status} | {performance_status} | {total_passed}/{total_possible} |\n"
+        md_content += f"| {model} | {basic_status} | {correctness_status} | {perf_status} | {avg_time:.2f} | {total_passed}/{total_possible} ({total_percent:.1f}%) |\n"
     
     # Add detailed results section
     md_content += "\n## Szczegółowe wyniki testów\n\n"
@@ -219,40 +226,98 @@ Data wygenerowania: {timestamp}
         
         # Basic test results
         basic_results = load_test_results(model)
+        basic_passed = basic_results['passed_tests']
+        basic_total = basic_results['total_tests']
+        basic_percent = (basic_passed / basic_total * 100) if basic_total > 0 else 0
+        
         md_content += f"#### Wyniki testów zapytań\n"
-        md_content += f"- Zaliczone testy: {basic_results['passed_tests']}/{basic_results['total_tests']}\n"
+        md_content += f"- Zaliczone testy: {basic_passed}/{basic_total} ({basic_percent:.1f}%)\n"
+        md_content += f"- Ilość wygenerowanego kodu: {basic_results.get('total_code_lines', 0)} linii\n"
+        md_content += f"- Średnia ilość linii na zapytanie: {basic_results.get('avg_code_lines', 0):.1f}\n"
         
         if basic_results["test_results"]:
             md_content += "- Szczegóły testów:\n"
             for test in basic_results["test_results"]:
                 status = "✅" if test["status"] == "PASSED" else "❌"
-                md_content += f"  - {status} {test['name']}: {test['reason']}\n"
+                code_lines = test.get("code_lines", 0)
+                md_content += f"  - {status} {test['name']}: {test['reason']} ({code_lines} linii kodu)\n"
         
         # Correctness test results
         correctness_passed, correctness_total = load_correctness_results(model)
+        correctness_percent = (correctness_passed / correctness_total * 100) if correctness_total > 0 else 0
+        
         md_content += f"\n#### Wyniki testów poprawności\n"
-        md_content += f"- Zaliczone testy: {correctness_passed}/{correctness_total}\n"
+        md_content += f"- Zaliczone testy: {correctness_passed}/{correctness_total} ({correctness_percent:.1f}%)\n"
+        md_content += f"- Skuteczność kompilacji: {basic_results.get('compilation_success_rate', 0):.1f}%\n"
+        md_content += f"- Skuteczność wykonania: {basic_results.get('execution_success_rate', 0):.1f}%\n"
         
         # Performance test results
         performance_results = load_performance_results(model)
+        perf_tests = performance_results.get("tests", 0)
+        perf_passed = performance_results.get("passed_tests", 0)
+        perf_percent = (perf_passed / perf_tests * 100) if perf_tests > 0 else 0
+        
         md_content += f"\n#### Wyniki testów wydajności\n"
-        if performance_results.get("tests", 0) > 0:
+        if perf_tests > 0:
+            md_content += f"- Zaliczone testy: {perf_passed}/{perf_tests} ({perf_percent:.1f}%)\n"
             md_content += f"- Średni czas wykonania: {performance_results.get('avg_time', 0):.2f} s\n"
-            md_content += f"- Liczba testów: {performance_results.get('tests', 0)}\n"
+            md_content += f"- Najszybszy test: {performance_results.get('min_time', 0):.2f} s\n"
+            md_content += f"- Najwolniejszy test: {performance_results.get('max_time', 0):.2f} s\n"
+            md_content += f"- Całkowity czas wykonania: {performance_results.get('total_time', 0):.2f} s\n"
         else:
             md_content += "- Brak wyników testów wydajności\n"
         
         md_content += "\n"
     
+    # Find best models based on metrics
+    best_correctness_model = ""
+    best_correctness_score = 0
+    fastest_model = ""
+    best_speed = float('inf')
+    best_overall_model = ""
+    best_overall_score = 0
+    
+    for model in models:
+        # Load test results
+        basic_results = load_test_results(model)
+        correctness_passed, correctness_total = load_correctness_results(model)
+        performance_results = load_performance_results(model)
+        
+        # Calculate correctness percentage
+        correctness_percent = (correctness_passed / correctness_total * 100) if correctness_total > 0 else 0
+        if correctness_percent > best_correctness_score:
+            best_correctness_score = correctness_percent
+            best_correctness_model = model
+        
+        # Calculate speed
+        avg_time = performance_results.get('avg_time', float('inf'))
+        if avg_time < best_speed and avg_time > 0:
+            best_speed = avg_time
+            fastest_model = model
+        
+        # Calculate overall score
+        basic_passed = basic_results['passed_tests']
+        basic_total = basic_results['total_tests']
+        perf_tests = performance_results.get("tests", 0)
+        perf_passed = performance_results.get("passed_tests", 0)
+        
+        total_passed = basic_passed + correctness_passed + perf_passed
+        total_possible = basic_total + correctness_total + perf_tests
+        overall_percent = (total_passed / total_possible * 100) if total_possible > 0 else 0
+        
+        if overall_percent > best_overall_score:
+            best_overall_score = overall_percent
+            best_overall_model = model
+    
     # Add conclusions section
-    md_content += """
+    md_content += f"""
 ## Wnioski
 
 Na podstawie przeprowadzonych testów można wyciągnąć następujące wnioski:
 
-1. **Najlepszy model pod względem poprawności**: Model z najwyższym wynikiem w testach poprawności
-2. **Najszybszy model**: Model z najniższym średnim czasem wykonania
-3. **Najlepszy model ogólnie**: Model z najwyższym całkowitym wynikiem
+1. **Najlepszy model pod względem poprawności**: {best_correctness_model} ({best_correctness_score:.1f}%)
+2. **Najszybszy model**: {fastest_model} (średni czas: {best_speed:.2f}s)
+3. **Najlepszy model ogólnie**: {best_overall_model} (ogólny wynik: {best_overall_score:.1f}%)
 
 ## Metodologia testów
 
@@ -264,11 +329,11 @@ Testy zostały przeprowadzone w trzech kategoriach:
 
 ## Zalecenia
 
-Na podstawie wyników testów zaleca się:
+Na podstawie wyników testów zalecamy:
 
-1. Używanie modelu z najwyższym całkowitym wynikiem do większości zastosowań
-2. W przypadku zadań wymagających wysokiej wydajności, rozważenie użycia najszybszego modelu
-3. Dla zadań wymagających wysokiej dokładności, wybór modelu z najlepszymi wynikami w testach poprawności
+1. **Do zadań wymagających wysokiej dokładności**: {best_correctness_model}
+2. **Do zadań wymagających szybkiego działania**: {fastest_model}
+3. **Do ogólnego użytku**: {best_overall_model}
 """
     
     # Write to file
