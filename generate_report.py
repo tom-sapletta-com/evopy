@@ -367,11 +367,28 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
 <body>
 """
         
+        # Add Mermaid support for diagrams
+        mermaid_script = """
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: false, htmlLabels: true },
+            sequence: { useMaxWidth: false, showSequenceNumbers: true }
+        });
+    });
+</script>
+"""
+        
         html_footer = """
 <div class="footer">
     <p>Wygenerowano przez Evopy Report Generator</p>
     <p>© 2025 Evopy</p>
 </div>
+""" + mermaid_script + """
 </body>
 </html>
 """
