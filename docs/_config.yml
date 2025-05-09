@@ -1,0 +1,49 @@
+title: Evopy Documentation
+description: Documentation for the Evopy testing system
+baseurl: "/evopy" # the subpath of your site, e.g. /blog
+url: "https://tom-sapletta-com.github.io" # the base hostname & protocol for your site
+
+# Build settings
+markdown: kramdown
+theme: jekyll-theme-primer
+remote_theme: pages-themes/primer@v0.6.0
+
+# GitHub metadata settings
+repository: tom-sapletta-com/evopy
+
+# Plugins
+plugins:
+  - jekyll-github-metadata
+  - jekyll-seo-tag
+  - jekyll-sitemap
+  - jekyll-feed
+
+# Exclude from processing
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .sass-cache/
+  - .jekyll-cache/
+  - gemfiles/
+  - .bundle/
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:path/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "page"
+  - scope:
+      path: ""
+      type: "pages"
+    values:
+      layout: "page"
