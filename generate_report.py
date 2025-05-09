@@ -218,6 +218,121 @@ Data wygenerowania: {timestamp}
         # Add row to table
         md_content += f"| {model} | {basic_status} | {correctness_status} | {perf_status} | {avg_time:.2f} | {total_passed}/{total_possible} ({total_percent:.1f}%) |\n"
     
+    # Generate chart data for visualization
+    chart_data = {
+        "models": [],
+        "basic_test_scores": [],
+        "correctness_scores": [],
+        "performance_times": []
+    }
+    
+    for model in models:
+        # Load test results
+        basic_results = load_test_results(model)
+        correctness_passed, correctness_total = load_correctness_results(model)
+        performance_results = load_performance_results(model)
+        
+        # Calculate percentages
+        basic_percent = (basic_results['passed_tests'] / basic_results['total_tests'] * 100) if basic_results['total_tests'] > 0 else 0
+        correctness_percent = (correctness_passed / correctness_total * 100) if correctness_total > 0 else 0
+        avg_time = performance_results.get('avg_time', 0)
+        
+        # Add to chart data
+        chart_data["models"].append(model)
+        chart_data["basic_test_scores"].append(basic_percent)
+        chart_data["correctness_scores"].append(correctness_percent)
+        chart_data["performance_times"].append(avg_time)
+    
+    # Create chart HTML
+    bar_chart_html = f"""
+<div style="width: 80%; margin: 20px auto;">
+    <canvas id="test-results-chart" class="evopy-chart" data-chart='{{
+        "type": "bar",
+        "data": {{
+            "labels": {chart_data["models"]},
+            "datasets": [
+                {{
+                    "label": "Testy zapytań (%)",
+                    "data": {chart_data["basic_test_scores"]},
+                    "backgroundColor": "rgba(54, 162, 235, 0.5)",
+                    "borderColor": "rgba(54, 162, 235, 1)",
+                    "borderWidth": 1
+                }},
+                {{
+                    "label": "Testy poprawności (%)",
+                    "data": {chart_data["correctness_scores"]},
+                    "backgroundColor": "rgba(75, 192, 192, 0.5)",
+                    "borderColor": "rgba(75, 192, 192, 1)",
+                    "borderWidth": 1
+                }}
+            ]
+        }},
+        "options": {{
+            "scales": {{
+                "y": {{
+                    "beginAtZero": true,
+                    "max": 100,
+                    "title": {{
+                        "display": true,
+                        "text": "Procent sukcesu (%)"
+                    }}
+                }}
+            }},
+            "plugins": {{
+                "title": {{
+                    "display": true,
+                    "text": "Porównanie wyników testów"
+                }}
+            }}
+        }}
+    }}'></canvas>
+</div>
+"""
+    
+    line_chart_html = f"""
+<div style="width: 80%; margin: 20px auto;">
+    <canvas id="performance-chart" class="evopy-chart" data-chart='{{
+        "type": "line",
+        "data": {{
+            "labels": {chart_data["models"]},
+            "datasets": [
+                {{
+                    "label": "Średni czas wykonania (s)",
+                    "data": {chart_data["performance_times"]},
+                    "backgroundColor": "rgba(255, 99, 132, 0.2)",
+                    "borderColor": "rgba(255, 99, 132, 1)",
+                    "borderWidth": 2,
+                    "tension": 0.1
+                }}
+            ]
+        }},
+        "options": {{
+            "scales": {{
+                "y": {{
+                    "beginAtZero": true,
+                    "title": {{
+                        "display": true,
+                        "text": "Czas (sekundy)"
+                    }}
+                }}
+            }},
+            "plugins": {{
+                "title": {{
+                    "display": true,
+                    "text": "Porównanie czasu wykonania"
+                }}
+            }}
+        }}
+    }}'></canvas>
+</div>
+"""
+    
+    # Add visualization section
+    md_content += "\n## Wizualizacja wyników\n\n"
+    md_content += "### Wykresy porównawcze\n\n"
+    md_content += bar_chart_html + "\n\n"
+    md_content += line_chart_html + "\n\n"
+    
     # Add detailed results section
     md_content += "\n## Szczegółowe wyniki testów\n\n"
     
@@ -432,11 +547,13 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
 <body>
 """
         
-        # Add Mermaid support for diagrams
+        # Add Mermaid support for diagrams and charts
         mermaid_script = """
 <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Mermaid diagrams
         mermaid.initialize({
             startOnLoad: true,
             theme: 'default',
@@ -444,6 +561,16 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
             flowchart: { useMaxWidth: false, htmlLabels: true },
             sequence: { useMaxWidth: false, showSequenceNumbers: true }
         });
+        
+        // Initialize Chart.js charts
+        setTimeout(function() {
+            const chartElements = document.querySelectorAll('.evopy-chart');
+            chartElements.forEach(function(element) {
+                const ctx = element.getContext('2d');
+                const chartData = JSON.parse(element.getAttribute('data-chart'));
+                new Chart(ctx, chartData);
+            });
+        }, 500);
     });
 </script>
 """
