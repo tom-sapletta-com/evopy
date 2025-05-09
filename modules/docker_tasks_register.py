@@ -19,13 +19,19 @@ logger = logging.getLogger('docker-tasks-register')
 
 # Ścieżka do pliku z zadaniami Docker
 MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(MODULES_DIR, 'data')
+PROJECT_ROOT = os.path.dirname(MODULES_DIR)
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 TASKS_FILE = os.path.join(DATA_DIR, 'docker_tasks.json')
+
+# Logowanie ścieżek dla debugowania
+logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+logger.info(f"DATA_DIR: {DATA_DIR}")
+logger.info(f"TASKS_FILE: {TASKS_FILE}")
 
 # Utwórz katalog danych, jeśli nie istnieje
 os.makedirs(DATA_DIR, exist_ok=True)
 
-def register_docker_task(container_id, code, output, is_service=False, service_url=None, service_name=None):
+def register_docker_task(container_id, code, output, is_service=False, service_url=None, service_name=None, user_prompt=None, agent_explanation=None):
     """Rejestruje zadanie Docker w serwerze modułów
     
     Args:
@@ -35,6 +41,8 @@ def register_docker_task(container_id, code, output, is_service=False, service_u
         is_service: Czy to jest serwis webowy
         service_url: URL serwisu (tylko dla is_service=True)
         service_name: Nazwa serwisu (tylko dla is_service=True)
+        user_prompt: Zapytanie użytkownika, które doprowadziło do wygenerowania kodu
+        agent_explanation: Wyjaśnienie asystenta dotyczące wygenerowanego kodu
         
     Returns:
         str: ID zadania Docker
@@ -118,7 +126,9 @@ def save_task_to_file(task_id, container_id, code, output, is_service=False, ser
             "output": output,
             "is_service": is_service,
             "service_url": service_url,
-            "service_name": service_name
+            "service_name": service_name,
+            "user_prompt": user_prompt,
+            "agent_explanation": agent_explanation
         }
         
         # Zapisz zadania do pliku

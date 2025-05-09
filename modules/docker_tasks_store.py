@@ -17,8 +17,14 @@ logger = logging.getLogger('docker-tasks-store')
 
 # Ścieżka do pliku z zadaniami Docker
 MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(MODULES_DIR, 'data')
+PROJECT_ROOT = os.path.dirname(MODULES_DIR)
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 TASKS_FILE = os.path.join(DATA_DIR, 'docker_tasks.json')
+
+# Logowanie ścieżek dla debugowania
+logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
+logger.info(f"DATA_DIR: {DATA_DIR}")
+logger.info(f"TASKS_FILE: {TASKS_FILE}")
 
 # Utwórz katalog danych, jeśli nie istnieje
 os.makedirs(DATA_DIR, exist_ok=True)
