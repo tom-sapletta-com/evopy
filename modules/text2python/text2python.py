@@ -159,6 +159,7 @@ class Text2Python:
                 return math_result
 
             # Oryginalny kod dla prostych wyrażeń arytmetycznych (pozostawiony jako fallback)
+            import re
             arithmetic_pattern = re.compile(r'^\s*(\d+\s*[+\-*/]\s*\d+)\s*$')
             match = arithmetic_pattern.match(prompt)
 

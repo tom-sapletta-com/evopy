@@ -9,6 +9,8 @@ Evopy to zaawansowany system asystenta AI zaprojektowany do automatyzacji zadań
 - **Prototypowanie** - błyskawiczne tworzenie prototypów aplikacji i mikrousług
 - **Zarządzanie infrastrukturą** - automatyzacja zadań DevOps i zarządzanie kontenerami Docker
 - **Testowanie i debugowanie** - automatyczne wykrywanie i naprawianie błędów w kodzie
+- **Zaawansowane przetwarzanie danych** - generowanie kodu do analizy i wizualizacji danych
+- **Integracja z zewnętrznymi API** - automatyczne tworzenie kodu do komunikacji z zewnętrznymi usługami
 
 Evopy ewoluuje z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker, dostosowując się do rosnących potrzeb użytkownika i zespołu.
 
@@ -116,6 +118,11 @@ Evopy może być wykorzystany w różnorodnych scenariuszach, od prostych zadań
 - **Autonaprawa zależności** - automatyczne wykrywanie i naprawianie brakujących importów w kodzie
 - **Porównywanie modeli LLM** - system testowania i raportowania dla różnych modeli językowych
 - **Generowanie raportów** - tworzenie raportów porównawczych w formatach Markdown, HTML i PDF
+- **Obsługa różnych typów danych** - generowanie kodu do pracy z listami, słownikami, JSON, CSV, XML
+- **Algorytmy specjalistyczne** - wsparcie dla operacji statystycznych, sortowania, uczenia maszynowego
+- **Przetwarzanie języka naturalnego** - generowanie kodu do analizy tekstu, tłumaczenia, analizy sentymentu
+- **Asynchroniczne operacje** - wsparcie dla funkcji asynchronicznych i równoległego przetwarzania
+- **Generowanie klas i aplikacji** - tworzenie kompletnych klas i prostych aplikacji webowych
 
 ## Architektura
 

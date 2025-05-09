@@ -1,6 +1,6 @@
 # Interfejs Webowy Evopy
 
-Evopy oferuje zaawansowany interfejs webowy do zarządzania zadaniami Docker, śledzenia konwersacji i korzystania z modułów konwersji. Interfejs ten jest dostępny pod adresem http://localhost:5000 po uruchomieniu serwera.
+Evopy oferuje zaawansowany interfejs webowy do zarządzania zadaniami Docker, śledzenia konwersacji i korzystania z modułów konwersji. Interfejs ten jest dostępny pod adresem http://localhost:5000 po uruchomieniu serwera. Najnowsza wersja interfejsu zawiera rozszerzone funkcjonalności dla modułu text2python, umożliwiające generowanie zaawansowanego kodu dla różnych zastosowań.
 
 ## Uruchomienie interfejsu webowego
 
@@ -20,7 +20,18 @@ bash modules/run_server.sh
 
 Strona główna zawiera listę dostępnych modułów i funkcji:
 
-- **Moduły konwersji** - lista dostępnych modułów konwersji (text2python, shell2text, text2sql, itp.)
+- **Moduły konwersji** - lista dostępnych modułów konwersji:
+  - **text2python** - konwersja tekstu na kod Python z rozszerzonymi funkcjonalnościami:
+    - Obsługa różnych typów danych (listy, słowniki, JSON, CSV, XML)
+    - Algorytmy specjalistyczne (statystyka, sortowanie, uczenie maszynowe)
+    - Przetwarzanie tekstu i NLP (analiza tekstu, tłumaczenia, analiza sentymentu)
+    - Integracja z API i bazami danych
+    - Generowanie klas i aplikacji webowych
+    - Operacje asynchroniczne
+  - **shell2text** - konwersja poleceń shell na opis w języku naturalnym
+  - **text2sql** - konwersja opisu na zapytania SQL
+  - **text2regex** - konwersja opisu na wyrażenia regularne
+  - i inne
 - **Zarządzanie zadaniami Docker** - link do panelu zarządzania kontenerami Docker
 - **Historia konwersacji** - link do historii konwersacji z asystentem
 
@@ -158,6 +169,42 @@ Interfejs webowy Evopy zapewnia podstawowe mechanizmy bezpieczeństwa:
 4. **Problem**: Kod Python nie jest kolorowany
    **Rozwiązanie**: Upewnij się, że biblioteka Prism.js jest poprawnie załadowana.
 
+## Rozszerzone funkcjonalności modułu text2python w interfejsie webowym
+
+Interfejs webowy został rozszerzony o nowe funkcjonalności dla modułu text2python, dostępne pod adresem `/text2python`:
+
+### 1. Kategorie zastosowań
+
+Interfejs oferuje wybierane kategorie zastosowań dla modułu text2python:
+
+- **Struktury danych** - generowanie kodu do pracy z listami, słownikami, JSON, CSV, XML
+- **Algorytmy** - generowanie kodu dla różnych algorytmów i operacji matematycznych
+- **Przetwarzanie tekstu** - generowanie kodu do analizy tekstu, tłumaczenia, analizy sentymentu
+- **Integracje z API** - generowanie kodu do komunikacji z zewnętrznymi API
+- **Aplikacje webowe** - generowanie kodu dla aplikacji Flask i FastAPI
+- **Bazy danych** - generowanie kodu do pracy z różnymi bazami danych
+- **Wizualizacja danych** - generowanie kodu do tworzenia wykresów i wizualizacji
+
+### 2. Przykłady zapytań
+
+Dla każdej kategorii interfejs oferuje przykłady zapytań, które można użyć jako punkt wyjścia:
+
+- "Stwórz listę z liczbami od 1 do 10"
+- "Oblicz średnią, medianę i odchylenie standardowe dla listy [1, 2, 3, 4, 5]"
+- "Znajdź najczęściej występujące słowa w tekście"
+- "Pobierz dane pogodowe dla Warszawy"
+- "Stwórz prostą aplikację Flask z endpointem /hello"
+
+### 3. Zaawansowane opcje
+
+Interfejs oferuje zaawansowane opcje dla modułu text2python:
+
+- **Wybór modelu** - możliwość wyboru różnych modeli językowych
+- **Parametry generowania** - możliwość dostosowania parametrów generowania kodu (temperatura, max_tokens)
+- **Automatyczna instalacja zależności** - opcja automatycznej instalacji brakujących bibliotek
+- **Generowanie testów** - opcja automatycznego generowania testów jednostkowych dla wygenerowanego kodu
+- **Generowanie dokumentacji** - opcja automatycznego generowania dokumentacji dla wygenerowanego kodu
+
 ## Rozwój interfejsu webowego
 
 Interfejs webowy Evopy jest stale rozwijany. Planowane funkcjonalności:
@@ -167,3 +214,5 @@ Interfejs webowy Evopy jest stale rozwijany. Planowane funkcjonalności:
 - **Zaawansowana analityka** - statystyki i wykresy dotyczące użycia systemu
 - **Integracja z zewnętrznymi repozytoriami** - możliwość importu kodu z GitHub, GitLab, itp.
 - **Edytor kodu online** - możliwość edycji kodu bezpośrednio w interfejsie webowym
+- **Interaktywne przykłady** - możliwość interaktywnego testowania wygenerowanego kodu
+- **Współdzielenie kodu** - możliwość udostępniania wygenerowanego kodu innym użytkownikom
