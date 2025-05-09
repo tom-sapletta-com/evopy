@@ -22,6 +22,10 @@ from pathlib import Path
 from datetime import datetime
 from typing import Dict, Any, List
 
+# Import modułów oceny jakości i wydajności kodu
+from code_quality import evaluate_code_quality, evaluate_explanation_clarity
+from code_efficiency import analyze_code_efficiency, integrate_with_dependency_manager
+
 # Dodaj katalog główny do ścieżki, aby zaimportować moduły Evopy
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -255,6 +259,22 @@ def run_test_case(text2python, case_name, case_data):
             # Używając dependency_manager i docker_sandbox
             pass
         
+        # Integracja z systemem autonaprawy zależności
+        logger.info("Integracja z systemem autonaprawy zależności...")
+        fixed_code, efficiency_metrics = integrate_with_dependency_manager(code)
+        
+        # Jeśli kod został zmieniony, zaktualizuj go
+        if fixed_code != code:
+            logger.info("Kod został poprawiony przez system autonaprawy zależności")
+            code = fixed_code
+        
+        # Ocena jakości kodu i wyjaśnień
+        logger.info("Ocena jakości kodu i wyjaśnień...")
+        quality_metrics = evaluate_code_quality(code, explanation)
+        
+        # Obliczenie liczby linii kodu
+        code_lines = len(code.strip().split('\n'))
+        
         logger.info(f"Test {case_name} zakończony sukcesem (czas: {execution_time:.2f}s)")
         return {
             "name": case_name,
@@ -262,7 +282,23 @@ def run_test_case(text2python, case_name, case_data):
             "reason": f"Test zakończony sukcesem (czas: {execution_time:.2f}s)",
             "execution_time": execution_time,
             "code": code,
-            "explanation": explanation
+            "explanation": explanation,
+            "code_lines": code_lines,
+            "quality_metrics": {
+                "documentation_quality": quality_metrics["documentation_quality"],
+                "code_readability": quality_metrics["code_readability"],
+                "explanation_clarity": quality_metrics["explanation_clarity"],
+                "maintainability_index": quality_metrics["maintainability_index"],
+                "overall_quality_score": quality_metrics["overall_quality_score"]
+            },
+            "efficiency_metrics": {
+                "time_complexity": efficiency_metrics["time_complexity"],
+                "time_complexity_score": efficiency_metrics["time_complexity_score"],
+                "space_complexity": efficiency_metrics["space_complexity"],
+                "space_complexity_score": efficiency_metrics["space_complexity_score"],
+                "code_size_efficiency": efficiency_metrics["code_size_efficiency"],
+                "overall_efficiency_score": efficiency_metrics["overall_efficiency_score"]
+            }
         }
         
     except subprocess.TimeoutExpired:

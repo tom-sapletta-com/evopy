@@ -240,72 +240,167 @@ def calculate_text_to_code_accuracy(model_name: str) -> Dict[str, Any]:
     return metrics
 
 def analyze_code_efficiency(model_name: str) -> Dict[str, Any]:
-    """Analyze and score code efficiency metrics.
+    """
+    Analyze and score code efficiency metrics.
+    
+    Args:
+        model_name: Name of the model to analyze
     
     Returns:
         Dict with efficiency metrics including:
+        - time_complexity: Estimated time complexity (e.g., O(n), O(n^2))
         - time_complexity_score: Score based on algorithmic efficiency (0-100)
+        - space_complexity: Estimated space complexity (e.g., O(1), O(n))
         - space_complexity_score: Score based on memory usage efficiency (0-100)
         - code_size_efficiency: Ratio of functionality to code size (0-100)
         - resource_usage_score: Score based on CPU/memory utilization (0-100)
+        - overall_efficiency_score: Combined score of all efficiency metrics (0-100)
     """
-    # Load performance results
-    performance_results = load_performance_results(model_name)
-    basic_results = load_test_results(model_name)
+    # Import moduł code_efficiency jeśli jeszcze nie został zaimportowany
+    try:
+        from code_efficiency import analyze_code_efficiency as analyze_efficiency
+    except ImportError:
+        logger.warning("Moduł code_efficiency nie jest dostępny. Używanie podstawowej analizy.")
+        analyze_efficiency = None
     
-    # Default metrics
+    # Załaduj wyniki testów
+    basic_results = load_test_results(model_name)
+    performance_results = load_performance_results(model_name)
+    
+    # Domyślne metryki
     metrics = {
+        "time_complexity": "O(n)",  # Domyślna złożoność czasowa
         "time_complexity_score": 0,
+        "space_complexity": "O(1)",  # Domyślna złożoność pamięciowa
         "space_complexity_score": 0,
         "code_size_efficiency": 0,
         "resource_usage_score": 0,
         "overall_efficiency_score": 0
     }
     
-    # If we have performance data
-    if performance_results.get("tests", 0) > 0:
-        # Use existing efficiency score if available
+    # Sprawdź, czy mamy dane z testów
+    if basic_results and "test_cases" in basic_results and basic_results["test_cases"]:
+        # Zbierz wszystkie metryki wydajności z wyników testów
+        efficiency_metrics_list = []
+        
+        for case in basic_results["test_cases"]:
+            if "efficiency_metrics" in case:
+                efficiency_metrics_list.append(case["efficiency_metrics"])
+        
+        if efficiency_metrics_list:
+            # Oblicz średnie wartości dla metryk wydajności
+            time_complexity_scores = [m["time_complexity_score"] for m in efficiency_metrics_list if "time_complexity_score" in m]
+            space_complexity_scores = [m["space_complexity_score"] for m in efficiency_metrics_list if "space_complexity_score" in m]
+            code_size_efficiencies = [m["code_size_efficiency"] for m in efficiency_metrics_list if "code_size_efficiency" in m]
+            overall_scores = [m["overall_efficiency_score"] for m in efficiency_metrics_list if "overall_efficiency_score" in m]
+            
+            # Najczęściej występująca złożoność czasowa i pamięciowa
+            time_complexities = [m["time_complexity"] for m in efficiency_metrics_list if "time_complexity" in m]
+            space_complexities = [m["space_complexity"] for m in efficiency_metrics_list if "space_complexity" in m]
+            
+            if time_complexities:
+                # Znajdź najczęściej występującą złożoność czasową
+                from collections import Counter
+                time_complexity_counter = Counter(time_complexities)
+                metrics["time_complexity"] = time_complexity_counter.most_common(1)[0][0]
+            
+            if space_complexities:
+                # Znajdź najczęściej występującą złożoność pamięciową
+                from collections import Counter
+                space_complexity_counter = Counter(space_complexities)
+                metrics["space_complexity"] = space_complexity_counter.most_common(1)[0][0]
+            
+            # Oblicz średnie wartości dla ocen
+            if time_complexity_scores:
+                metrics["time_complexity_score"] = sum(time_complexity_scores) / len(time_complexity_scores)
+            
+            if space_complexity_scores:
+                metrics["space_complexity_score"] = sum(space_complexity_scores) / len(space_complexity_scores)
+            
+            if code_size_efficiencies:
+                metrics["code_size_efficiency"] = sum(code_size_efficiencies) / len(code_size_efficiencies)
+            
+            if overall_scores:
+                metrics["overall_efficiency_score"] = sum(overall_scores) / len(overall_scores)
+            else:
+                # Jeśli brak ogólnej oceny, oblicz ją na podstawie dostępnych metryk
+                available_metrics = []
+                
+                if metrics["time_complexity_score"] > 0:
+                    available_metrics.append(metrics["time_complexity_score"])
+                
+                if metrics["space_complexity_score"] > 0:
+                    available_metrics.append(metrics["space_complexity_score"])
+                
+                if metrics["code_size_efficiency"] > 0:
+                    available_metrics.append(metrics["code_size_efficiency"])
+                
+                if available_metrics:
+                    metrics["overall_efficiency_score"] = sum(available_metrics) / len(available_metrics)
+    
+    # Jeśli brak danych z testów, ale mamy dane wydajnościowe
+    elif performance_results and performance_results.get("tests", 0) > 0:
+        # Użyj istniejącej oceny wydajności, jeśli jest dostępna
         if "code_efficiency_score" in performance_results and performance_results["code_efficiency_score"] > 0:
             metrics["overall_efficiency_score"] = performance_results["code_efficiency_score"]
         else:
-            # Estimate based on execution time
+            # Szacuj na podstawie czasu wykonania
             avg_time = performance_results.get("avg_time", 0)
             if avg_time > 0:
-                # Lower times get higher scores (inverse relationship)
-                # Normalize to 0-100 scale (assuming 10s is very slow, 0.1s is very fast)
+                # Niższe czasy otrzymują wyższe oceny (odwrotna zależność)
+                # Normalizacja do skali 0-100 (zakładając, że 10s to bardzo wolno, 0.1s to bardzo szybko)
                 time_score = max(0, min(100, 100 - (avg_time / 0.1 * 10)))
                 metrics["time_complexity_score"] = time_score
+                
+                # Określ złożoność czasową na podstawie czasu wykonania
+                if avg_time < 0.01:
+                    metrics["time_complexity"] = "O(1)"  # Stała złożoność
+                elif avg_time < 0.1:
+                    metrics["time_complexity"] = "O(log n)"  # Logarytmiczna złożoność
+                elif avg_time < 1.0:
+                    metrics["time_complexity"] = "O(n)"  # Liniowa złożoność
+                elif avg_time < 10.0:
+                    metrics["time_complexity"] = "O(n log n)"  # Linearytmiczna złożoność
+                else:
+                    metrics["time_complexity"] = "O(n²)"  # Kwadratowa złożoność
             
-            # Estimate space complexity from memory usage if available
+            # Szacuj złożoność pamięciową na podstawie wykorzystania pamięci
             memory_usage = performance_results.get("memory_usage", 0)
             if memory_usage > 0:
-                # Lower memory usage gets higher scores (inverse relationship)
-                # Normalize to 0-100 scale (assuming 1000MB is very high, 10MB is very low)
+                # Niższe wykorzystanie pamięci otrzymuje wyższe oceny
                 space_score = max(0, min(100, 100 - (memory_usage / 10 * 10)))
                 metrics["space_complexity_score"] = space_score
+                
+                # Określ złożoność pamięciową na podstawie wykorzystania pamięci
+                if memory_usage < 10:
+                    metrics["space_complexity"] = "O(1)"  # Stała złożoność
+                elif memory_usage < 100:
+                    metrics["space_complexity"] = "O(n)"  # Liniowa złożoność
+                else:
+                    metrics["space_complexity"] = "O(n²)"  # Kwadratowa złożoność
             
-            # Calculate code size efficiency if we have code lines data
+            # Oblicz efektywność rozmiaru kodu, jeśli mamy dane o liniach kodu
             avg_code_lines = basic_results.get("avg_code_lines", 0)
             if avg_code_lines > 0:
-                # Assume optimal code is between 5-50 lines
-                # Too short might lack proper error handling, too long might be inefficient
+                # Zakładamy, że optymalny kod ma między 5-50 linii
+                # Zbyt krótki może nie mieć odpowiedniej obsługi błędów, zbyt długi może być nieefektywny
                 if avg_code_lines < 5:
-                    code_size_score = avg_code_lines * 20  # 0-4 lines: 0-80 points
+                    code_size_score = avg_code_lines * 20  # 0-4 linii: 0-80 punktów
                 elif avg_code_lines <= 50:
-                    code_size_score = 100 - ((avg_code_lines - 5) / 45 * 20)  # 5-50 lines: 100-80 points
+                    code_size_score = 100 - ((avg_code_lines - 5) / 45 * 20)  # 5-50 linii: 100-80 punktów
                 else:
-                    code_size_score = max(0, 80 - ((avg_code_lines - 50) / 50 * 40))  # >50 lines: 80-0 points
+                    code_size_score = max(0, 80 - ((avg_code_lines - 50) / 50 * 40))  # >50 linii: 80-0 punktów
                 
                 metrics["code_size_efficiency"] = code_size_score
             
-            # Calculate resource usage score if available
+            # Oblicz ocenę wykorzystania zasobów, jeśli dostępne
             cpu_usage = performance_results.get("cpu_usage", 0)
             if cpu_usage > 0:
-                # Lower CPU usage gets higher scores
+                # Niższe wykorzystanie CPU otrzymuje wyższe oceny
                 resource_score = max(0, 100 - cpu_usage)
                 metrics["resource_usage_score"] = resource_score
             
-            # Calculate overall efficiency score (weighted average of available metrics)
+            # Oblicz ogólną ocenę wydajności (średnia ważona dostępnych metryk)
             available_metrics = [score for score in [
                 metrics["time_complexity_score"],
                 metrics["space_complexity_score"],
@@ -663,24 +758,41 @@ Data wygenerowania: {timestamp}
         
         md_content += f"| {model} | {correctness} | {syntax_errors} | {semantic_errors} | {adherence} |\n"
     
-    md_content += "\n### Wydajność generowanego kodu\n\n"
-    md_content += "| Model | Złożoność czasowa | Złożoność pamięciowa | Efektywność rozmiaru | Wykorzystanie zasobów |\n"
-    md_content += "|-------|-----------------|---------------------|---------------------|----------------------|\n"
+    md_content += "\n### Wydajność kodu\n\n"
+    md_content += "| Model | Złożoność czasowa | Ocena | Złożoność pamięciowa | Ocena | Efektywność rozmiaru | Wykorzystanie zasobów | Ogólna ocena |\n"
+    md_content += "|-------|------------------|-------|---------------------|-------|---------------------|---------------------|-------------|"
     
     for model in models:
         # Get code efficiency metrics
         efficiency_metrics = analyze_code_efficiency(model)
         
-        time_complexity = f"{efficiency_metrics['time_complexity_score']:.1f}%"
-        space_complexity = f"{efficiency_metrics['space_complexity_score']:.1f}%"
+        # Złożoność czasowa (notacja i ocena)
+        time_complexity_notation = efficiency_metrics.get('time_complexity', 'O(n)')
+        time_complexity_score = f"{efficiency_metrics['time_complexity_score']:.1f}%"
+        
+        # Złożoność pamięciowa (notacja i ocena)
+        space_complexity_notation = efficiency_metrics.get('space_complexity', 'O(1)')
+        space_complexity_score = f"{efficiency_metrics['space_complexity_score']:.1f}%"
+        
+        # Inne metryki
         code_size = f"{efficiency_metrics['code_size_efficiency']:.1f}%"
         resource_usage = f"{efficiency_metrics['resource_usage_score']:.1f}%"
+        overall_score = f"{efficiency_metrics['overall_efficiency_score']:.1f}%"
         
-        md_content += f"| {model} | {time_complexity} | {space_complexity} | {code_size} | {resource_usage} |\n"
+        md_content += f"| {model} | {time_complexity_notation} | {time_complexity_score} | {space_complexity_notation} | {space_complexity_score} | {code_size} | {resource_usage} | {overall_score} |\n"
+        
+    # Dodaj wyjaśnienie złożoności obliczeniowej
+    md_content += "\n**Wyjaśnienie złożoności obliczeniowej:**\n"
+    md_content += "- **O(1)**: Złożoność stała - czas wykonania nie zależy od rozmiaru danych wejściowych\n"
+    md_content += "- **O(log n)**: Złożoność logarytmiczna - czas wykonania rośnie logarytmicznie z rozmiarem danych\n"
+    md_content += "- **O(n)**: Złożoność liniowa - czas wykonania rośnie liniowo z rozmiarem danych\n"
+    md_content += "- **O(n log n)**: Złożoność linearytmiczna - typowa dla efektywnych algorytmów sortowania\n"
+    md_content += "- **O(n²)**: Złożoność kwadratowa - czas wykonania rośnie z kwadratem rozmiaru danych\n"
+    md_content += "- **O(2^n)**: Złożoność wykładnicza - czas wykonania rośnie wykładniczo z rozmiarem danych\n"
     
     md_content += "\n### Jakość wyjaśnień i kodu\n\n"
     md_content += "| Model | Jakość dokumentacji | Klarowność wyjaśnień | Czytelność kodu | Indeks utrzymywalności |\n"
-    md_content += "|-------|---------------------|----------------------|----------------|------------------------|\n"
+    md_content += "|-------|---------------------|----------------------|----------------|------------------------|"
     
     for model in models:
         # Get code quality metrics

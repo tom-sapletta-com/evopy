@@ -293,36 +293,22 @@ function main() {
         echo -e "$((i+1))) ${CYAN}${MODELS[$i]}${NC}"
     done
     echo -e "$((${#MODELS[@]}+1))) ${CYAN}Wszystkie modele${NC}"
-                done
-                shift
-                ;;
-            --metrics=*)
-                metrics="${1#*=}"
-                shift
-                ;;
-            --only-report)
-                only_report=true
-                shift
-                ;;
-            --help)
-                echo -e "${BLUE}Użycie: $0 [opcje]${NC}"
-                echo -e "${BLUE}Opcje:${NC}"
-                echo -e "  ${GREEN}--model=NAZWA${NC}       Uruchom testy tylko dla wybranego modelu"
-                echo -e "  ${GREEN}--format=FORMAT${NC}     Format raportu: all, md, html, pdf (domyślnie: all)"
-                echo -e "  ${GREEN}--trend=DNI${NC}         Liczba dni do analizy trendów (domyślnie: 30)"
-                echo -e "  ${GREEN}--compare=MODEL1,MODEL2${NC} Porównaj tylko wybrane modele"
-                echo -e "  ${GREEN}--metrics=METRYKI${NC}   Wybrane metryki do analizy (domyślnie: all)"
-                echo -e "  ${GREEN}--only-report${NC}       Wygeneruj tylko raport bez uruchamiania testów"
-                echo -e "  ${GREEN}--help${NC}              Wyświetl tę pomoc"
-                exit 0
-                ;;
-            *)
-                echo -e "${RED}Błąd: Nieznana opcja '$1'${NC}"
-                echo -e "${BLUE}Użyj '$0 --help' aby wyświetlić dostępne opcje${NC}"
-                exit 1
-                ;;
-        esac
-    done
+    
+    # Pobierz wybór użytkownika
+    read -p "${YELLOW}Wybierz model (1-$((${#MODELS[@]}+1))): ${NC}" choice
+    echo
+    
+    # Sprawdź wybór użytkownika
+    if [ "$choice" -eq "$((${#MODELS[@]}+1))" ]; then
+        # Wybrano wszystkie modele
+        echo -e "${BLUE}Wybrano wszystkie modele${NC}"
+    elif [ "$choice" -ge 1 ] && [ "$choice" -le "${#MODELS[@]}" ]; then
+        # Wybrano konkretny model
+        specific_model="${MODELS[$((choice-1))]}"
+        echo -e "${BLUE}Wybrano model: ${YELLOW}$specific_model${NC}"
+    else
+        echo -e "${RED}Błędny wybór. Używanie wszystkich modeli.${NC}"
+    fi
     
     # Wyświetl informacje o uruchamianych testach
     if [ "$only_report" = false ]; then
