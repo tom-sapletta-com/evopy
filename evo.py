@@ -94,7 +94,17 @@ MODELS_DIR = APP_DIR / "models"
 SANDBOX_DIR = APP_DIR / "sandbox"  # Katalog dla piaskownic Docker
 CODE_DIR = APP_DIR / "code"  # Katalog dla generowanego kodu
 CONFIG_FILE = APP_DIR / "config.json"
-DEFAULT_MODEL = "llama3"
+
+# Lista dostępnych modeli
+AVAILABLE_MODELS = [
+    {"name": "llama3", "description": "Llama 3 - model ogólnego zastosowania"},
+    {"name": "deepseek-coder:6.7b", "description": "DeepSeek 6.7B - model zoptymalizowany do kodowania"},
+    {"name": "bielik:v3", "description": "Bielik v3 - polski model językowy"}
+]
+
+# Domyślny model
+DEFAULT_MODEL = AVAILABLE_MODELS[0]["name"]
+
 VERSION = "0.1.0"
 
 # Domyślna konfiguracja
@@ -387,9 +397,9 @@ class EvoAssistant:
             print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Automatycznie akceptuję pobieranie.{Colors.END}")
             choice = 't'
         else:
-            print(f"{Colors.YELLOW}Model {model} nie jest pobrany. Czy chcesz go pobrać? (t/N):{Colors.END} ", end="")
-            choice = input().lower()
-            
+            # Jeśli już jesteśmy w trakcie pobierania, nie pytaj ponownie
+            choice = 't'
+        
         if choice == 't':
             print(f"{Colors.BLUE}Pobieranie modelu {model}...{Colors.END}")
             start_time = time.time()
@@ -1005,20 +1015,54 @@ class EvoAssistant:
             if not args:
                 current_model = self.config.get("model", DEFAULT_MODEL)
                 print(f"{Colors.BLUE}Aktualny model: {current_model}{Colors.END}")
+                print(f"{Colors.BLUE}Dostępne modele:{Colors.END}")
+                
+                # Wyświetl listę dostępnych modeli
+                for model_info in AVAILABLE_MODELS:
+                    is_current = " (aktualny)" if model_info["name"] == current_model else ""
+                    is_installed = " [zainstalowany]" if self._check_model_exists(model_info["name"]) else ""
+                    print(f"{Colors.CYAN}- {model_info['name']}{is_current}{is_installed}: {model_info['description']}{Colors.END}")
+                
+                print(f"{Colors.YELLOW}Użyj /model <nazwa_modelu> aby zmienić model.{Colors.END}")
                 return
             
             new_model = args[0]
+            
+            # Sprawdź, czy model jest na liście dostępnych modeli
+            model_exists = False
+            for model_info in AVAILABLE_MODELS:
+                if model_info["name"] == new_model:
+                    model_exists = True
+                    break
+            
+            if not model_exists:
+                print(f"{Colors.RED}Model {new_model} nie jest na liście dostępnych modeli.{Colors.END}")
+                print(f"{Colors.YELLOW}Użyj /model bez argumentów, aby zobaczyć listę dostępnych modeli.{Colors.END}")
+                return
+            
+            # Sprawdź, czy model jest zainstalowany
             if not self._check_model_exists(new_model):
                 print(f"{Colors.YELLOW}Model {new_model} nie jest zainstalowany. Czy chcesz go pobrać? (t/N):{Colors.END} ", end="")
                 choice = input().lower()
                 if choice == 't':
-                    self._pull_model(new_model)
+                    success = self._pull_model(new_model)
+                    if not success:
+                        print(f"{Colors.RED}Nie udało się pobrać modelu. Nie zmieniono modelu.{Colors.END}")
+                        return
                 else:
                     print(f"{Colors.RED}Nie zmieniono modelu.{Colors.END}")
                     return
             
+            # Zapisz zmianę modelu w konfiguracji
             self.config["model"] = new_model
             self._save_config()
+            
+            # Zaktualizuj model w text2python
+            self.text2python = Text2Python(
+                model_name=new_model,
+                code_dir=CODE_DIR
+            )
+            
             print(f"{Colors.GREEN}Zmieniono model na: {new_model}{Colors.END}")
         
         elif cmd == "/skills":
