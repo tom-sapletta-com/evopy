@@ -21,6 +21,11 @@ PROJECT_ROOT = os.path.dirname(MODULES_DIR)
 DATA_DIR = os.path.join(PROJECT_ROOT, 'data')
 TASKS_FILE = os.path.join(DATA_DIR, 'docker_tasks.json')
 
+# Upewnij się, że plik istnieje
+if not os.path.exists(TASKS_FILE):
+    with open(TASKS_FILE, 'w') as f:
+        json.dump({'docker_tasks': {}, 'web_services': {}, 'updated_at': datetime.now().isoformat()}, f, indent=2)
+
 # Logowanie ścieżek dla debugowania
 logger.info(f"PROJECT_ROOT: {PROJECT_ROOT}")
 logger.info(f"DATA_DIR: {DATA_DIR}")

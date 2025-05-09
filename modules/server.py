@@ -19,7 +19,11 @@ from custom_filters import register_filters
 MODULES_DIR = os.path.dirname(os.path.abspath(__file__))
 APP_DIR = os.path.dirname(MODULES_DIR)
 LOG_DIR = os.path.join(MODULES_DIR, 'logs')
-HISTORY_DIR = os.path.join(APP_DIR, 'history')
+
+# Ścieżka do katalogu z konwersacjami (w katalogu domowym użytkownika)
+HOME_DIR = os.path.expanduser('~')
+EVO_APP_DIR = os.path.join(HOME_DIR, '.evo-assistant')
+HISTORY_DIR = os.path.join(EVO_APP_DIR, 'history')
 
 os.makedirs(LOG_DIR, exist_ok=True)
 
@@ -253,8 +257,26 @@ def register_docker_task():
             }
         
         # Zapisz zadania do pliku
-        from docker_tasks_store import save_tasks
-        save_tasks()
+        try:
+            from docker_tasks_store import save_tasks, register_docker_container
+            
+            # Użyj funkcji z modułu do rejestracji zadania
+            register_docker_container(
+                task_id=task_id,
+                container_id=container_id,
+                code=code,
+                output=output,
+                is_service=is_service,
+                service_url=service_url,
+                service_name=service_name,
+                user_prompt=user_prompt,
+                agent_explanation=agent_explanation
+            )
+        except Exception as e:
+            logger.error(f"Błąd podczas zapisywania zadań Docker: {e}")
+            # Spróbuj bezpośrednio zapisać zadania
+            from docker_tasks_store import save_tasks
+            save_tasks()
         
         logger.info(f"Zarejestrowano zadanie Docker: {task_id}")
         
@@ -357,13 +379,16 @@ def convert():
 @app.route('/conversations')
 def list_conversations():
     """Wyświetla listę konwersacji"""
-    logger.info("Dostęp do listy konwersacji")
+    logger.info(f"Dostęp do listy konwersacji z katalogu: {HISTORY_DIR}")
     try:
         conversations = []
         history_dir = Path(HISTORY_DIR)
         
         if not os.path.exists(history_dir):
-            return render_template('conversations.html', error="Katalog historii konwersacji nie istnieje", conversations=[])
+            logger.warning(f"Katalog historii konwersacji nie istnieje: {history_dir}")
+            return render_template('conversations.html', 
+                                  error=f"Katalog historii konwersacji nie istnieje: {history_dir}", 
+                                  conversations=[])
         
         # Pobierz wszystkie pliki JSON z katalogu historii
         for file in history_dir.glob("*.json"):
@@ -405,13 +430,17 @@ def list_conversations():
 def conversation_details(conversation_id):
     """Wyświetla szczegóły konwersacji"""
     logger.info(f"Dostęp do szczegółów konwersacji: {conversation_id}")
+    
     try:
-        conversation_file = os.path.join(HISTORY_DIR, f"{conversation_id}.json")
+        # Pobierz konwersację z pliku
+        conversation_path = os.path.join(HISTORY_DIR, f"{conversation_id}.json")
+        logger.info(f"Próba odczytu konwersacji z: {conversation_path}")
         
-        if not os.path.exists(conversation_file):
+        if not os.path.exists(conversation_path):
+            logger.warning(f"Konwersacja o ID {conversation_id} nie istnieje w ścieżce: {conversation_path}")
             return render_template('conversations.html', error=f"Konwersacja o ID {conversation_id} nie istnieje", conversations=[])
         
-        with open(conversation_file, 'r', encoding='utf-8') as f:
+        with open(conversation_path, 'r', encoding='utf-8') as f:
             conversation = json.load(f)
         
         # Przygotuj dane do wyświetlenia
@@ -495,8 +524,15 @@ def docker_task_details(task_id):
     """Szczegóły zadania Docker"""
     logger.info(f"Dostęp do szczegółów zadania Docker: {task_id}")
     
-    # Pobierz informacje o zadaniu
-    task_info = DOCKER_TASKS.get(task_id)
+    # Upewnij się, że zadania są załadowane z pliku
+    try:
+        from docker_tasks_store import load_tasks, get_docker_task
+        load_tasks()
+        task_info = get_docker_task(task_id)
+    except Exception as e:
+        logger.error(f"Błąd podczas ładowania zadań Docker: {e}")
+        task_info = DOCKER_TASKS.get(task_id)
+    
     if not task_info:
         return "Zadanie nie istnieje", 404
     
