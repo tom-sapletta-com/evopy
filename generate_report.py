@@ -136,7 +136,21 @@ def load_performance_results(model_name: str) -> Dict[str, Any]:
     pattern = f"{PERFORMANCE_RESULTS_DIR}/performance_{model_name}_*.json"
     files = sorted(glob.glob(pattern), reverse=True)
     
-    default_results = {"avg_time": 0, "tests": 0}
+    default_results = {
+        "avg_time": 0, 
+        "tests": 0,
+        "passed_tests": 0,
+        "min_time": 0,
+        "max_time": 0,
+        "total_time": 0,
+        # New metrics for enhanced reporting
+        "code_efficiency_score": 0,     # Score 0-100 for code efficiency
+        "memory_usage": 0,             # Average memory usage in MB
+        "cpu_usage": 0,                # Average CPU usage percentage
+        "execution_time_variance": 0,   # Variance in execution times
+        "time_complexity": "N/A",       # Estimated time complexity
+        "space_complexity": "N/A"       # Estimated space complexity
+    }
     
     if not files:
         return default_results
@@ -152,6 +166,157 @@ def load_performance_results(model_name: str) -> Dict[str, Any]:
     except (json.JSONDecodeError, IOError) as e:
         logger.error(f"Error loading performance results for {model_name}: {e}")
         return default_results
+
+def calculate_text_to_code_accuracy(model_name: str) -> Dict[str, Any]:
+    """Calculate accuracy metrics for text-to-code conversion.
+    
+    This function analyzes the quality of code generated from text prompts.
+    
+    Returns:
+        Dict with the following metrics:
+        - code_correctness_score: Overall score (0-100) for code correctness
+        - syntax_error_rate: Percentage of code with syntax errors
+        - semantic_error_rate: Percentage of code with semantic/logical errors
+        - test_case_pass_rate: Percentage of code passing test cases
+        - prompt_adherence_score: How well the code adheres to the prompt (0-100)
+    """
+    # Load basic test results
+    basic_results = load_test_results(model_name)
+    correctness_passed, correctness_total = load_correctness_results(model_name)
+    
+    # Default metrics
+    metrics = {
+        "code_correctness_score": 0,
+        "syntax_error_rate": 0,
+        "semantic_error_rate": 0,
+        "test_case_pass_rate": 0,
+        "prompt_adherence_score": 0
+    }
+    
+    # Calculate metrics if we have data
+    if basic_results["total_tests"] > 0:
+        # Extract relevant data from test results
+        syntax_errors = 0
+        semantic_errors = 0
+        test_passes = 0
+        adherence_scores = []
+        
+        # Analyze test results for error types
+        for test in basic_results.get("test_results", []):
+            if "syntax_error" in test.get("reason", "").lower():
+                syntax_errors += 1
+            elif "semantic_error" in test.get("reason", "").lower() or "logic_error" in test.get("reason", "").lower():
+                semantic_errors += 1
+            
+            if test.get("status") == "PASSED":
+                test_passes += 1
+                
+            # If there's an adherence score in the test results
+            if "adherence_score" in test:
+                adherence_scores.append(test["adherence_score"])
+        
+        total_tests = basic_results["total_tests"]
+        
+        # Calculate rates
+        metrics["syntax_error_rate"] = (syntax_errors / total_tests) * 100 if total_tests > 0 else 0
+        metrics["semantic_error_rate"] = (semantic_errors / total_tests) * 100 if total_tests > 0 else 0
+        metrics["test_case_pass_rate"] = (test_passes / total_tests) * 100 if total_tests > 0 else 0
+        
+        # Calculate overall correctness score (weighted average)
+        # Lower error rates and higher test pass rates contribute to higher score
+        metrics["code_correctness_score"] = (
+            (100 - metrics["syntax_error_rate"]) * 0.3 +
+            (100 - metrics["semantic_error_rate"]) * 0.3 +
+            metrics["test_case_pass_rate"] * 0.4
+        )
+        
+        # Calculate prompt adherence score if available
+        if adherence_scores:
+            metrics["prompt_adherence_score"] = sum(adherence_scores) / len(adherence_scores)
+        else:
+            # Estimate from correctness if not available
+            metrics["prompt_adherence_score"] = metrics["code_correctness_score"] * 0.9
+    
+    return metrics
+
+def analyze_code_efficiency(model_name: str) -> Dict[str, Any]:
+    """Analyze and score code efficiency metrics.
+    
+    Returns:
+        Dict with efficiency metrics including:
+        - time_complexity_score: Score based on algorithmic efficiency (0-100)
+        - space_complexity_score: Score based on memory usage efficiency (0-100)
+        - code_size_efficiency: Ratio of functionality to code size (0-100)
+        - resource_usage_score: Score based on CPU/memory utilization (0-100)
+    """
+    # Load performance results
+    performance_results = load_performance_results(model_name)
+    basic_results = load_test_results(model_name)
+    
+    # Default metrics
+    metrics = {
+        "time_complexity_score": 0,
+        "space_complexity_score": 0,
+        "code_size_efficiency": 0,
+        "resource_usage_score": 0,
+        "overall_efficiency_score": 0
+    }
+    
+    # If we have performance data
+    if performance_results.get("tests", 0) > 0:
+        # Use existing efficiency score if available
+        if "code_efficiency_score" in performance_results and performance_results["code_efficiency_score"] > 0:
+            metrics["overall_efficiency_score"] = performance_results["code_efficiency_score"]
+        else:
+            # Estimate based on execution time
+            avg_time = performance_results.get("avg_time", 0)
+            if avg_time > 0:
+                # Lower times get higher scores (inverse relationship)
+                # Normalize to 0-100 scale (assuming 10s is very slow, 0.1s is very fast)
+                time_score = max(0, min(100, 100 - (avg_time / 0.1 * 10)))
+                metrics["time_complexity_score"] = time_score
+            
+            # Estimate space complexity from memory usage if available
+            memory_usage = performance_results.get("memory_usage", 0)
+            if memory_usage > 0:
+                # Lower memory usage gets higher scores (inverse relationship)
+                # Normalize to 0-100 scale (assuming 1000MB is very high, 10MB is very low)
+                space_score = max(0, min(100, 100 - (memory_usage / 10 * 10)))
+                metrics["space_complexity_score"] = space_score
+            
+            # Calculate code size efficiency if we have code lines data
+            avg_code_lines = basic_results.get("avg_code_lines", 0)
+            if avg_code_lines > 0:
+                # Assume optimal code is between 5-50 lines
+                # Too short might lack proper error handling, too long might be inefficient
+                if avg_code_lines < 5:
+                    code_size_score = avg_code_lines * 20  # 0-4 lines: 0-80 points
+                elif avg_code_lines <= 50:
+                    code_size_score = 100 - ((avg_code_lines - 5) / 45 * 20)  # 5-50 lines: 100-80 points
+                else:
+                    code_size_score = max(0, 80 - ((avg_code_lines - 50) / 50 * 40))  # >50 lines: 80-0 points
+                
+                metrics["code_size_efficiency"] = code_size_score
+            
+            # Calculate resource usage score if available
+            cpu_usage = performance_results.get("cpu_usage", 0)
+            if cpu_usage > 0:
+                # Lower CPU usage gets higher scores
+                resource_score = max(0, 100 - cpu_usage)
+                metrics["resource_usage_score"] = resource_score
+            
+            # Calculate overall efficiency score (weighted average of available metrics)
+            available_metrics = [score for score in [
+                metrics["time_complexity_score"],
+                metrics["space_complexity_score"],
+                metrics["code_size_efficiency"],
+                metrics["resource_usage_score"]
+            ] if score > 0]
+            
+            if available_metrics:
+                metrics["overall_efficiency_score"] = sum(available_metrics) / len(available_metrics)
+    
+    return metrics
 
 def get_available_models() -> List[str]:
     """Get a list of all models that have test results."""
@@ -170,6 +335,268 @@ def get_available_models() -> List[str]:
     
     return sorted(list(models))
 
+def evaluate_code_quality(model_name: str) -> Dict[str, Any]:
+    """Evaluate code quality and documentation.
+    
+    Returns:
+        Dict with quality metrics including:
+        - documentation_quality: Score for comments and docstrings (0-100)
+        - explanation_clarity: Score for the model's explanation clarity (0-100)
+        - code_readability: Score for naming, structure, and formatting (0-100)
+        - maintainability_index: Standard software engineering metric (0-100)
+    """
+    # Load basic test results
+    basic_results = load_test_results(model_name)
+    
+    # Default metrics
+    metrics = {
+        "documentation_quality": 0,
+        "explanation_clarity": 0,
+        "code_readability": 0,
+        "maintainability_index": 0,
+        "overall_quality_score": 0
+    }
+    
+    # Calculate metrics if we have data
+    if basic_results["total_tests"] > 0:
+        # Extract data from test results
+        explanation_scores = []
+        doc_scores = []
+        readability_scores = []
+        
+        # Analyze test results for code samples and explanations
+        for test in basic_results.get("test_results", []):
+            code = test.get("code", "")
+            explanation = test.get("explanation", "")
+            
+            # Evaluate documentation quality (comments and docstrings)
+            if code:
+                # Count docstrings and comments
+                doc_lines = 0
+                code_lines = code.count('\n') + 1
+                
+                # Simple heuristic: count lines with docstrings or comments
+                for line in code.split('\n'):
+                    if '"""' in line or "'''" in line or '#' in line:
+                        doc_lines += 1
+                
+                # Calculate documentation ratio (capped at 40%)
+                doc_ratio = min(0.4, doc_lines / max(1, code_lines))
+                # Convert to 0-100 score (40% ratio = 100 score)
+                doc_score = min(100, doc_ratio * 250)
+                doc_scores.append(doc_score)
+            
+            # Evaluate explanation clarity
+            if explanation:
+                # Simple heuristics for explanation quality
+                words = len(explanation.split())
+                sentences = explanation.count('.') + explanation.count('!') + explanation.count('?')
+                
+                # Calculate average words per sentence (optimal is 15-20)
+                words_per_sentence = words / max(1, sentences)
+                if words_per_sentence < 5:
+                    clarity_score = words_per_sentence * 10  # Too short: 0-50
+                elif words_per_sentence <= 20:
+                    clarity_score = 100 - abs(words_per_sentence - 15) * 2  # Optimal: 90-100
+                else:
+                    clarity_score = max(0, 100 - (words_per_sentence - 20) * 5)  # Too long: 0-100
+                
+                # Adjust based on explanation length (too short or too long is penalized)
+                if words < 50:
+                    clarity_score *= words / 50
+                elif words > 300:
+                    clarity_score *= max(0.5, 1 - (words - 300) / 700)
+                
+                explanation_scores.append(clarity_score)
+            
+            # Evaluate code readability
+            if code:
+                # Simple heuristics for readability
+                # 1. Average line length (optimal is 40-60 chars)
+                lines = [line for line in code.split('\n') if line.strip()]
+                avg_line_length = sum(len(line) for line in lines) / max(1, len(lines))
+                
+                if avg_line_length < 20:
+                    length_score = avg_line_length * 2.5  # Too short: 0-50
+                elif avg_line_length <= 60:
+                    length_score = 100 - abs(avg_line_length - 40) * 1.25  # Optimal: 75-100
+                else:
+                    length_score = max(0, 100 - (avg_line_length - 60) * 2.5)  # Too long: 0-100
+                
+                # 2. Indentation consistency
+                indent_score = 100
+                prev_indent = -1
+                for line in lines:
+                    if line.strip():
+                        indent = len(line) - len(line.lstrip())
+                        if prev_indent >= 0 and indent > prev_indent and (indent - prev_indent) % 4 != 0:
+                            indent_score -= 10  # Penalize inconsistent indentation
+                        prev_indent = indent
+                
+                readability_score = (length_score + indent_score) / 2
+                readability_scores.append(readability_score)
+        
+        # Calculate average scores if we have data
+        if doc_scores:
+            metrics["documentation_quality"] = sum(doc_scores) / len(doc_scores)
+        
+        if explanation_scores:
+            metrics["explanation_clarity"] = sum(explanation_scores) / len(explanation_scores)
+        
+        if readability_scores:
+            metrics["code_readability"] = sum(readability_scores) / len(readability_scores)
+        
+        # Calculate maintainability index (simplified version)
+        # Normally this would use cyclomatic complexity, Halstead volume, etc.
+        # Here we estimate from our other metrics
+        if doc_scores and readability_scores:
+            metrics["maintainability_index"] = (
+                metrics["documentation_quality"] * 0.4 +
+                metrics["code_readability"] * 0.6
+            )
+        
+        # Calculate overall quality score
+        available_metrics = [score for score in [
+            metrics["documentation_quality"],
+            metrics["explanation_clarity"],
+            metrics["code_readability"],
+            metrics["maintainability_index"]
+        ] if score > 0]
+        
+        if available_metrics:
+            metrics["overall_quality_score"] = sum(available_metrics) / len(available_metrics)
+    
+    return metrics
+
+def measure_user_intent_alignment(model_name: str) -> Dict[str, Any]:
+    """Measure how well code aligns with user intent.
+    
+    Returns:
+        Dict with intent alignment metrics including:
+        - requirement_fulfillment: Score for meeting requirements (0-100)
+        - edge_case_handling: Score for handling edge cases (0-100)
+        - user_feedback_score: Score based on user feedback (0-100)
+    """
+    # Load basic test results
+    basic_results = load_test_results(model_name)
+    
+    # Default metrics
+    metrics = {
+        "requirement_fulfillment": 0,
+        "edge_case_handling": 0,
+        "user_feedback_score": 0,
+        "overall_intent_alignment": 0
+    }
+    
+    # Calculate metrics if we have data
+    if basic_results["total_tests"] > 0:
+        # Use pass rate as a proxy for requirement fulfillment
+        pass_rate = (basic_results["passed_tests"] / basic_results["total_tests"]) * 100
+        metrics["requirement_fulfillment"] = pass_rate
+        
+        # Extract data from test results for edge case handling
+        edge_case_scores = []
+        feedback_scores = []
+        
+        for test in basic_results.get("test_results", []):
+            # Check if test mentions edge cases
+            if "edge_case" in test.get("name", "").lower() or "edge_case" in test.get("reason", "").lower():
+                if test.get("status") == "PASSED":
+                    edge_case_scores.append(100)
+                else:
+                    edge_case_scores.append(0)
+            
+            # Check if there's user feedback data
+            if "user_feedback" in test:
+                feedback_scores.append(test["user_feedback"])
+        
+        # Calculate edge case handling score if we have data
+        if edge_case_scores:
+            metrics["edge_case_handling"] = sum(edge_case_scores) / len(edge_case_scores)
+        else:
+            # Estimate from requirement fulfillment if no specific edge case tests
+            metrics["edge_case_handling"] = pass_rate * 0.8  # Edge cases are harder, so scale down
+        
+        # Calculate user feedback score if we have data
+        if feedback_scores:
+            metrics["user_feedback_score"] = sum(feedback_scores) / len(feedback_scores)
+        else:
+            # Estimate from requirement fulfillment if no feedback data
+            metrics["user_feedback_score"] = pass_rate * 0.9
+        
+        # Calculate overall intent alignment score (weighted average)
+        metrics["overall_intent_alignment"] = (
+            metrics["requirement_fulfillment"] * 0.5 +
+            metrics["edge_case_handling"] * 0.3 +
+            metrics["user_feedback_score"] * 0.2
+        )
+    
+    return metrics
+
+def load_historical_data(model_name: str, days: int = 30) -> List[Dict[str, Any]]:
+    """Load historical performance data for trend analysis.
+    
+    Args:
+        model_name: Name of the model to analyze
+        days: Number of days of history to retrieve
+    
+    Returns:
+        List of data points with timestamp and metrics
+    """
+    # Calculate cutoff date
+    cutoff_date = datetime.datetime.now() - datetime.timedelta(days=days)
+    cutoff_str = cutoff_date.strftime("%Y%m%d")
+    
+    # Find all historical result files for this model
+    test_pattern = f"{TEST_RESULTS_DIR}/test_results_{model_name}_*.json"
+    perf_pattern = f"{PERFORMANCE_RESULTS_DIR}/performance_{model_name}_*.json"
+    
+    test_files = sorted(glob.glob(test_pattern))
+    perf_files = sorted(glob.glob(perf_pattern))
+    
+    # Extract timestamps and filter by cutoff date
+    history = []
+    
+    # Process test result files
+    for file in test_files:
+        filename = os.path.basename(file)
+        parts = filename.split('_')
+        if len(parts) >= 4:
+            timestamp = parts[3].split('.')[0]  # Extract timestamp from filename
+            
+            # Skip if before cutoff date
+            if timestamp < cutoff_str:
+                continue
+            
+            try:
+                with open(file, 'r') as f:
+                    data = json.load(f)
+                    
+                    # Create history entry
+                    entry = {
+                        "timestamp": timestamp,
+                        "passed_tests": data.get("passed_tests", 0),
+                        "total_tests": data.get("total_tests", 0),
+                        "pass_rate": (data.get("passed_tests", 0) / data.get("total_tests", 1)) * 100
+                    }
+                    
+                    # Find matching performance file
+                    matching_perf = next((p for p in perf_files if timestamp in p), None)
+                    if matching_perf:
+                        try:
+                            with open(matching_perf, 'r') as pf:
+                                perf_data = json.load(pf)
+                                entry["avg_time"] = perf_data.get("avg_time", 0)
+                                entry["code_efficiency_score"] = perf_data.get("code_efficiency_score", 0)
+                        except (json.JSONDecodeError, IOError):
+                            pass
+                    
+                    history.append(entry)
+            except (json.JSONDecodeError, IOError):
+                continue
+    
+    return sorted(history, key=lambda x: x["timestamp"])
+
 def generate_markdown_report(models: List[str], output_file: str) -> str:
     """Generate a markdown report comparing all models."""
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -179,6 +606,8 @@ def generate_markdown_report(models: List[str], output_file: str) -> str:
 Data wygenerowania: {timestamp}
 
 ## Podsumowanie wyników
+
+### Wyniki ogólne
 
 | Model | Testy zapytań | Testy poprawności | Testy wydajności | Średni czas (s) | Całkowity wynik |
 |-------|--------------|-------------------|------------------|----------------|------------------|
