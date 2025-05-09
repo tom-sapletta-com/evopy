@@ -191,13 +191,20 @@ class Text2Python(BaseText2XModule):
             
             return result
         
-        # Generowanie kodu przy użyciu generatora kodu
-        generation_result = self.code_generator.generate_code(text)
+        # Generowanie kodu przy użyciu generatora kodu z uwzględnieniem analizy zapytania
+        generation_result = self.code_generator.generate_code(text, query_analysis=query_analysis)
         
         if not generation_result.get("success", False):
             return generation_result
         
         code = generation_result["code"]
+        
+        # Dodaj informacje o zmiennych do wyniku, jeśli zostały wykryte
+        if query_analysis.get("has_variables", False):
+            generation_result["variables"] = query_analysis.get("variables", {})
+        elif hasattr(self.code_generator, 'variable_initializations') and self.code_generator.variable_initializations:
+            # Jeśli zmienne zostały wykryte przez generator kodu, ale nie przez analizator zapytań
+            generation_result["variables_detected"] = True
         
         # Analiza wygenerowanego kodu
         analysis = self.code_analyzer.analyze_code(code, text)

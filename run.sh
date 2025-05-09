@@ -53,10 +53,10 @@ fi
 
 # Przetwórz argumenty
 case "$1" in
-    -h|--help)
+    "-h"|"--help")
         show_help
         ;;
-    -m|--modules)
+    "-m"|"--modules")
         # Uruchom tylko serwer modułów
         run_modules_server
         echo "Serwer modułów uruchomiony. Naciśnij Ctrl+C, aby zakończyć."

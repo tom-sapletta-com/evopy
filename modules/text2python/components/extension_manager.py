@@ -54,7 +54,7 @@ class ExtensionManager:
         """
         Ładuje wszystkie dostępne rozszerzenia z katalogu extensions/
         """
-        self.logger.info(f"Ładowanie rozszerzeń z katalogu: {self.extensions_dir}")
+        self.logger.info(f"Ladowanie rozszerzeń z katalogu: {self.extensions_dir}")
         
         # Sprawdź czy katalog istnieje
         if not self.extensions_dir.exists():
@@ -62,9 +62,15 @@ class ExtensionManager:
             os.makedirs(self.extensions_dir, exist_ok=True)
             return
         
-        # Dodaj katalog rozszerzeń do ścieżki Pythona
-        if str(self.extensions_dir) not in sys.path:
-            sys.path.insert(0, str(self.extensions_dir))
+        # Dodaj katalog nadrzędny rozszerzeń do ścieżki Pythona
+        parent_dir = str(self.extensions_dir.parent)
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
+        
+        # Dodaj katalog modules do ścieżki Pythona, jeśli nie jest już dodany
+        modules_dir = str(Path(parent_dir).parent)
+        if modules_dir not in sys.path:
+            sys.path.insert(0, modules_dir)
         
         # Przeszukaj katalog rozszerzeń
         for item in self.extensions_dir.iterdir():
@@ -78,43 +84,91 @@ class ExtensionManager:
                 if not init_file.exists():
                     continue
                 
-                # Załaduj rozszerzenie jako pakiet
+                # Spróbuj różne sposoby importowania modułu
+                extension_module = None
                 extension_name = item.name
+                
+                # Metoda 1: Bezpośredni import
                 try:
                     extension_module = importlib.import_module(extension_name)
                     self._register_extension(extension_name, extension_module)
-                except Exception as e:
+                    continue
+                except ImportError:
+                    pass
+                
+                # Metoda 2: Import z przedrostkiem extensions
+                try:
+                    full_extension_name = f"extensions.{extension_name}"
+                    extension_module = importlib.import_module(full_extension_name)
+                    self._register_extension(extension_name, extension_module)
+                    continue
+                except ImportError:
+                    pass
+                
+                # Metoda 3: Import z pełną ścieżką
+                try:
+                    full_path_name = f"modules.text2python.extensions.{extension_name}"
+                    extension_module = importlib.import_module(full_path_name)
+                    self._register_extension(extension_name, extension_module)
+                    continue
+                except ImportError as e:
                     self.logger.error(f"Błąd podczas ładowania rozszerzenia {extension_name}: {e}")
             
             # Jeśli to plik Python, załaduj jako moduł
             elif item.suffix == '.py' and item.name != '__init__.py':
                 extension_name = item.stem
+                
+                # Spróbuj różne sposoby importowania modułu
                 try:
                     extension_module = importlib.import_module(extension_name)
                     self._register_extension(extension_name, extension_module)
-                except Exception as e:
-                    self.logger.error(f"Błąd podczas ładowania rozszerzenia {extension_name}: {e}")
+                except ImportError:
+                    try:
+                        full_extension_name = f"extensions.{extension_name}"
+                        extension_module = importlib.import_module(full_extension_name)
+                        self._register_extension(extension_name, extension_module)
+                    except ImportError as e:
+                        self.logger.error(f"Błąd podczas ładowania rozszerzenia {extension_name}: {e}")
         
         self.logger.info(f"Załadowano {len(self.extensions)} rozszerzeń")
     
-    def _register_extension(self, name: str, module: Any) -> None:
+    def _register_extension(self, name: str, module) -> None:
         """
-        Rejestruje rozszerzenie
+        Rejestruje rozszerzenie w menedżerze
         
         Args:
             name: Nazwa rozszerzenia
             module: Moduł rozszerzenia
         """
-        # Sprawdź czy moduł zawiera wymagane funkcje
+        # Sprawdź czy moduł zawiera wymagane funkcje bezpośrednio
         has_identify = hasattr(module, 'identify_query')
         has_generate = hasattr(module, 'generate_code')
         
+        # Jeśli funkcje nie są dostępne bezpośrednio, sprawdź czy są dostępne poprzez __dict__
+        if not (has_identify and has_generate):
+            if hasattr(module, '__dict__'):
+                has_identify = 'identify_query' in module.__dict__
+                has_generate = 'generate_code' in module.__dict__
+        
+        # Jeśli nadal nie znaleziono funkcji, sprawdź czy są dostępne jako atrybuty
+        if not (has_identify and has_generate):
+            try:
+                # Próba bezpośredniego dostępu do funkcji
+                identify_func = getattr(module, 'identify_query', None)
+                generate_func = getattr(module, 'generate_code', None)
+                has_identify = callable(identify_func)
+                has_generate = callable(generate_func)
+            except Exception:
+                pass
+        
+        # Jeśli nadal nie znaleziono funkcji, wyświetl ostrzeżenie i zakończ
         if not (has_identify and has_generate):
             self.logger.warning(f"Rozszerzenie {name} nie zawiera wymaganych funkcji identify_query i generate_code")
             return
         
-        # Zarejestruj rozszerzenie
+        # Dodaj rozszerzenie do listy
         self.extensions[name] = module
+        self.logger.info(f"Zarejestrowano rozszerzenie: {name}")
         self.identify_functions[name] = getattr(module, 'identify_query')
         self.generate_functions[name] = getattr(module, 'generate_code')
         
