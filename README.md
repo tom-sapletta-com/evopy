@@ -6,7 +6,7 @@ Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewolu
 
 | Sekcja | Opis |
 |--------|------|
-| [📊 Raporty testów](https://tom-sapletta-com.github.io/evopy/reports/index.html) | Raporty porównawcze modeli LLM |
+| [📊 Raporty testów](/reports/) | Raporty porównawcze modeli LLM |
 | [🧪 Instrukcja testowania](https://tom-sapletta-com.github.io/evopy/TESTING.md) | Dokumentacja systemu testowego |
 | [🏗️ Architektura piaskownic](https://tom-sapletta-com.github.io/evopy/sandbox_architecture.md) | Opis architektury piaskownic Docker |
 | [💻 Umiejętności programistyczne](https://tom-sapletta-com.github.io/evopy/junior_programmer_skills.md) | Lista umiejętności junior programisty |
