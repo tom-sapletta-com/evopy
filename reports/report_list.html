@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evopy - Lista raportów</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .report-card {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+        }
+        .report-card h3 {
+            margin-top: 0;
+            color: #3498db;
+        }
+        .report-links {
+            display: flex;
+            gap: 10px;
+        }
+        .report-link {
+            display: inline-block;
+            padding: 5px 10px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .report-link.md {
+            background-color: #2ecc71;
+        }
+        .report-link.pdf {
+            background-color: #e74c3c;
+        }
+        .report-link:hover {
+            opacity: 0.9;
+        }
+        .report-date {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+        .report-type {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #f1c40f;
+            color: #333;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-right: 10px;
+        }
+        .report-type.comparison {
+            background-color: #3498db;
+            color: white;
+        }
+        .report-type.performance {
+            background-color: #2ecc71;
+            color: white;
+        }
+        .report-type.simplified {
+            background-color: #e67e22;
+            color: white;
+        }
+        .report-type.latest {
+            background-color: #9b59b6;
+            color: white;
+        }
+        .no-reports {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        .last-updated {
+            margin-top: 50px;
+            color: #7f8c8d;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <h1>Evopy - Lista raportów</h1>
+    
+    <p>Ta strona zawiera listę wszystkich wygenerowanych raportów dla systemu Evopy, posortowanych według daty.</p>
+
+    <h2>Najnowsze raporty</h2>
+    <div class="report-card">
+        <h3>Aktualne raporty porównawcze</h3>
+        <div class="report-links">
+            <a href="comparison_report_latest.md" class="report-link md">MD</a>
+
+        </div>
+    </div>
+
+    <h2>Raporty według daty</h2>
+
+    <h2>09.05.2025</h2>
+
+    <div class="report-card">
+        <span class="report-type simplified">Raport uproszczony</span>
+        <span class="report-date">14:56:58</span>
+        <div class="report-links">
+            <a href="report_simplified_20250509_145658.md" class="report-link md">MD</a>
+
+        </div>
+    </div>
+
+    <div class="report-card">
+        <span class="report-type simplified">Raport uproszczony</span>
+        <span class="report-date">14:53:48</span>
+        <div class="report-links">
+            <a href="report_simplified_20250509_145348.md" class="report-link md">MD</a>
+
+        </div>
+    </div>
+
+    <div class="last-updated">
+        Ostatnia aktualizacja: 2025-05-09 15:43:57
+    </div>
+</body>
+</html>

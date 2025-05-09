@@ -107,7 +107,7 @@
 </header>
 <h1 id="raport-porównawczy-modeli-llm-dla-evopy">Raport porównawczy
 modeli LLM dla Evopy</h1>
-<p>Data wygenerowania: 2025-05-09 15:21:34</p>
+<p>Data wygenerowania: 2025-05-09 15:25:02</p>
 <h2 id="podsumowanie-wyników">Podsumowanie wyników</h2>
 <h3 id="wyniki-ogólne">Wyniki ogólne</h3>
 <table>
@@ -139,7 +139,23 @@ modeli LLM dla Evopy</h1>
 <td>3/3 (100.0%)</td>
 </tr>
 <tr class="even">
+<td>gemini</td>
+<td>3/3 (100.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0.00</td>
+<td>3/3 (100.0%)</td>
+</tr>
+<tr class="odd">
 <td>gpt-4</td>
+<td>3/3 (100.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0.00</td>
+<td>3/3 (100.0%)</td>
+</tr>
+<tr class="even">
+<td>llama3</td>
 <td>3/3 (100.0%)</td>
 <td>0/0 (0.0%)</td>
 <td>0/0 (0.0%)</td>
@@ -176,7 +192,21 @@ tekst-na-kod</h3>
 <td>54.0%</td>
 </tr>
 <tr class="even">
+<td>gemini</td>
+<td>60.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>54.0%</td>
+</tr>
+<tr class="odd">
 <td>gpt-4</td>
+<td>60.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>54.0%</td>
+</tr>
+<tr class="even">
+<td>llama3</td>
 <td>60.0%</td>
 <td>0.0%</td>
 <td>0.0%</td>
@@ -185,12 +215,72 @@ tekst-na-kod</h3>
 </tbody>
 </table>
 <h3 id="wydajność-kodu">Wydajność kodu</h3>
-<div class="line-block">Model | Złożoność czasowa | Ocena | Złożoność
-pamięciowa | Ocena | Efektywność rozmiaru | Wykorzystanie zasobów |
-Ogólna ocena |</div>
-<p>|——-|——————|——-|———————|——-|———————|———————|————-|| deepsek | O(n) |
-0.0% | O(1) | 0.0% | 0.0% | 0.0% | 0.0% | | gpt-4 | O(n) | 0.0% | O(1) |
-0.0% | 0.0% | 0.0% | 0.0% |</p>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 5%" />
+<col style="width: 15%" />
+<col style="width: 5%" />
+<col style="width: 17%" />
+<col style="width: 5%" />
+<col style="width: 17%" />
+<col style="width: 17%" />
+<col style="width: 13%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Złożoność czasowa</th>
+<th>Ocena</th>
+<th>Złożoność pamięciowa</th>
+<th>Ocena</th>
+<th>Efektywność rozmiaru</th>
+<th>Wykorzystanie zasobów</th>
+<th>Ogólna ocena</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>deepsek</td>
+<td>O(n)</td>
+<td>0.0%</td>
+<td>O(1)</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+</tr>
+<tr class="even">
+<td>gemini</td>
+<td>O(n)</td>
+<td>0.0%</td>
+<td>O(1)</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+</tr>
+<tr class="odd">
+<td>gpt-4</td>
+<td>O(n)</td>
+<td>0.0%</td>
+<td>O(1)</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+</tr>
+<tr class="even">
+<td>llama3</td>
+<td>O(n)</td>
+<td>0.0%</td>
+<td>O(1)</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+</tr>
+</tbody>
+</table>
 <p><strong>Wyjaśnienie złożoności obliczeniowej:</strong> -
 <strong>O(1)</strong>: Złożoność stała - czas wykonania nie zależy od
 rozmiaru danych wejściowych - <strong>O(log n)</strong>: Złożoność
@@ -202,10 +292,48 @@ linearytmiczna - typowa dla efektywnych algorytmów sortowania -
 kwadratem rozmiaru danych - <strong>O(2^n)</strong>: Złożoność
 wykładnicza - czas wykonania rośnie wykładniczo z rozmiarem danych</p>
 <h3 id="jakość-wyjaśnień-i-kodu">Jakość wyjaśnień i kodu</h3>
-<div class="line-block">Model | Jakość dokumentacji | Klarowność
-wyjaśnień | Czytelność kodu | Indeks utrzymywalności |</div>
-<p>|——-|———————|———————-|—————-|————————|| deepsek | 0.0% | 0.0% | 0.0%
-| 0.0% | | gpt-4 | 0.0% | 0.0% | 0.0% | 0.0% |</p>
+<table class="table table-striped">
+  <thead>
+    <tr>
+      <th>Model</th>
+      <th>Jakość dokumentacji</th>
+      <th>Klarowność
+wyjaśnień</th>
+      <th>Czytelność kodu</th>
+      <th>Indeks utrzymywalności</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>deepsek</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+    </tr>
+    <tr>
+      <td>gemini</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+    </tr>
+    <tr>
+      <td>gpt-4</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+    </tr>
+    <tr>
+      <td>llama3</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+      <td>0.0%</td>
+    </tr>
+  </tbody>
+</table>
 <h3 id="zgodność-z-intencjami-użytkownika">Zgodność z intencjami
 użytkownika</h3>
 <table>
@@ -234,7 +362,21 @@ użytkownika</h3>
 <td>92.0%</td>
 </tr>
 <tr class="even">
+<td>gemini</td>
+<td>100.0%</td>
+<td>80.0%</td>
+<td>90.0%</td>
+<td>92.0%</td>
+</tr>
+<tr class="odd">
 <td>gpt-4</td>
+<td>100.0%</td>
+<td>80.0%</td>
+<td>90.0%</td>
+<td>92.0%</td>
+</tr>
+<tr class="even">
+<td>llama3</td>
 <td>100.0%</td>
 <td>80.0%</td>
 <td>90.0%</td>
@@ -245,7 +387,7 @@ użytkownika</h3>
 <h2 id="wizualizacja-wyników">Wizualizacja wyników</h2>
 <h3 id="wykresy-porównawcze">Wykresy porównawcze</h3>
 <div style="width: 80%; margin: 20px auto;">
-canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
+<pre><code>&lt;canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
     &quot;type&quot;: &quot;radar&quot;,
     &quot;data&quot;: {
         &quot;labels&quot;: [
@@ -274,7 +416,7 @@ canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;
                 &quot;pointHoverBorderColor&quot;: &quot;rgba(54, 162, 235, 1)&quot;
             },
             {
-                &quot;label&quot;: &quot;gpt-4&quot;,
+                &quot;label&quot;: &quot;gemini&quot;,
                 &quot;data&quot;: [
                     60.0,
                     0,
@@ -314,24 +456,24 @@ canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;
             }
         }
     }
-}&#39;&gt;&lt;/canvas&gt;
+}&#39;&gt;&lt;/canvas&gt;</code></pre>
 </div>
 <div style="width: 80%; margin: 20px auto;">
 <pre><code>&lt;canvas id=&quot;test-results-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
     &quot;type&quot;: &quot;bar&quot;,
     &quot;data&quot;: {
-        &quot;labels&quot;: [&#39;deepsek&#39;, &#39;gpt-4&#39;],
+        &quot;labels&quot;: [&#39;deepsek&#39;, &#39;gemini&#39;, &#39;gpt-4&#39;, &#39;llama3&#39;],
         &quot;datasets&quot;: [
             {
                 &quot;label&quot;: &quot;Testy zapytań (%)&quot;,
-                &quot;data&quot;: [100.0, 100.0],
+                &quot;data&quot;: [100.0, 100.0, 100.0, 100.0],
                 &quot;backgroundColor&quot;: &quot;rgba(54, 162, 235, 0.5)&quot;,
                 &quot;borderColor&quot;: &quot;rgba(54, 162, 235, 1)&quot;,
                 &quot;borderWidth&quot;: 1
             },
             {
                 &quot;label&quot;: &quot;Testy poprawności (%)&quot;,
-                &quot;data&quot;: [0, 0],
+                &quot;data&quot;: [0, 0, 0, 0],
                 &quot;backgroundColor&quot;: &quot;rgba(75, 192, 192, 0.5)&quot;,
                 &quot;borderColor&quot;: &quot;rgba(75, 192, 192, 1)&quot;,
                 &quot;borderWidth&quot;: 1
@@ -362,11 +504,11 @@ canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;
 <pre><code>&lt;canvas id=&quot;performance-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
     &quot;type&quot;: &quot;line&quot;,
     &quot;data&quot;: {
-        &quot;labels&quot;: [&#39;deepsek&#39;, &#39;gpt-4&#39;],
+        &quot;labels&quot;: [&#39;deepsek&#39;, &#39;gemini&#39;, &#39;gpt-4&#39;, &#39;llama3&#39;],
         &quot;datasets&quot;: [
             {
                 &quot;label&quot;: &quot;Średni czas wykonania (s)&quot;,
-                &quot;data&quot;: [0, 0],
+                &quot;data&quot;: [0, 0, 0, 0],
                 &quot;backgroundColor&quot;: &quot;rgba(255, 99, 132, 0.2)&quot;,
                 &quot;borderColor&quot;: &quot;rgba(255, 99, 132, 1)&quot;,
                 &quot;borderWidth&quot;: 2,
@@ -399,7 +541,15 @@ canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;
 <ul>
 <li>Brak wystarczających danych historycznych do analizy trendów</li>
 </ul>
+<h4 id="model-gemini">Model: gemini</h4>
+<ul>
+<li>Brak wystarczających danych historycznych do analizy trendów</li>
+</ul>
 <h4 id="model-gpt-4">Model: gpt-4</h4>
+<ul>
+<li>Brak wystarczających danych historycznych do analizy trendów</li>
+</ul>
+<h4 id="model-llama3">Model: llama3</h4>
 <ul>
 <li>Brak wystarczających danych historycznych do analizy trendów</li>
 </ul>
@@ -421,7 +571,7 @@ canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;
 <ul>
 <li>Brak wyników testów wydajności</li>
 </ul>
-<h3 id="model-gpt-4-1">Model: gpt-4</h3>
+<h3 id="model-gemini-1">Model: gemini</h3>
 <h4 id="wyniki-testów-zapytań-1">Wyniki testów zapytań</h4>
 <ul>
 <li>Zaliczone testy: 3/3 (100.0%)</li>
@@ -435,6 +585,40 @@ canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;
 <li>Skuteczność wykonania: 0.0%</li>
 </ul>
 <h4 id="wyniki-testów-wydajności-1">Wyniki testów wydajności</h4>
+<ul>
+<li>Brak wyników testów wydajności</li>
+</ul>
+<h3 id="model-gpt-4-1">Model: gpt-4</h3>
+<h4 id="wyniki-testów-zapytań-2">Wyniki testów zapytań</h4>
+<ul>
+<li>Zaliczone testy: 3/3 (100.0%)</li>
+<li>Ilość wygenerowanego kodu: 0 linii</li>
+<li>Średnia ilość linii na zapytanie: 0.0</li>
+</ul>
+<h4 id="wyniki-testów-poprawności-2">Wyniki testów poprawności</h4>
+<ul>
+<li>Zaliczone testy: 0/0 (0.0%)</li>
+<li>Skuteczność kompilacji: 0.0%</li>
+<li>Skuteczność wykonania: 0.0%</li>
+</ul>
+<h4 id="wyniki-testów-wydajności-2">Wyniki testów wydajności</h4>
+<ul>
+<li>Brak wyników testów wydajności</li>
+</ul>
+<h3 id="model-llama3-1">Model: llama3</h3>
+<h4 id="wyniki-testów-zapytań-3">Wyniki testów zapytań</h4>
+<ul>
+<li>Zaliczone testy: 3/3 (100.0%)</li>
+<li>Ilość wygenerowanego kodu: 0 linii</li>
+<li>Średnia ilość linii na zapytanie: 0.0</li>
+</ul>
+<h4 id="wyniki-testów-poprawności-3">Wyniki testów poprawności</h4>
+<ul>
+<li>Zaliczone testy: 0/0 (0.0%)</li>
+<li>Skuteczność kompilacji: 0.0%</li>
+<li>Skuteczność wykonania: 0.0%</li>
+</ul>
+<h4 id="wyniki-testów-wydajności-3">Wyniki testów wydajności</h4>
 <ul>
 <li>Brak wyników testów wydajności</li>
 </ul>

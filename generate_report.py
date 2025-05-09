@@ -83,6 +83,84 @@ def strip_ansi_and_prompts(text):
     
     return text
 
+def clean_markdown_content(content: str) -> str:
+    """Clean markdown content by removing ANSI codes and shell prompts."""
+    # Strip ANSI color codes
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    content = ansi_escape.sub('', content)
+    
+    # Strip shell prompts like "\033[0;33mWybierz model (1-6): \033[0m"
+    prompt_pattern = re.compile(r'\\033\[[0-9;]*m[^\\]*\\033\[[0-9;]*m')
+    content = prompt_pattern.sub('', content)
+    
+    # Remove other common shell prompts
+    content = re.sub(r'\[.*?\]> ', '', content)  # Remove [Conversation]> style prompts
+    content = re.sub(r'> ', '', content)          # Remove simple > prompts
+    
+    return content
+
+def fix_complex_tables(html_content: str) -> str:
+    """Fix complex tables that weren't properly converted from Markdown to HTML."""
+    # Find problematic table sections (line blocks followed by paragraphs with table-like content)
+    table_pattern = re.compile(r'<div class="line-block">(.*?)</div>\s*<p>\|[-—|\s]+\|\s*(.*?)</p>', re.DOTALL)
+    
+    def replace_table(match):
+        # Extract header and data rows
+        header_text = match.group(1).strip()
+        data_text = match.group(2).strip()
+        
+        # Clean up and split the header
+        header_parts = [part.strip() for part in header_text.split('|')]
+        header_parts = [part for part in header_parts if part]  # Remove empty parts
+        
+        # Clean up and split the data rows
+        data_rows = []
+        for row in data_text.split('|'):
+            if row.strip() and not row.strip().startswith('---'):
+                data_rows.append(row.strip())
+        
+        # Group data rows into actual rows (assuming each row has the same number of columns as the header)
+        num_cols = len(header_parts)
+        actual_data_rows = []
+        current_row = []
+        
+        for cell in data_rows:
+            current_row.append(cell)
+            if len(current_row) == num_cols:
+                actual_data_rows.append(current_row)
+                current_row = []
+        
+        # If there's a partial row left, add it
+        if current_row:
+            while len(current_row) < num_cols:
+                current_row.append('')
+            actual_data_rows.append(current_row)
+        
+        # Build the HTML table
+        table_html = '<table class="table table-striped">\n'
+        
+        # Add header
+        table_html += '  <thead>\n    <tr>\n'
+        for header in header_parts:
+            table_html += f'      <th>{header}</th>\n'
+        table_html += '    </tr>\n  </thead>\n'
+        
+        # Add body
+        table_html += '  <tbody>\n'
+        for row in actual_data_rows:
+            table_html += '    <tr>\n'
+            for cell in row:
+                table_html += f'      <td>{cell}</td>\n'
+            table_html += '    </tr>\n'
+        table_html += '  </tbody>\n'
+        
+        table_html += '</table>'
+        return table_html
+    
+    # Replace all problematic tables
+    fixed_html = table_pattern.sub(replace_table, html_content)
+    return fixed_html
+
 def clean_test_data(data):
     """Recursively clean ANSI codes and prompts from test data."""
     if isinstance(data, dict):
@@ -794,7 +872,8 @@ Data wygenerowania: {timestamp}
     
     md_content += "\n### Wydajność kodu\n\n"
     md_content += "| Model | Złożoność czasowa | Ocena | Złożoność pamięciowa | Ocena | Efektywność rozmiaru | Wykorzystanie zasobów | Ogólna ocena |\n"
-    md_content += "|-------|------------------|-------|---------------------|-------|---------------------|---------------------|-------------|"
+    md_content += "|-------|------------------|-------|---------------------|-------|---------------------|---------------------|----------------|\n"
+
     
     for model in models:
         # Get code efficiency metrics
@@ -981,11 +1060,10 @@ Data wygenerowania: {timestamp}
 """
     
     # Add radar chart for comprehensive model comparison
-    radar_chart_html = f"""
-<div style="width: 80%; margin: 20px auto;">
-    <canvas id="radar-chart" class="evopy-chart" data-chart='{{
+    # Create chart data as a Python dictionary first
+    radar_chart_data = {
         "type": "radar",
-        "data": {{
+        "data": {
             "labels": [
                 "Poprawność kodu", 
                 "Jakość wyjaśnień", 
@@ -994,65 +1072,72 @@ Data wygenerowania: {timestamp}
                 "Testy podstawowe"
             ],
             "datasets": [
-                {{
-                    "label": "{chart_data['models'][0] if len(chart_data['models']) > 0 else 'Model 1'}",
+                {
+                    "label": chart_data['models'][0] if len(chart_data['models']) > 0 else 'Model 1',
                     "data": [
-                        {chart_data['code_correctness'][0] if len(chart_data['code_correctness']) > 0 else 0},
-                        {chart_data['explanation_quality'][0] if len(chart_data['explanation_quality']) > 0 else 0},
-                        {chart_data['code_efficiency'][0] if len(chart_data['code_efficiency']) > 0 else 0},
-                        {chart_data['user_alignment'][0] if len(chart_data['user_alignment']) > 0 else 0},
-                        {chart_data['basic_test_scores'][0] if len(chart_data['basic_test_scores']) > 0 else 0}
+                        chart_data['code_correctness'][0] if len(chart_data['code_correctness']) > 0 else 0,
+                        chart_data['explanation_quality'][0] if len(chart_data['explanation_quality']) > 0 else 0,
+                        chart_data['code_efficiency'][0] if len(chart_data['code_efficiency']) > 0 else 0,
+                        chart_data['user_alignment'][0] if len(chart_data['user_alignment']) > 0 else 0,
+                        chart_data['basic_test_scores'][0] if len(chart_data['basic_test_scores']) > 0 else 0
                     ],
-                    "fill": true,
+                    "fill": True,
                     "backgroundColor": "rgba(54, 162, 235, 0.2)",
                     "borderColor": "rgba(54, 162, 235, 1)",
                     "pointBackgroundColor": "rgba(54, 162, 235, 1)",
                     "pointBorderColor": "#fff",
                     "pointHoverBackgroundColor": "#fff",
                     "pointHoverBorderColor": "rgba(54, 162, 235, 1)"
-                }},
-                {{
-                    "label": "{chart_data['models'][1] if len(chart_data['models']) > 1 else 'Model 2'}",
-                    "data": [
-                        {chart_data['code_correctness'][1] if len(chart_data['code_correctness']) > 1 else 0},
-                        {chart_data['explanation_quality'][1] if len(chart_data['explanation_quality']) > 1 else 0},
-                        {chart_data['code_efficiency'][1] if len(chart_data['code_efficiency']) > 1 else 0},
-                        {chart_data['user_alignment'][1] if len(chart_data['user_alignment']) > 1 else 0},
-                        {chart_data['basic_test_scores'][1] if len(chart_data['basic_test_scores']) > 1 else 0}
-                    ],
-                    "fill": true,
-                    "backgroundColor": "rgba(255, 99, 132, 0.2)",
-                    "borderColor": "rgba(255, 99, 132, 1)",
-                    "pointBackgroundColor": "rgba(255, 99, 132, 1)",
-                    "pointBorderColor": "#fff",
-                    "pointHoverBackgroundColor": "#fff",
-                    "pointHoverBorderColor": "rgba(255, 99, 132, 1)"
-                }}
+                }
             ]
-        }},
-        "options": {{
-            "elements": {{
-                "line": {{
+        },
+        "options": {
+            "elements": {
+                "line": {
                     "borderWidth": 3
-                }}
-            }},
-            "scales": {{
-                "r": {{
-                    "angleLines": {{
-                        "display": true
-                    }},
+                }
+            },
+            "scales": {
+                "r": {
+                    "angleLines": {
+                        "display": True
+                    },
                     "suggestedMin": 0,
                     "suggestedMax": 100
-                }}
-            }},
-            "plugins": {{
-                "title": {{
-                    "display": true,
-                    "text": "Porównanie modeli w różnych kategoriach"
-                }}
-            }}
-        }}
-    }}'></canvas>
+                }
+            }
+        }
+    }
+    
+    # Add second model if available
+    if len(chart_data['models']) > 1:
+        radar_chart_data["data"]["datasets"].append({
+            "label": chart_data['models'][1],
+            "data": [
+                chart_data['code_correctness'][1] if len(chart_data['code_correctness']) > 1 else 0,
+                chart_data['explanation_quality'][1] if len(chart_data['explanation_quality']) > 1 else 0,
+                chart_data['code_efficiency'][1] if len(chart_data['code_efficiency']) > 1 else 0,
+                chart_data['user_alignment'][1] if len(chart_data['user_alignment']) > 1 else 0,
+                chart_data['basic_test_scores'][1] if len(chart_data['basic_test_scores']) > 1 else 0
+            ],
+            "fill": True,
+            "backgroundColor": "rgba(255, 99, 132, 0.2)",
+            "borderColor": "rgba(255, 99, 132, 1)",
+            "pointBackgroundColor": "rgba(255, 99, 132, 1)",
+            "pointBorderColor": "#fff",
+            "pointHoverBackgroundColor": "#fff",
+            "pointHoverBorderColor": "rgba(255, 99, 132, 1)"
+        })
+    
+    # Convert to JSON string
+    import json
+    radar_chart_json = json.dumps(radar_chart_data, ensure_ascii=False)
+    
+    # Create the HTML with properly escaped JSON
+    radar_chart_html = f"""
+<div style="width: 80%; margin: 20px auto;">
+    <canvas id="radar-chart" class="evopy-chart" data-chart='{radar_chart_json}'></canvas>
+    <p style="text-align: center; margin-top: 10px;"><strong>Wykres radarowy porównujący modele</strong></p>
 </div>
 """
     
@@ -1441,14 +1526,46 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
                 
                 try {
                     const ctx = element.getContext('2d');
-                    const chartData = JSON.parse(element.getAttribute('data-chart'));
+                    let chartData;
+                    
+                    try {
+                        // Try to parse the chart data
+                        chartData = JSON.parse(element.getAttribute('data-chart'));
+                    } catch (parseError) {
+                        console.error('Error parsing chart data:', parseError);
+                        throw new Error('Invalid chart data format');
+                    }
+                    
+                    // Special handling for radar charts
+                    if (chartData.type === 'radar') {
+                        // Make sure we have the Chart.js Radar controller
+                        if (!Chart.controllers.radar) {
+                            console.warn('Radar controller not available, registering radar chart type...');
+                            // If using Chart.js 3.x, we need to ensure the radar chart type is registered
+                            Chart.register({
+                                id: 'radar',
+                                type: 'radar',
+                                defaults: {
+                                    elements: {
+                                        line: {
+                                            tension: 0 // no bezier curves
+                                        }
+                                    }
+                                }
+                            });
+                        }
+                    }
+                    
+                    // Create the chart
+                    console.log('Creating chart with data:', chartData);
                     new Chart(ctx, chartData);
+                    console.log('Chart created successfully');
                 } catch (e) {
                     console.error('Error initializing chart:', e);
                     console.error('Chart data:', element.getAttribute('data-chart'));
                     // Create a fallback message
                     const fallback = document.createElement('p');
-                    fallback.textContent = 'Chart rendering failed. Please check the data format.';
+                    fallback.textContent = 'Chart rendering failed: ' + e.message;
                     fallback.style.color = 'red';
                     element.parentNode.insertBefore(fallback, element);
                 }
@@ -1502,6 +1619,9 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
         body_content = body_content.replace("✅", '<span class="passed">PASSED</span>')
         body_content = body_content.replace("❌", '<span class="failed">FAILED</span>')
         body_content = body_content.replace("❓", '<span class="unknown">UNKNOWN</span>')
+        
+        # Fix complex tables that weren't properly converted from Markdown
+        body_content = fix_complex_tables(body_content)
         
         # Combine with our custom header and footer
         final_html = html_header + body_content + html_footer
