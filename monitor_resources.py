@@ -287,6 +287,94 @@ class ResourceMonitor:
         logger.info("Zakończenie monitorowania zasobów")
 
 
+def format_bytes(bytes_value):
+    """Formatuje bajty do czytelnej postaci"""
+    for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+        if bytes_value < 1024.0:
+            return f"{bytes_value:.2f} {unit}"
+        bytes_value /= 1024.0
+    return f"{bytes_value:.2f} PB"
+
+def generate_report():
+    """Generuje raport o stanie zasobów systemu"""
+    # Informacje o systemie
+    report = "=== RAPORT ZASOBÓW SYSTEMU ===\n\n"
+    
+    # Informacje o CPU
+    cpu_percent = psutil.cpu_percent(interval=1, percpu=True)
+    report += f"CPU:\n"
+    for i, percent in enumerate(cpu_percent):
+        report += f"  Rdzeń {i}: {percent}%\n"
+    report += f"  Średnie użycie: {sum(cpu_percent) / len(cpu_percent):.1f}%\n\n"
+    
+    # Informacje o pamięci RAM
+    memory = psutil.virtual_memory()
+    report += f"Pamięć RAM:\n"
+    report += f"  Całkowita: {format_bytes(memory.total)}\n"
+    report += f"  Dostępna: {format_bytes(memory.available)}\n"
+    report += f"  Używana: {format_bytes(memory.used)} ({memory.percent}%)\n\n"
+    
+    # Informacje o dysku
+    report += f"Dysk:\n"
+    for partition in psutil.disk_partitions():
+        try:
+            usage = psutil.disk_usage(partition.mountpoint)
+            report += f"  {partition.mountpoint}:\n"
+            report += f"    Całkowita: {format_bytes(usage.total)}\n"
+            report += f"    Używana: {format_bytes(usage.used)} ({usage.percent}%)\n"
+        except PermissionError:
+            continue
+    
+    # Informacje o procesach
+    report += "\nNajbardziej obciążające procesy:\n"
+    processes = []
+    for proc in psutil.process_iter(['pid', 'name', 'username', 'memory_percent', 'cpu_percent']):
+        try:
+            # Aktualizuj informacje o CPU dla procesu
+            proc.cpu_percent(interval=0.1)
+            processes.append(proc.info)
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    
+    # Poczekaj chwilę, aby zebrać dane o użyciu CPU
+    time.sleep(0.5)
+    
+    # Zaktualizuj informacje o procesach
+    for proc in psutil.process_iter(['pid', 'name', 'username', 'memory_percent', 'cpu_percent']):
+        try:
+            for p in processes:
+                if p['pid'] == proc.info['pid']:
+                    p['cpu_percent'] = proc.info['cpu_percent']
+        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+            pass
+    
+    # Sortuj procesy według zużycia CPU
+    processes = sorted(processes, key=lambda x: x.get('cpu_percent', 0), reverse=True)
+    
+    # Wyświetl top 10 procesów
+    for i, proc in enumerate(processes[:10], 1):
+        report += f"  {i}. PID: {proc.get('pid', 'N/A')}, Nazwa: {proc.get('name', 'N/A')}, "
+        report += f"CPU: {proc.get('cpu_percent', 0):.1f}%, RAM: {proc.get('memory_percent', 0):.1f}%\n"
+    
+    # Informacje o kontenerach Docker
+    report += "\nKontenery Docker:\n"
+    try:
+        docker_ps = subprocess.run(['docker', 'ps', '--format', '{{.ID}}\t{{.Names}}\t{{.Status}}'], 
+                                  capture_output=True, text=True, check=False)
+        if docker_ps.returncode == 0 and docker_ps.stdout.strip():
+            for line in docker_ps.stdout.strip().split('\n'):
+                if line.strip():
+                    parts = line.split('\t')
+                    if len(parts) >= 3:
+                        container_id, name, status = parts[0], parts[1], parts[2]
+                        report += f"  {name} ({container_id}): {status}\n"
+        else:
+            report += "  Brak działających kontenerów\n"
+    except Exception as e:
+        report += f"  Błąd podczas pobierania informacji o kontenerach: {e}\n"
+    
+    return report
+
 def run_in_background():
     """Uruchamia monitor zasobów w tle"""
     # Przekierowanie standardowego wyjścia i błędów do pliku
@@ -296,7 +384,6 @@ def run_in_background():
     monitor = ResourceMonitor()
     monitor.run()
 
-
 def main():
     """Główna funkcja"""
     import argparse
@@ -304,9 +391,13 @@ def main():
     parser = argparse.ArgumentParser(description="Monitor zasobów systemowych dla projektu Evopy")
     parser.add_argument("--background", action="store_true", help="Uruchom w tle")
     parser.add_argument("--check", action="store_true", help="Wykonaj jednorazowe sprawdzenie i wyjdź")
+    parser.add_argument("--report", action="store_true", help="Generuj raport o stanie zasobów")
     args = parser.parse_args()
     
-    if args.background:
+    if args.report:
+        # Generuj i wyświetl raport o stanie zasobów
+        print(generate_report())
+    elif args.background:
         print("Uruchamianie monitora zasobów w tle...")
         run_in_background()
     elif args.check:

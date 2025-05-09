@@ -257,31 +257,75 @@ function clean_docker() {
     CONTAINERS=$(docker ps -a --filter "name=evopy" -q)
     if [ -n "$CONTAINERS" ]; then
         echo -e "${YELLOW}Znaleziono kontenery Evopy. Usuwanie...${NC}"
-        docker rm -f $CONTAINERS
+        docker stop $CONTAINERS 2>/dev/null
+        docker rm $CONTAINERS 2>/dev/null
         echo -e "${GREEN}Kontenery zostały usunięte.${NC}"
     else
-        echo -e "${GREEN}Nie znaleziono kontenerów Evopy do usunięcia.${NC}"
+        echo -e "${GREEN}Nie znaleziono kontenerów Docker związanych z Evopy.${NC}"
+    fi
+}
+
+# Funkcja do generowania raportu o zasobach
+function generate_report() {
+    echo -e "${BLUE}Generowanie raportu o zasobach systemowych...${NC}"
+    
+    # Uruchom monitor_resources.py z argumentem --report
+    if [ -f "$SCRIPT_DIR/monitor_resources.py" ]; then
+        $PYTHON_CMD "$SCRIPT_DIR/monitor_resources.py" --report
+    else
+        echo -e "${RED}Nie znaleziono skryptu monitor_resources.py${NC}"
+        
+        # Wygeneruj podstawowy raport za pomocą narzędzi systemowych
+        echo -e "\n${YELLOW}=== PODSTAWOWY RAPORT ZASOBÓW SYSTEMU ===${NC}\n"
+        
+        # Informacje o CPU
+        echo -e "${YELLOW}CPU:${NC}"
+        top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print "  Użycie CPU: " 100-$1 "%"}'
+        
+        # Informacje o pamięci RAM
+        echo -e "\n${YELLOW}Pamięć RAM:${NC}"
+        free -h | grep -v total | grep Mem | awk '{print "  Całkowita: "$2"\n  Używana: "$3"\n  Wolna: "$4}'
+        
+        # Informacje o dysku
+        echo -e "\n${YELLOW}Dysk:${NC}"
+        df -h / | grep -v Filesystem | awk '{print "  Całkowita: "$2"\n  Używana: "$3" ("$5")\n  Wolna: "$4}'
+        
+        # Informacje o procesach
+        echo -e "\n${YELLOW}Najbardziej obciążające procesy:${NC}"
+        ps aux --sort=-%mem | head -n 6
+        
+        # Informacje o kontenerach Docker
+        if command -v docker &> /dev/null; then
+            echo -e "\n${YELLOW}Kontenery Docker:${NC}"
+            docker ps -a --filter "name=evopy" || echo "  Brak działających kontenerów"
+        fi
     fi
 }
 
 # Funkcja wyświetlająca pomoc
 function show_help() {
-    echo -e "${BLUE}Monitor zasobów systemowych dla projektu Evopy${NC}"
-    echo
+    echo -e "${BLUE}Monitor zasobów dla projektu Evopy${NC}"
     echo -e "Użycie: $0 [opcja]"
-    echo
-    echo -e "Opcje:"
-    echo -e "  ${GREEN}start${NC}     Uruchamia monitor zasobów jako daemon"
-    echo -e "  ${GREEN}stop${NC}      Zatrzymuje monitor zasobów"
-    echo -e "  ${GREEN}status${NC}    Wyświetla status monitora zasobów"
-    echo -e "  ${GREEN}check${NC}     Wykonuje jednorazowe sprawdzenie zasobów"
-    echo -e "  ${GREEN}clean${NC}     Czyści pliki logów i kontenery Docker"
-    echo -e "  ${GREEN}help${NC}      Wyświetla tę pomoc"
-    echo
+    echo ""
+    echo -e "${YELLOW}Opcje:${NC}"
+    echo -e "  start     - Uruchamia monitor zasobów w tle"
+    echo -e "  stop      - Zatrzymuje monitor zasobów"
+    echo -e "  status    - Sprawdza status monitora zasobów"
+    echo -e "  check     - Wykonuje jednorazowe sprawdzenie zasobów"
+    echo -e "  report    - Generuje raport o zasobach systemowych"
+    echo -e "  clean     - Czyści logi i nieaktywne kontenery Docker"
+    echo -e "  help      - Wyświetla tę pomoc"
+    echo ""
 }
 
 # Główna funkcja
 function main() {
+    # Sprawdź czy podano argument
+    if [ $# -eq 0 ]; then
+        show_help
+        exit 0
+    fi
+    
     # Sprawdź zależności
     check_dependencies
     
@@ -299,15 +343,18 @@ function main() {
         check)
             check_resources
             ;;
+        report)
+            generate_report
+            ;;
         clean)
             clean_logs
             clean_docker
             ;;
-        help|--help|-h)
+        help)
             show_help
             ;;
         *)
-            echo -e "${YELLOW}Nieznana opcja: $1${NC}"
+            echo -e "${RED}Nieznana opcja: $1${NC}"
             show_help
             exit 1
             ;;

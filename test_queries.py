@@ -16,9 +16,11 @@ import sys
 import json
 import time
 import logging
+import argparse
+import subprocess
 from pathlib import Path
-from typing import Dict, Any, List
 from datetime import datetime
+from typing import Dict, Any, List
 
 # Dodaj katalog główny do ścieżki, aby zaimportować moduły Evopy
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -61,6 +63,9 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
         model_name: Nazwa modelu do testowania
         timeout: Limit czasu w sekundach dla każdego testu
         test_case: Opcjonalny konkretny przypadek testowy do uruchomienia
+        
+    Returns:
+        Dict: Słownik z wynikami testów
     """
     # Konfiguracja loggera
     setup_logging()
@@ -74,14 +79,30 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
     if not check_ollama_running(timeout=5):
         logger.error("Serwer Ollama nie jest uruchomiony. Uruchom go przed rozpoczęciem testów.")
         logger.info("Możesz uruchomić Ollama poleceniem: ollama serve")
-        return
+        return {
+            "model_id": model_name,
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "total_tests": 0,
+            "passed_tests": 0,
+            "failed_tests": 0,
+            "details": [],
+            "error": "Serwer Ollama nie jest uruchomiony"
+        }
     
     # Inicjalizacja Text2Python z podanym modelem
     try:
         text2python = Text2Python(model_name=model_name, timeout=timeout)
     except Exception as e:
         logger.error(f"Błąd podczas inicjalizacji Text2Python: {str(e)}")
-        return
+        return {
+            "model_id": model_name,
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "total_tests": 0,
+            "passed_tests": 0,
+            "failed_tests": 0,
+            "details": [],
+            "error": f"Błąd inicjalizacji: {str(e)}"
+        }
     
     # Sprawdź dostępność modelu
     logger.info(f"Sprawdzanie dostępności modelu {model_name}...")
@@ -93,7 +114,15 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
             logger.warning(f"Kontynuuję testy z modelem zastępczym: {text2python.model_name}")
         else:
             logger.error(f"Model {model_name} nie jest dostępny i nie znaleziono modelu zastępczego")
-            return
+            return {
+                "model_id": model_name,
+                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+                "total_tests": 0,
+                "passed_tests": 0,
+                "failed_tests": 0,
+                "details": [],
+                "error": "Model niedostępny"
+            }
     
     # Informacja o liczbie testów
     total_tests = len(test_cases) if not test_case else 1
@@ -119,6 +148,18 @@ def run_tests(model_name="llama3", timeout=30, test_case=None):
         logger.info(f"Podsumowanie testów: {successful_tests}/{total_tests} zakończonych sukcesem")
         if successful_tests < total_tests:
             logger.warning(f"Nie wszystkie testy zakończyły się sukcesem. Sprawdź logi po szczegóły.")
+        
+        # Przygotuj wyniki do zwrócenia
+        results = {
+            "model_id": model_name,  # Używamy model_name jako model_id dla kompatybilności
+            "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
+            "total_tests": total_tests,
+            "passed_tests": successful_tests,
+            "failed_tests": total_tests - successful_tests,
+            "details": []
+        }
+        
+        return results
 
 
 def run_test_case(text2python, case_name, case_data):
@@ -227,7 +268,7 @@ def main():
     os.makedirs(results_dir, exist_ok=True)
     
     # Uruchom testy z wybranym modelem i timeoutem
-    results = run_tests(model_id=args.model, timeout=args.timeout)
+    results = run_tests(model_name=args.model, timeout=args.timeout)
     
     # Zapisz wyniki
     output_path = results_dir / f"test_results_{results['model_id']}_{results['timestamp']}.json"
