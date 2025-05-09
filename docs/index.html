@@ -1,0 +1,84 @@
+---
+layout: default
+title: Evopy Documentation
+---
+
+<div class="navigation-menu">
+  <div class="nav-section">
+    <h3>Documentation</h3>
+    <ul>
+      <li><a href="{{ site.baseurl }}/">Home</a></li>
+      <li><a href="{{ site.baseurl }}/TESTING.html">Testing Guide</a></li>
+      <li><a href="{{ site.baseurl }}/sandbox_architecture.html">Sandbox Architecture</a></li>
+      <li><a href="{{ site.baseurl }}/mermaid_test.html">Mermaid Diagrams</a></li>
+    </ul>
+  </div>
+  
+  <div class="nav-section">
+    <h3>Reports</h3>
+    <ul>
+      <li><a href="{{ site.baseurl }}/reports/comparison_report_latest.html">Latest Comparison Report</a></li>
+      <li><a href="{{ site.baseurl }}/reports/">All Reports</a></li>
+    </ul>
+  </div>
+  
+  <div class="nav-section">
+    <h3>Source Code</h3>
+    <ul>
+      <li><a href="https://github.com/tom-sapletta-com/evopy" target="_blank">GitHub Repository</a></li>
+      <li><a href="https://github.com/tom-sapletta-com/evopy/tree/main/modules/text2python" target="_blank">Text2Python Module</a></li>
+      <li><a href="https://github.com/tom-sapletta-com/evopy/tree/main/sandbox" target="_blank">Sandbox Module</a></li>
+    </ul>
+  </div>
+  
+  <div class="nav-section">
+    <h3>Cross-Platform</h3>
+    <ul>
+      <li><a href="{{ site.baseurl }}/cross_platform.html">Cross-Platform Guide</a></li>
+      <li><a href="https://github.com/tom-sapletta-com/evopy/blob/main/evopy.py" target="_blank">Evopy CLI</a></li>
+      <li><a href="https://github.com/tom-sapletta-com/evopy/blob/main/install.py" target="_blank">Installation Script</a></li>
+    </ul>
+  </div>
+</div>
+
+<h1>Evopy Documentation</h1>
+
+<p>Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewoluować z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker. Asystent wspiera konwersję tekstu na kod Python i zarządzanie projektami w kontenerach Docker.</p>
+
+<h2>System Architecture</h2>
+
+<div class="mermaid">
+graph TD
+    A[User] -->|Input| B(Evopy Core)
+    B --> C{Processing Type}
+    C -->|Code Generation| D[LLM Model]
+    C -->|Code Execution| E[Sandbox]
+    D --> F[Generated Code]
+    F --> E
+    E --> G[Execution Results]
+    G --> B
+    B --> H[Report Generator]
+    H --> I[HTML/Markdown Reports]
+</div>
+
+<h2>Key Features</h2>
+
+<ul>
+  <li><strong>Text to Python Conversion</strong>: Generate Python code from natural language descriptions</li>
+  <li><strong>Sandbox Execution</strong>: Run code safely in isolated Docker containers</li>
+  <li><strong>Cross-Platform Support</strong>: Works on Linux, Windows, and macOS</li>
+  <li><strong>Dependency Auto-Repair</strong>: Automatically fixes missing imports in code</li>
+  <li><strong>Model Fallback</strong>: Gracefully handles unavailable models by falling back to alternatives</li>
+</ul>
+
+<h2>Getting Started</h2>
+
+<p>Check out our <a href="{{ site.baseurl }}/cross_platform.html">Cross-Platform Guide</a> for installation instructions and usage examples.</p>
+
+<h2>Testing</h2>
+
+<p>Learn how to test Evopy with our <a href="{{ site.baseurl }}/TESTING.html">Testing Guide</a>.</p>
+
+<h2>Reports</h2>
+
+<p>View the latest test results in our <a href="{{ site.baseurl }}/reports/comparison_report_latest.html">Comparison Report</a>.</p>

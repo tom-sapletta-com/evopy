@@ -190,6 +190,13 @@ def pull_model(model_name: str, timeout: int = 60) -> bool:
     Returns:
         bool: True jeśli model został pobrany, False w przeciwnym przypadku
     """
+    # Specjalna obsługa dla modelu Bielik, który nie jest dostępny w publicznym repozytorium Ollama
+    if model_name.lower() == "bielik":
+        logger.warning(f"Model {model_name} nie jest dostępny w publicznym repozytorium Ollama.")
+        logger.info("Bielik to polski model językowy, który wymaga ręcznej instalacji.")
+        logger.info("Instrukcje instalacji: https://github.com/bielik-project/bielik")
+        return False
+        
     try:
         # Dostosuj komendę do systemu operacyjnego
         ollama_cmd = "ollama.exe" if IS_WINDOWS else "ollama"
@@ -205,7 +212,12 @@ def pull_model(model_name: str, timeout: int = 60) -> bool:
         )
         
         if result.returncode != 0:
-            logger.error(f"Błąd podczas pobierania modelu {model_name}: {result.stderr}")
+            # Sprawdź, czy błąd dotyczy braku pliku manifestu (częsty błąd dla nieistniejących modeli)
+            if "file does not exist" in result.stderr or "manifest" in result.stderr:
+                logger.error(f"Model {model_name} nie istnieje w repozytorium Ollama.")
+                logger.info(f"Dostępne modele to: llama3, mistral, deepseek-coder, phi3")
+            else:
+                logger.error(f"Błąd podczas pobierania modelu {model_name}: {result.stderr}")
             return False
         
         logger.info(f"Model {model_name} został pomyślnie pobrany")

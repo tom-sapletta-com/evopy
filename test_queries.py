@@ -53,117 +53,146 @@ TEST_QUERIES = [
     }
 ]
 
-def run_tests(model_id: str = None, timeout: int = 30) -> Dict[str, Any]:
+def run_tests(model_name="llama3", timeout=30, test_case=None):
     """
-    Uruchamia testy dla podstawowych zapytań
+    Uruchamia testy dla podanego modelu z timeoutem
     
     Args:
-        model_id: Identyfikator modelu do testowania
-        timeout: Limit czasu dla każdego testu w sekundach
+        model_name: Nazwa modelu do testowania
+        timeout: Limit czasu w sekundach dla każdego testu
+        test_case: Opcjonalny konkretny przypadek testowy do uruchomienia
+    """
+    # Konfiguracja loggera
+    setup_logging()
+    
+    # Informacja o rozpoczęciu testów
+    logger.info(f"Rozpoczynam testy z modelem {model_name} (timeout: {timeout}s)")
+    
+    # Sprawdzenie dostępności Ollama przed próbą użycia modelu
+    from modules.text2python.model_manager import check_ollama_running
+    
+    if not check_ollama_running(timeout=5):
+        logger.error("Serwer Ollama nie jest uruchomiony. Uruchom go przed rozpoczęciem testów.")
+        logger.info("Możesz uruchomić Ollama poleceniem: ollama serve")
+        return
+    
+    # Inicjalizacja Text2Python z podanym modelem
+    try:
+        text2python = Text2Python(model_name=model_name, timeout=timeout)
+    except Exception as e:
+        logger.error(f"Błąd podczas inicjalizacji Text2Python: {str(e)}")
+        return
+    
+    # Sprawdź dostępność modelu
+    logger.info(f"Sprawdzanie dostępności modelu {model_name}...")
+    model_available = text2python.ensure_model_available()
+    
+    if not model_available:
+        # Nie przerywaj testów, jeśli model_manager już dokonał fallbacku do innego modelu
+        if text2python.model_name != model_name:
+            logger.warning(f"Kontynuuję testy z modelem zastępczym: {text2python.model_name}")
+        else:
+            logger.error(f"Model {model_name} nie jest dostępny i nie znaleziono modelu zastępczego")
+            return
+    
+    # Informacja o liczbie testów
+    total_tests = len(test_cases) if not test_case else 1
+    logger.info(f"Liczba testów do wykonania: {total_tests}")
+    
+    # Uruchom testy
+    if test_case:
+        # Uruchom tylko konkretny test
+        if test_case in test_cases:
+            run_test_case(text2python, test_case, test_cases[test_case])
+        else:
+            logger.error(f"Nieznany przypadek testowy: {test_case}")
+            logger.info(f"Dostępne przypadki testowe: {', '.join(test_cases.keys())}")
+    else:
+        # Uruchom wszystkie testy
+        successful_tests = 0
+        for case_name, case_data in test_cases.items():
+            success = run_test_case(text2python, case_name, case_data)
+            if success:
+                successful_tests += 1
+        
+        # Podsumowanie testów
+        logger.info(f"Podsumowanie testów: {successful_tests}/{total_tests} zakończonych sukcesem")
+        if successful_tests < total_tests:
+            logger.warning(f"Nie wszystkie testy zakończyły się sukcesem. Sprawdź logi po szczegóły.")
+
+
+def run_test_case(text2python, case_name, case_data):
+    """
+    Uruchamia pojedynczy przypadek testowy
+    
+    Args:
+        text2python: Instancja Text2Python
+        case_name: Nazwa przypadku testowego
+        case_data: Dane przypadku testowego
     
     Returns:
-        Dict: Wyniki testów
+        bool: True jeśli test zakończył się sukcesem, False w przeciwnym przypadku
     """
-    # Importuj model_manager dla lepszej obsługi modeli
-    from modules.text2python.model_manager import check_ollama_models, find_best_available_model
+    logger.info(f"Testowanie przypadku: {case_name}")
     
-    # Inicjalizacja konwertera
-    text2python = Text2Python(model_id=model_id, code_dir=Path("generated_code"))
+    # Pobierz dane przypadku testowego
+    query = case_data["query"]
+    expected_output = case_data.get("expected_output", None)
+    expected_contains = case_data.get("expected_contains", [])
     
-    # Przygotuj strukturę wyników
-    results = {
-        "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
-        "model_id": text2python.model_id,
-        "model_name": text2python.model_name,
-        "total_tests": 0,
-        "passed_tests": 0,
-        "failed_tests": 0,
-        "tests": []
-    }
-    
-    # Sprawdź, czy model jest dostępny z timeoutem 5 sekund
-    logger.info(f"Sprawdzanie dostępności modelu {text2python.model_name}...")
-    available_models = check_ollama_models(timeout=5)
-    
-    if text2python.model_name not in available_models:
-        # Spróbuj znaleźć alternatywny model
-        fallback_model = find_best_available_model()
-        if fallback_model:
-            logger.warning(f"Model {text2python.model_name} nie jest dostępny. Używam {fallback_model}")
-            text2python.model_name = fallback_model
-        else:
-            logger.error("Nie znaleziono żadnego dostępnego modelu. Testy nie mogą być wykonane.")
-            return {
-                "timestamp": datetime.now().strftime("%Y%m%d_%H%M%S"),
-                "model_id": model_id,
-                "model_name": "",
-                "total_tests": len(TEST_QUERIES),
-                "passed_tests": 0,
-                "failed_tests": len(TEST_QUERIES),
-                "tests": [{"name": q["name"], "status": "FAILED", "reason": "Model niedostępny"} for q in TEST_QUERIES]
-            }
-    
-    # Uruchom testy dla każdego zapytania z timeoutem
-    for query_data in TEST_QUERIES:
-        query_name = query_data["name"]
-        query = query_data["query"]
-        expected_contains = query_data["expected_contains"]
+    try:
+        # Ustaw timeout dla generowania kodu
+        start_time = time.time()
         
-        logger.info(f"Testowanie zapytania: {query_name}")
+        # Analizuj zapytanie
+        logger.info(f"Analizowanie zapytania: '{query}'")
         
-        try:
-            # Ustaw timeout dla generowania kodu
-            start_time = time.time()
-            
-            # Generuj kod Python na podstawie zapytania
-            result = text2python.generate_code(query)
-            
-            # Zmierz czas wykonania
-            execution_time = time.time() - start_time
-            
-            # Sprawdź, czy kod został wygenerowany
-            code = result.get("code", "")
-            explanation = result.get("explanation", "")
-            
-            # Sprawdź, czy kod zawiera oczekiwane elementy
+        # Generuj kod Python na podstawie zapytania
+        result = text2python.generate_code(query)
+        
+        # Zmierz czas wykonania
+        execution_time = time.time() - start_time
+        logger.info(f"Czas generowania kodu: {execution_time:.2f}s")
+        
+        # Sprawdź, czy kod został wygenerowany
+        if not result or "code" not in result:
+            logger.error(f"Nie wygenerowano kodu dla zapytania: {query}")
+            return False
+        
+        code = result.get("code", "")
+        explanation = result.get("explanation", "")
+        
+        # Sprawdź, czy kod zawiera oczekiwane elementy
+        if expected_contains:
             all_contains = True
+            missing_elements = []
+            
             for expected in expected_contains:
                 if expected not in code:
                     all_contains = False
-                    break
+                    missing_elements.append(expected)
             
-            if all_contains:
-                status = "PASSED"
-                reason = f"Kod zawiera wszystkie oczekiwane elementy (czas: {execution_time:.2f}s)"
-                results["passed_tests"] += 1
-            else:
-                status = "FAILED"
-                missing = [expected for expected in expected_contains if expected not in code]
-                reason = f"Brakujące elementy w kodzie: {', '.join(missing)}"
-                results["failed_tests"] += 1
-            
-        except Exception as e:
-            status = "FAILED"
-            reason = str(e)
-            results["failed_tests"] += 1
+            if not all_contains:
+                logger.error(f"Brakujące elementy w kodzie: {', '.join(missing_elements)}")
+                logger.debug(f"Wygenerowany kod:\n{code}")
+                return False
         
-        # Dodaj szczegóły testu do wyników
-        results["tests"].append({
-            "name": query_name,
-            "status": status,
-            "reason": reason,
-            "query": query,
-            "code": result.get("code", "") if "result" in locals() else "",
-            "explanation": result.get("explanation", "") if "result" in locals() else ""
-        })
+        # Sprawdź oczekiwany wynik, jeśli został podany
+        if expected_output is not None:
+            # Tutaj można dodać wykonanie kodu i sprawdzenie wyniku
+            # Używając dependency_manager i docker_sandbox
+            pass
         
-        logger.info(f"Test {query_name}: {status} - {reason}")
-    
-    # Podsumowanie testów
-    results["total_tests"] = len(TEST_QUERIES)
-    logger.info(f"Testy zakończone. Zaliczone: {results['passed_tests']}/{results['total_tests']}")
-    
-    return results
+        logger.info(f"Test {case_name} zakończony sukcesem (czas: {execution_time:.2f}s)")
+        return True
+        
+    except subprocess.TimeoutExpired:
+        logger.error(f"Przekroczono limit czasu podczas generowania kodu dla zapytania: {query}")
+        return False
+    except Exception as e:
+        logger.error(f"Błąd podczas testowania przypadku {case_name}: {str(e)}")
+        logger.debug(f"Szczegóły błędu:", exc_info=True)
+        return False
 
 def save_results(results: Dict[str, Any], output_path: str = None) -> None:
     """

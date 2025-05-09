@@ -163,8 +163,15 @@ class Text2Python:
         # Użyj nowego model_manager do znalezienia najlepszego dostępnego modelu
         from .model_manager import find_best_available_model, check_ollama_models
         
-        # Preferowana kolejność modeli zastępczych
-        preferred_models = ["llama3", "deepseek-coder", "phi3", "mistral", "bielik"]
+        # Specjalna obsługa dla modelu Bielik
+        if self.model_name.lower() == "bielik":
+            logger.warning(f"Model {self.model_name} nie jest dostępny w publicznym repozytorium Ollama.")
+            logger.info("Bielik to polski model językowy, który wymaga ręcznej instalacji.")
+            logger.info("Instrukcje instalacji: https://github.com/bielik-project/bielik")
+            # Kontynuuj z fallbackiem do innego modelu
+        
+        # Preferowana kolejność modeli zastępczych (bez Bielika, który nie jest dostępny w publicznym repozytorium)
+        preferred_models = ["llama3", "deepseek-coder", "phi3", "mistral"]
         
         if available_models is None:
             # Pobierz listę dostępnych modeli z timeoutem
@@ -179,6 +186,8 @@ class Text2Python:
             return True
         else:
             logger.error(f"Nie znaleziono żadnego dostępnego modelu zastępczego")
+            logger.error("Upewnij się, że Ollama jest uruchomiona i ma zainstalowane modele.")
+            logger.info("Możesz zainstalować modele ręcznie poleceniem: ollama pull llama3")
             return False
     
     def _calculate_complexity(self, text: str) -> float:
