@@ -15,6 +15,7 @@ Evopy to kompleksowy, ale minimalny system asystenta, który jest w stanie ewolu
 - **Bezpieczne środowisko wykonawcze** - izolowane środowisko Docker do uruchamiania wygenerowanego kodu
 - **Autonaprawa zależności** - automatyczne wykrywanie i naprawianie brakujących importów w kodzie
 - **Porównywanie modeli LLM** - system testowania i raportowania dla różnych modeli językowych
+- **Generowanie raportów** - tworzenie raportów porównawczych w formatach Markdown, HTML i PDF
 
 ## Architektura
 
@@ -232,15 +233,25 @@ git clone https://github.com/tom-sapletta-com/evopy.git
 cd evopy
 
 # Uruchom skrypt instalacyjny
-./install.sh
+bash install.sh
 ```
 
-Skrypt automatycznie:
-1. Sprawdzi i zainstaluje wymagane zależności (Python, Docker, Ollama)
+Skrypt instalacyjny automatycznie:
+1. Sprawdzi wymagania systemowe
 2. Utworzy wirtualne środowisko Python
-3. Zainstaluje wymagane pakiety Python
-4. Pobierze model llama3 do Ollama
-5. Skonfiguruje środowisko
+3. Zainstaluje wymagane zależności Python
+4. Zainstaluje zależności systemowe do generowania raportów (pandoc, wkhtmltopdf)
+5. Sprawdzi dostępność Dockera i Ollama
+6. Skonfiguruje środowisko do pracy
+
+### Zależności do generowania raportów
+
+Do generowania raportów w formatach HTML i PDF wymagane są następujące narzędzia:
+
+- **pandoc** - konwersja między formatami dokumentów
+- **wkhtmltopdf** - konwersja HTML do PDF
+
+Skrypt instalacyjny próbuje zainstalować te narzędzia automatycznie na systemach Linux. Na innych systemach operacyjnych wyświetla instrukcje instalacji.
 
 ### Manualna instalacja
 
@@ -290,6 +301,34 @@ python main.py
 
 # Wygeneruj raport porównawczy dla wszystkich dostępnych modeli
 ./report.sh
+```
+
+### Uruchamianie testów i raportów
+
+```bash
+# Testowanie pojedynczego modelu
+bash test.sh --model=llama3
+
+# Generowanie raportu porównawczego dla wszystkich modeli
+bash report.sh
+
+# Generowanie raportu z określonym formatem i okresem analizy trendów
+python generate_report.py --format=all --trend=30
+```
+
+### Parametry generowania raportów
+
+Skrypt `generate_report.py` obsługuje następujące parametry:
+
+- `--format` - format wyjściowy raportu (all, md, html, pdf)
+- `--input` - katalog zawierający wyniki testów
+- `--output` - katalog do zapisania raportów
+- `--trend` - liczba dni historycznych danych do uwzględnienia w analizie trendów
+
+Przykład:
+
+```bash
+python generate_report.py --format=html --trend=60 --output=./custom_reports
 ```
 
 ### Tryb deweloperski

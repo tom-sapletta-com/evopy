@@ -19,6 +19,7 @@ import argparse
 import logging
 import datetime
 import subprocess
+import re
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 
@@ -63,6 +64,36 @@ def check_dependencies() -> bool:
     
     return True
 
+def strip_ansi_and_prompts(text):
+    """Strip ANSI color codes and shell prompts from text."""
+    if not isinstance(text, str):
+        return text
+        
+    # Strip ANSI color codes
+    ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+    text = ansi_escape.sub('', text)
+    
+    # Strip shell prompts like "\033[0;33mWybierz model (1-6): \033[0m"
+    prompt_pattern = re.compile(r'\\033\[[0-9;]*m[^\\]*\\033\[[0-9;]*m')
+    text = prompt_pattern.sub('', text)
+    
+    # Remove other common shell prompts
+    text = re.sub(r'\[.*?\]> ', '', text)  # Remove [Conversation]> style prompts
+    text = re.sub(r'> ', '', text)          # Remove simple > prompts
+    
+    return text
+
+def clean_test_data(data):
+    """Recursively clean ANSI codes and prompts from test data."""
+    if isinstance(data, dict):
+        return {k: clean_test_data(v) for k, v in data.items()}
+    elif isinstance(data, list):
+        return [clean_test_data(item) for item in data]
+    elif isinstance(data, str):
+        return strip_ansi_and_prompts(data)
+    else:
+        return data
+
 def load_test_results(model_name: str) -> Dict[str, Any]:
     """Load the most recent test results for a specific model."""
     # Find the most recent results file for this model
@@ -91,6 +122,9 @@ def load_test_results(model_name: str) -> Dict[str, Any]:
         for key in default_results.keys():
             if key not in data:
                 data[key] = default_results[key]
+        
+        # Clean ANSI codes and prompts from the data
+        data = clean_test_data(data)
                 
         return data
     except (json.JSONDecodeError, IOError) as e:
@@ -1215,9 +1249,30 @@ Na podstawie wyników testów zalecamy:
     logger.info(f"Markdown report generated: {output_file}")
     return md_content
 
+def clean_markdown_content(content: str) -> str:
+    """Clean markdown content by removing ANSI codes and shell prompts."""
+    # Remove ANSI color codes
+    ansi_escape = re.compile(r'\\033\[[0-9;]*[mK]')
+    content = ansi_escape.sub('', content)
+    
+    # Remove raw ANSI escape sequences
+    content = re.sub(r'\\033\[[0-9;]*[a-zA-Z]', '', content)
+    
+    # Remove shell prompts
+    content = re.sub(r'\[.*?\]> ', '', content)  # Remove [Conversation]> style prompts
+    content = re.sub(r'^> ', '', content, flags=re.MULTILINE)  # Remove simple > prompts
+    content = re.sub(r'\\033\[0;33m.*?\\033\[0m', '', content)  # Remove colored prompts
+    
+    # Clean up any leftover escape characters
+    content = content.replace('\\', '\\')
+    
+    return content
+
 def generate_html_report(markdown_content: str, output_file: str) -> None:
     """Convert markdown report to HTML."""
     try:
+        # Clean the markdown content first
+        markdown_content = clean_markdown_content(markdown_content)
         # Add CSS styling for better HTML presentation
         html_header = """<!DOCTYPE html>
 <html>
@@ -1250,11 +1305,21 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
             border-collapse: collapse;
             width: 100%;
             margin: 20px 0;
+            table-layout: fixed;
+            overflow-x: auto;
+            display: block;
+        }
+        @media (min-width: 768px) {
+            table {
+                display: table;
+            }
         }
         th, td {
             border: 1px solid #ddd;
             padding: 12px;
             text-align: left;
+            word-wrap: break-word;
+            max-width: 300px;
         }
         th {
             background-color: #f2f2f2;
@@ -1291,6 +1356,8 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
             border-radius: 3px;
             padding: 10px;
             overflow-x: auto;
+            max-width: 100%;
+            white-space: pre-wrap;
         }
         .footer {
             margin-top: 50px;
@@ -1299,6 +1366,16 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
             font-size: 0.9em;
             color: #7f8c8d;
         }
+        canvas {
+            max-width: 100%;
+            height: auto !important;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
     </style>
 </head>
 <body>
@@ -1306,28 +1383,63 @@ def generate_html_report(markdown_content: str, output_file: str) -> None:
         
         # Add Mermaid support for diagrams and charts
         mermaid_script = """
-<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
+        // Fix for tables - ensure they're properly displayed
+        const tables = document.querySelectorAll('table');
+        tables.forEach(function(table) {
+            // Create a wrapper div for the table if it doesn't exist
+            if (!table.parentElement.classList.contains('table-wrapper')) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'table-wrapper';
+                wrapper.style.overflowX = 'auto';
+                table.parentNode.insertBefore(wrapper, table);
+                wrapper.appendChild(table);
+            }
+        });
+
         // Initialize Mermaid diagrams
         mermaid.initialize({
             startOnLoad: true,
             theme: 'default',
             securityLevel: 'loose',
-            flowchart: { useMaxWidth: false, htmlLabels: true },
-            sequence: { useMaxWidth: false, showSequenceNumbers: true }
+            flowchart: { useMaxWidth: true, htmlLabels: true },
+            sequence: { useMaxWidth: true, showSequenceNumbers: true }
         });
         
         // Initialize Chart.js charts
         setTimeout(function() {
             const chartElements = document.querySelectorAll('.evopy-chart');
             chartElements.forEach(function(element) {
-                const ctx = element.getContext('2d');
-                const chartData = JSON.parse(element.getAttribute('data-chart'));
-                new Chart(ctx, chartData);
+                // Create a container for the chart
+                const container = document.createElement('div');
+                container.className = 'chart-container';
+                element.parentNode.insertBefore(container, element);
+                container.appendChild(element);
+                
+                try {
+                    const ctx = element.getContext('2d');
+                    const chartData = JSON.parse(element.getAttribute('data-chart'));
+                    new Chart(ctx, chartData);
+                } catch (e) {
+                    console.error('Error initializing chart:', e);
+                    // Create a fallback message
+                    const fallback = document.createElement('p');
+                    fallback.textContent = 'Chart rendering failed. Please check the data format.';
+                    fallback.style.color = 'red';
+                    element.parentNode.insertBefore(fallback, element);
+                }
             });
         }, 500);
+        
+        // Fix for code blocks - ensure they don't overflow
+        const preElements = document.querySelectorAll('pre');
+        preElements.forEach(function(pre) {
+            pre.style.maxWidth = '100%';
+            pre.style.overflowX = 'auto';
+        });
     });
 </script>
 """
@@ -1420,6 +1532,8 @@ def main():
                         help="Directory containing test results")
     parser.add_argument("--output", type=str, default=str(REPORTS_DIR),
                         help="Directory to save reports")
+    parser.add_argument("--trend", type=int, default=30,
+                        help="Number of days of historical data to include in trend analysis")
     
     args = parser.parse_args()
     

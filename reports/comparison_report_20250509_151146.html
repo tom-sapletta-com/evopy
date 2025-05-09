@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evopy Model Comparison Report</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+        h2 {
+            color: #2980b9;
+            margin-top: 30px;
+        }
+        h3 {
+            color: #3498db;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            table-layout: fixed;
+            overflow-x: auto;
+            display: block;
+        }
+        @media (min-width: 768px) {
+            table {
+                display: table;
+            }
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+            word-wrap: break-word;
+            max-width: 300px;
+        }
+        th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        .passed {
+            color: #27ae60;
+            font-weight: bold;
+        }
+        .failed {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+        .unknown {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        code {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 2px 5px;
+            font-family: monospace;
+        }
+        pre {
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            overflow-x: auto;
+            max-width: 100%;
+            white-space: pre-wrap;
+        }
+        .footer {
+            margin-top: 50px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+            font-size: 0.9em;
+            color: #7f8c8d;
+        }
+        canvas {
+            max-width: 100%;
+            height: auto !important;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+    </style>
+</head>
+<body>
+
+<header id="title-block-header">
+<h1 class="title">Evopy Model Comparison Report</h1>
+</header>
+<h1 id="raport-porównawczy-modeli-llm-dla-evopy">Raport porównawczy
+modeli LLM dla Evopy</h1>
+<p>Data wygenerowania: 2025-05-09 15:11:46</p>
+<h2 id="podsumowanie-wyników">Podsumowanie wyników</h2>
+<h3 id="wyniki-ogólne">Wyniki ogólne</h3>
+<table>
+<colgroup>
+<col style="width: 7%" />
+<col style="width: 15%" />
+<col style="width: 20%" />
+<col style="width: 19%" />
+<col style="width: 17%" />
+<col style="width: 19%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Testy zapytań</th>
+<th>Testy poprawności</th>
+<th>Testy wydajności</th>
+<th>Średni czas (s)</th>
+<th>Całkowity wynik</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>deepsek</td>
+<td>3/3 (100.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0.00</td>
+<td>3/3 (100.0%)</td>
+</tr>
+<tr class="even">
+<td>gemini</td>
+<td>3/3 (100.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0.00</td>
+<td>3/3 (100.0%)</td>
+</tr>
+<tr class="odd">
+<td>llama3</td>
+<td>3/3 (100.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0/0 (0.0%)</td>
+<td>0.00</td>
+<td>3/3 (100.0%)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="dokładność-konwersji-tekst-na-kod">Dokładność konwersji
+tekst-na-kod</h3>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 8%" />
+<col style="width: 19%" />
+<col style="width: 20%" />
+<col style="width: 23%" />
+<col style="width: 27%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Poprawność kodu</th>
+<th>Błędy składniowe</th>
+<th>Błędy semantyczne</th>
+<th>Zgodność z intencją</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>deepsek</td>
+<td>60.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>54.0%</td>
+</tr>
+<tr class="even">
+<td>gemini</td>
+<td>60.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>54.0%</td>
+</tr>
+<tr class="odd">
+<td>llama3</td>
+<td>60.0%</td>
+<td>0.0%</td>
+<td>0.0%</td>
+<td>54.0%</td>
+</tr>
+</tbody>
+</table>
+<h3 id="wydajność-kodu">Wydajność kodu</h3>
+<div class="line-block">Model | Złożoność czasowa | Ocena | Złożoność
+pamięciowa | Ocena | Efektywność rozmiaru | Wykorzystanie zasobów |
+Ogólna ocena |</div>
+<p>|——-|——————|——-|———————|——-|———————|———————|————-|| deepsek | O(n) |
+0.0% | O(1) | 0.0% | 0.0% | 0.0% | 0.0% | | gemini | O(n) | 0.0% | O(1)
+| 0.0% | 0.0% | 0.0% | 0.0% | | llama3 | O(n) | 0.0% | O(1) | 0.0% |
+0.0% | 0.0% | 0.0% |</p>
+<p><strong>Wyjaśnienie złożoności obliczeniowej:</strong> -
+<strong>O(1)</strong>: Złożoność stała - czas wykonania nie zależy od
+rozmiaru danych wejściowych - <strong>O(log n)</strong>: Złożoność
+logarytmiczna - czas wykonania rośnie logarytmicznie z rozmiarem danych
+- <strong>O(n)</strong>: Złożoność liniowa - czas wykonania rośnie
+liniowo z rozmiarem danych - <strong>O(n log n)</strong>: Złożoność
+linearytmiczna - typowa dla efektywnych algorytmów sortowania -
+<strong>O(n²)</strong>: Złożoność kwadratowa - czas wykonania rośnie z
+kwadratem rozmiaru danych - <strong>O(2^n)</strong>: Złożoność
+wykładnicza - czas wykonania rośnie wykładniczo z rozmiarem danych</p>
+<h3 id="jakość-wyjaśnień-i-kodu">Jakość wyjaśnień i kodu</h3>
+<div class="line-block">Model | Jakość dokumentacji | Klarowność
+wyjaśnień | Czytelność kodu | Indeks utrzymywalności |</div>
+<p>|——-|———————|———————-|—————-|————————|| deepsek | 0.0% | 0.0% | 0.0%
+| 0.0% | | gemini | 0.0% | 0.0% | 0.0% | 0.0% | | llama3 | 0.0% | 0.0% |
+0.0% | 0.0% |</p>
+<h3 id="zgodność-z-intencjami-użytkownika">Zgodność z intencjami
+użytkownika</h3>
+<table>
+<colgroup>
+<col style="width: 7%" />
+<col style="width: 20%" />
+<col style="width: 34%" />
+<col style="width: 19%" />
+<col style="width: 17%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Spełnienie wymagań</th>
+<th>Obsługa przypadków brzegowych</th>
+<th>Ocena użytkownika</th>
+<th>Ogólna zgodność</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>deepsek</td>
+<td>100.0%</td>
+<td>80.0%</td>
+<td>90.0%</td>
+<td>92.0%</td>
+</tr>
+<tr class="even">
+<td>gemini</td>
+<td>100.0%</td>
+<td>80.0%</td>
+<td>90.0%</td>
+<td>92.0%</td>
+</tr>
+<tr class="odd">
+<td>llama3</td>
+<td>100.0%</td>
+<td>80.0%</td>
+<td>90.0%</td>
+<td>92.0%</td>
+</tr>
+</tbody>
+</table>
+<h2 id="wizualizacja-wyników">Wizualizacja wyników</h2>
+<h3 id="wykresy-porównawcze">Wykresy porównawcze</h3>
+<div style="width: 80%; margin: 20px auto;">
+<pre><code>&lt;canvas id=&quot;radar-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
+    &quot;type&quot;: &quot;radar&quot;,
+    &quot;data&quot;: {
+        &quot;labels&quot;: [
+            &quot;Poprawność kodu&quot;, 
+            &quot;Jakość wyjaśnień&quot;, 
+            &quot;Wydajność kodu&quot;, 
+            &quot;Zgodność z intencjami&quot;,
+            &quot;Testy podstawowe&quot;
+        ],
+        &quot;datasets&quot;: [
+            {
+                &quot;label&quot;: &quot;deepsek&quot;,
+                &quot;data&quot;: [
+                    60.0,
+                    0,
+                    0,
+                    92.0,
+                    100.0
+                ],
+                &quot;fill&quot;: true,
+                &quot;backgroundColor&quot;: &quot;rgba(54, 162, 235, 0.2)&quot;,
+                &quot;borderColor&quot;: &quot;rgba(54, 162, 235, 1)&quot;,
+                &quot;pointBackgroundColor&quot;: &quot;rgba(54, 162, 235, 1)&quot;,
+                &quot;pointBorderColor&quot;: &quot;#fff&quot;,
+                &quot;pointHoverBackgroundColor&quot;: &quot;#fff&quot;,
+                &quot;pointHoverBorderColor&quot;: &quot;rgba(54, 162, 235, 1)&quot;
+            },
+            {
+                &quot;label&quot;: &quot;gemini&quot;,
+                &quot;data&quot;: [
+                    60.0,
+                    0,
+                    0,
+                    92.0,
+                    100.0
+                ],
+                &quot;fill&quot;: true,
+                &quot;backgroundColor&quot;: &quot;rgba(255, 99, 132, 0.2)&quot;,
+                &quot;borderColor&quot;: &quot;rgba(255, 99, 132, 1)&quot;,
+                &quot;pointBackgroundColor&quot;: &quot;rgba(255, 99, 132, 1)&quot;,
+                &quot;pointBorderColor&quot;: &quot;#fff&quot;,
+                &quot;pointHoverBackgroundColor&quot;: &quot;#fff&quot;,
+                &quot;pointHoverBorderColor&quot;: &quot;rgba(255, 99, 132, 1)&quot;
+            }
+        ]
+    },
+    &quot;options&quot;: {
+        &quot;elements&quot;: {
+            &quot;line&quot;: {
+                &quot;borderWidth&quot;: 3
+            }
+        },
+        &quot;scales&quot;: {
+            &quot;r&quot;: {
+                &quot;angleLines&quot;: {
+                    &quot;display&quot;: true
+                },
+                &quot;suggestedMin&quot;: 0,
+                &quot;suggestedMax&quot;: 100
+            }
+        },
+        &quot;plugins&quot;: {
+            &quot;title&quot;: {
+                &quot;display&quot;: true,
+                &quot;text&quot;: &quot;Porównanie modeli w różnych kategoriach&quot;
+            }
+        }
+    }
+}&#39;&gt;&lt;/canvas&gt;</code></pre>
+</div>
+<div style="width: 80%; margin: 20px auto;">
+<pre><code>&lt;canvas id=&quot;test-results-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
+    &quot;type&quot;: &quot;bar&quot;,
+    &quot;data&quot;: {
+        &quot;labels&quot;: [&#39;deepsek&#39;, &#39;gemini&#39;, &#39;llama3&#39;],
+        &quot;datasets&quot;: [
+            {
+                &quot;label&quot;: &quot;Testy zapytań (%)&quot;,
+                &quot;data&quot;: [100.0, 100.0, 100.0],
+                &quot;backgroundColor&quot;: &quot;rgba(54, 162, 235, 0.5)&quot;,
+                &quot;borderColor&quot;: &quot;rgba(54, 162, 235, 1)&quot;,
+                &quot;borderWidth&quot;: 1
+            },
+            {
+                &quot;label&quot;: &quot;Testy poprawności (%)&quot;,
+                &quot;data&quot;: [0, 0, 0],
+                &quot;backgroundColor&quot;: &quot;rgba(75, 192, 192, 0.5)&quot;,
+                &quot;borderColor&quot;: &quot;rgba(75, 192, 192, 1)&quot;,
+                &quot;borderWidth&quot;: 1
+            }
+        ]
+    },
+    &quot;options&quot;: {
+        &quot;scales&quot;: {
+            &quot;y&quot;: {
+                &quot;beginAtZero&quot;: true,
+                &quot;max&quot;: 100,
+                &quot;title&quot;: {
+                    &quot;display&quot;: true,
+                    &quot;text&quot;: &quot;Procent sukcesu (%)&quot;
+                }
+            }
+        },
+        &quot;plugins&quot;: {
+            &quot;title&quot;: {
+                &quot;display&quot;: true,
+                &quot;text&quot;: &quot;Porównanie wyników testów&quot;
+            }
+        }
+    }
+}&#39;&gt;&lt;/canvas&gt;</code></pre>
+</div>
+<div style="width: 80%; margin: 20px auto;">
+<pre><code>&lt;canvas id=&quot;performance-chart&quot; class=&quot;evopy-chart&quot; data-chart=&#39;{
+    &quot;type&quot;: &quot;line&quot;,
+    &quot;data&quot;: {
+        &quot;labels&quot;: [&#39;deepsek&#39;, &#39;gemini&#39;, &#39;llama3&#39;],
+        &quot;datasets&quot;: [
+            {
+                &quot;label&quot;: &quot;Średni czas wykonania (s)&quot;,
+                &quot;data&quot;: [0, 0, 0],
+                &quot;backgroundColor&quot;: &quot;rgba(255, 99, 132, 0.2)&quot;,
+                &quot;borderColor&quot;: &quot;rgba(255, 99, 132, 1)&quot;,
+                &quot;borderWidth&quot;: 2,
+                &quot;tension&quot;: 0.1
+            }
+        ]
+    },
+    &quot;options&quot;: {
+        &quot;scales&quot;: {
+            &quot;y&quot;: {
+                &quot;beginAtZero&quot;: true,
+                &quot;title&quot;: {
+                    &quot;display&quot;: true,
+                    &quot;text&quot;: &quot;Czas (sekundy)&quot;
+                }
+            }
+        },
+        &quot;plugins&quot;: {
+            &quot;title&quot;: {
+                &quot;display&quot;: true,
+                &quot;text&quot;: &quot;Porównanie czasu wykonania&quot;
+            }
+        }
+    }
+}&#39;&gt;&lt;/canvas&gt;</code></pre>
+</div>
+<h2 id="analiza-trendów">Analiza trendów</h2>
+<h3 id="postępy-w-czasie">Postępy w czasie</h3>
+<h4 id="model-deepsek">Model: deepsek</h4>
+<ul>
+<li>Brak wystarczających danych historycznych do analizy trendów</li>
+</ul>
+<h4 id="model-gemini">Model: gemini</h4>
+<ul>
+<li>Brak wystarczających danych historycznych do analizy trendów</li>
+</ul>
+<h4 id="model-llama3">Model: llama3</h4>
+<ul>
+<li>Brak wystarczających danych historycznych do analizy trendów</li>
+</ul>
+<h2 id="szczegółowe-wyniki-testów">Szczegółowe wyniki testów</h2>
+<h3 id="model-deepsek-1">Model: deepsek</h3>
+<h4 id="wyniki-testów-zapytań">Wyniki testów zapytań</h4>
+<ul>
+<li>Zaliczone testy: 3/3 (100.0%)</li>
+<li>Ilość wygenerowanego kodu: 0 linii</li>
+<li>Średnia ilość linii na zapytanie: 0.0</li>
+</ul>
+<h4 id="wyniki-testów-poprawności">Wyniki testów poprawności</h4>
+<ul>
+<li>Zaliczone testy: 0/0 (0.0%)</li>
+<li>Skuteczność kompilacji: 0.0%</li>
+<li>Skuteczność wykonania: 0.0%</li>
+</ul>
+<h4 id="wyniki-testów-wydajności">Wyniki testów wydajności</h4>
+<ul>
+<li>Brak wyników testów wydajności</li>
+</ul>
+<h3 id="model-gemini-1">Model: gemini</h3>
+<h4 id="wyniki-testów-zapytań-1">Wyniki testów zapytań</h4>
+<ul>
+<li>Zaliczone testy: 3/3 (100.0%)</li>
+<li>Ilość wygenerowanego kodu: 0 linii</li>
+<li>Średnia ilość linii na zapytanie: 0.0</li>
+</ul>
+<h4 id="wyniki-testów-poprawności-1">Wyniki testów poprawności</h4>
+<ul>
+<li>Zaliczone testy: 0/0 (0.0%)</li>
+<li>Skuteczność kompilacji: 0.0%</li>
+<li>Skuteczność wykonania: 0.0%</li>
+</ul>
+<h4 id="wyniki-testów-wydajności-1">Wyniki testów wydajności</h4>
+<ul>
+<li>Brak wyników testów wydajności</li>
+</ul>
+<h3 id="model-llama3-1">Model: llama3</h3>
+<h4 id="wyniki-testów-zapytań-2">Wyniki testów zapytań</h4>
+<ul>
+<li>Zaliczone testy: 3/3 (100.0%)</li>
+<li>Ilość wygenerowanego kodu: 0 linii</li>
+<li>Średnia ilość linii na zapytanie: 0.0</li>
+</ul>
+<h4 id="wyniki-testów-poprawności-2">Wyniki testów poprawności</h4>
+<ul>
+<li>Zaliczone testy: 0/0 (0.0%)</li>
+<li>Skuteczność kompilacji: 0.0%</li>
+<li>Skuteczność wykonania: 0.0%</li>
+</ul>
+<h4 id="wyniki-testów-wydajności-2">Wyniki testów wydajności</h4>
+<ul>
+<li>Brak wyników testów wydajności</li>
+</ul>
+<h2 id="wnioski">Wnioski</h2>
+<p>Na podstawie przeprowadzonych testów można wyciągnąć następujące
+wnioski:</p>
+<ol type="1">
+<li><strong>Najlepszy model pod względem poprawności</strong>:
+(0.0%)</li>
+<li><strong>Najszybszy model</strong>: (średni czas: infs)</li>
+<li><strong>Najlepszy model ogólnie</strong>: deepsek (ogólny wynik:
+100.0%)</li>
+</ol>
+<h2 id="metodologia-testów">Metodologia testów</h2>
+<p>Testy zostały przeprowadzone w trzech kategoriach:</p>
+<ol type="1">
+<li><strong>Testy zapytań</strong>: Sprawdzają zdolność modelu do
+generowania poprawnego kodu na podstawie zapytań w języku
+naturalnym</li>
+<li><strong>Testy poprawności</strong>: Weryfikują poprawność
+wygenerowanego kodu i opisów</li>
+<li><strong>Testy wydajności</strong>: Mierzą czas wykonania różnych
+operacji przez model</li>
+</ol>
+<h2 id="zalecenia">Zalecenia</h2>
+<p>Na podstawie wyników testów zalecamy:</p>
+<ol type="1">
+<li><strong>Do zadań wymagających wysokiej dokładności</strong>:</li>
+<li><strong>Do zadań wymagających szybkiego działania</strong>:</li>
+<li><strong>Do ogólnego użytku</strong>: deepsek</li>
+</ol>
+
+<div class="footer">
+    <p>Wygenerowano przez Evopy Report Generator</p>
+    <p>© 2025 Evopy</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Mermaid diagrams
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: { useMaxWidth: false, htmlLabels: true },
+            sequence: { useMaxWidth: false, showSequenceNumbers: true }
+        });
+        
+        // Initialize Chart.js charts
+        setTimeout(function() {
+            const chartElements = document.querySelectorAll('.evopy-chart');
+            chartElements.forEach(function(element) {
+                const ctx = element.getContext('2d');
+                const chartData = JSON.parse(element.getAttribute('data-chart'));
+                new Chart(ctx, chartData);
+            });
+        }, 500);
+    });
+</script>
+
+</body>
+</html>

@@ -491,9 +491,7 @@ Podaj krótką analizę w formacie JSON z polami: 'is_logical' (true/false), 'ma
                 return f"Nie można wygenerować wyjaśnienia, ponieważ model {self.model_name} nie jest dostępny."
             
             # Przygotuj zapytanie do modelu
-            system_prompt = """Jesteś ekspertem w wyjaśnianiu kodu Python.
-Twoim zadaniem jest wyjaśnienie działania podanego kodu w prosty i zrozumiały sposób.
-Wyjaśnienie powinno być krótkie, ale kompletne, opisujące co kod robi krok po kroku."""
+            system_prompt = 'Jesteś ekspertem w wyjaśnianiu kodu Python. Twoim zadaniem jest wyjaśnienie działania podanego kodu w prosty i zrozumiały sposób. Wyjaśnienie powinno być krótkie, ale kompletne, opisujące co kod robi krok po kroku.'
             
             prompt = f"Wyjaśnij działanie następującego kodu Python:\n\n```python\n{code}\n```"
             
@@ -526,3 +524,4 @@ Wyjaśnienie powinno być krótkie, ale kompletne, opisujące co kod robi krok p
         except Exception as e:
             logger.error(f"Błąd podczas generowania wyjaśnienia: {e}")
             return f"Nie udało się wygenerować wyjaśnienia: {str(e)}"
+

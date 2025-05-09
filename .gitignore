@@ -1,5 +1,6 @@
 .idea
 .env
+docs/vendor
 performance/results
 tests/correctness
 tests/performance

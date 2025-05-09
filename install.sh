@@ -156,6 +156,35 @@ if [ $? -ne 0 ]; then
 fi
 echo -e "${GREEN}✓ Installed Python dependencies${NC}"
 
+# Install system dependencies for report generation
+echo -e "${BLUE}Checking for report generation dependencies...${NC}"
+if [[ "$OS" == "linux" || "$OS" == "wsl" ]]; then
+    if ! check_command pandoc || ! check_command wkhtmltopdf; then
+        echo -e "${YELLOW}Installing pandoc and wkhtmltopdf for report generation...${NC}"
+        sudo apt-get update && sudo apt-get install -y pandoc wkhtmltopdf
+        if [ $? -ne 0 ]; then
+            echo -e "${YELLOW}⚠ Could not automatically install pandoc and wkhtmltopdf.${NC}"
+            echo -e "${YELLOW}Please install them manually:${NC}"
+            echo -e "  sudo apt-get install pandoc wkhtmltopdf${NC}"
+        else
+            echo -e "${GREEN}✓ Installed report generation dependencies${NC}"
+        fi
+    else
+        echo -e "${GREEN}✓ Report generation dependencies already installed${NC}"
+    fi
+elif [[ "$OS" == "macos" ]]; then
+    if ! check_command pandoc || ! check_command wkhtmltopdf; then
+        echo -e "${YELLOW}To install report generation dependencies on macOS, run:${NC}"
+        echo -e "  brew install pandoc wkhtmltopdf${NC}"
+    else
+        echo -e "${GREEN}✓ Report generation dependencies already installed${NC}"
+    fi
+elif [[ "$OS" == "windows" ]]; then
+    echo -e "${YELLOW}For report generation on Windows, please install:${NC}"
+    echo -e "  - Pandoc: https://pandoc.org/installing.html${NC}"
+    echo -e "  - wkhtmltopdf: https://wkhtmltopdf.org/downloads.html${NC}"
+fi
+
 # Check for Docker
 echo -e "${BLUE}Checking for Docker...${NC}"
 if check_command docker; then
