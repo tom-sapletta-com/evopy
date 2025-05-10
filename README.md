@@ -12,22 +12,56 @@ Devopy to modularny system AI do automatyzacji zadań programistycznych, konwers
 
 ## Jak zacząć?
 
-### 1. Instalacja i uruchomienie
+### 1. Wymagania
+- Python 3.8+
+- Docker (jeśli chcesz używać sandboxa Docker)
+- Flask (do API):
+  ```bash
+  pip install flask
+  ```
+
+### 2. Instalacja i szybki start
 
 ```bash
 # Sklonuj repozytorium
-git clone ...
-cd devopy
+git clone https://github.com/tom-sapletta-com/evopy.git
+cd evopy
 
-# Uruchom (Linux/macOS)
-./run.sh
-# lub (Windows)
-run.bat
+# (Opcjonalnie) Utwórz środowisko wirtualne
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-Devopy sam utworzy środowisko `.devopy_venv`, zainstaluje zależności i uruchomi shell.
+### 3. Uruchamianie zadań przez CLI
 
-### 2. Praca w shellu devopy
+```bash
+python3 -m devopy.cli run "pobierz dane z api i zapisz do excela"
+python3 -m devopy.cli run "stwórz wykres z pliku excel" --docker
+```
+
+### 4. API REST (Flask)
+
+```bash
+python3 devopy/api.py
+# lub
+FLASK_APP=devopy/api.py flask run --host=0.0.0.0 --port=5001
+```
+
+Wyślij zadanie przez curl:
+```bash
+curl -X POST http://localhost:5001/run -H 'Content-Type: application/json' \
+  -d '{"task": "pobierz dane z api i zapisz do excela", "docker": true}'
+```
+
+### 5. Przykładowe zadania
+- "pobierz dane z api i zapisz do excela"
+- "stwórz wykres z pliku excel"
+- "pobierz dane pogodowe przez requests i zapisz do pliku csv"
+
+---
+
+### 6. Praca w shellu devopy (legacy)
 
 ```text
 devopy> użyj text2python
