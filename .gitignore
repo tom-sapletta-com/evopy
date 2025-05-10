@@ -1,6 +1,8 @@
 .idea
 .env
 logs
+.devopy_venv
+.venv
 data/
 docs/vendor
 performance/results
