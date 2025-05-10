@@ -2,10 +2,25 @@ import sys
 from pathlib import Path
 from log_db import LogDB
 from auto_heal import AutoHealer
-from flask import send_from_directory
 import os
 import subprocess
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
+
+# Automatyczny import i instalacja zależności
+def ensure_dependencies():
+    import importlib
+    import subprocess
+    import sys
+    required = ['flask', 'matplotlib', 'openpyxl', 'requests']
+    for pkg in required:
+        try:
+            importlib.import_module(pkg)
+        except ImportError:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
+
+ensure_dependencies()
+
+from flask import Flask, request, jsonify, send_from_directory
 
 # Automatyczne tworzenie i aktywacja venv jeśli nie istnieje lub nie jesteśmy w venv
 venv_dir = Path(__file__).parent / ".venv"
@@ -27,18 +42,19 @@ if not in_venv() or not venv_dir.exists():
     print(f"[BOOTSTRAP] Restartuję API w środowisku: {python_path}")
     os.execv(str(python_path), [str(python_path)] + sys.argv)
 
-# Automatyczny import i instalacja Flask jeśli trzeba
-try:
-    from flask import Flask, request, jsonify
-except ImportError:
-    try:
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "flask"])
-        from flask import Flask, request, jsonify
-    except Exception as e:
-        print("\n[ERROR] Nie można zainstalować Flask w systemowym Pythonie!")
-        print("Uruchom najpierw:\n  python3 -m venv .venv && source .venv/bin/activate && python api.py\n")
-        print(f"Szczegóły błędu: {e}")
-        sys.exit(1)
+# Automatyczny import i instalacja zależności
+def ensure_dependencies():
+    import importlib
+    import subprocess
+    import sys
+    required = ['flask', 'matplotlib', 'openpyxl', 'requests']
+    for pkg in required:
+        try:
+            importlib.import_module(pkg)
+        except ImportError:
+            subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
+
+ensure_dependencies()
 
 try:
     from devopy.orchestrator import Orchestrator
