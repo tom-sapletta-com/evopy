@@ -11,6 +11,9 @@ performance/results
 tests/correctness
 tests/performance
 test_results
+.sqlite3
+devopy_logs.sqlite3
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
