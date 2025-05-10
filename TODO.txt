@@ -19,6 +19,7 @@ NOWE MODUŁY KOMUNIKACYJNE
 9. Wsparcie dla drukowania kodów kreskowych i QR
 10. Obsługa wielu drukarek z możliwością wyboru
 
+3. TEXT2EMAIL [ZAIMPLEMENTOWANO] 
 3. TEXT2EMAIL [ZAIMPLEMENTOWANO] ✅
 -------------
 11. Wysyłanie wiadomości email z automatycznym formatowaniem treści ✅
