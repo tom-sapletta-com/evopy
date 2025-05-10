@@ -1,0 +1,14 @@
+# TODO list for devopy (prioritized, simple to advanced)
+
+1. [x] Uruchomienie prostego shellu devopy (interaktywna pętla, komenda 'exit')
+2. [x] Automatyczna instalacja paczek Python przez import (np. 'import requests')
+3. [x] Zapamiętywanie zadań i zależności (ewolucja)
+4. [x] Prosta heurystyka LLM do sugerowania paczek na podstawie polecenia
+5. [ ] Integracja polecenia 'zadanie ...' z analizą i instalacją przez LLM
+6. [ ] Testy jednostkowe dla dependency.py, evolution.py, llm.py
+7. [ ] Testy E2E: shell devopy (import, zadanie, exit, sugeruj)
+8. [ ] Rozszerzenie heurystyki LLM o kolejne przypadki (np. obsługa plików, bazy danych)
+9. [ ] Integracja z prawdziwym LLM (OpenAI, DeepSeek, Ollama)
+10. [ ] Obsługa pluginów użytkownika
+11. [ ] Sandboxing kodu w Docker
+12. [ ] Webowy interfejs devopy

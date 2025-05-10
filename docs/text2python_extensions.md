@@ -643,4 +643,22 @@ def execute():
 
 ---
 
+## Powiązane pliki i dokumentacja
+
+### Dokumentacja
+- [Struktura projektu](project_structure.md)
+- [Architektura piaskownicy](sandbox_architecture.md)
+- [Lista TODO](todo_list.md)
+- [Interfejs webowy](web_interface.md)
+
+### Moduły i komponenty Python
+- [geometry.py](../modules/text2python/extensions/math/geometry.py) — Rozszerzenia geometryczne
+- [code_generator.py](../modules/text2python/components/code_generator.py) — Generator kodu
+- [extension_manager.py](../modules/text2python/components/extension_manager.py) — Menedżer rozszerzeń
+- [code_analyzer.py](../modules/text2python/components/code_analyzer.py) — Analizator kodu
+- [text2python.py](../modules/text2python/text2python.py) — Główny moduł konwersji
+- [text2python_new.py](../modules/text2python/text2python_new.py) — Nowa architektura
+
+---
+
 Dokumentacja została zaktualizowana: 2025-05-09

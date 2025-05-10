@@ -1,18 +1,70 @@
-# Evopy - Ewolucyjny Asystent AI dla Automatyzacji Zadań Programistycznych
+# Devopy - Modularny asystent AI do automatyzacji kodu
 
-Evopy to zaawansowany system asystenta AI zaprojektowany do automatyzacji zadań programistycznych, konwersji tekstu na kod Python, oraz zarządzania projektami w kontenerach Docker. Rozwiązanie to jest idealne dla zespołów programistycznych, edukatorów, oraz indywidualnych deweloperów, którzy chcą zwiększyć swoją produktywność poprzez automatyzację rutynowych zadań programistycznych.
+Devopy to modularny system AI do automatyzacji zadań programistycznych, konwersji tekstu na kod, zarządzania zależnościami i uruchamiania modularnych bibliotek Python. Pozwala na interaktywną pracę w shellu, automatyczną instalację wymaganych modułów oraz szybkie prototypowanie, testowanie i integrację z narzędziami DevOps.
 
-**Główne zastosowania Evopy:**
+**Główne możliwości Devopy:**
 
-- **Automatyzacja tworzenia kodu** - szybkie generowanie kodu Python na podstawie opisów w języku naturalnym
-- **Środowisko edukacyjne** - nauka programowania poprzez interaktywne konwersje tekstu na kod
-- **Prototypowanie** - błyskawiczne tworzenie prototypów aplikacji i mikrousług
-- **Zarządzanie infrastrukturą** - automatyzacja zadań DevOps i zarządzanie kontenerami Docker
-- **Testowanie i debugowanie** - automatyczne wykrywanie i naprawianie błędów w kodzie
-- **Zaawansowane przetwarzanie danych** - generowanie kodu do analizy i wizualizacji danych
-- **Integracja z zewnętrznymi API** - automatyczne tworzenie kodu do komunikacji z zewnętrznymi usługami
+- Interaktywny shell z automatyczną instalacją zależności Python
+- Modularna architektura: każda funkcjonalność jako osobna paczka (np. text2python, python2text, text2shell)
+- Automatyczne zarządzanie środowiskiem wirtualnym i katalogiem zależności
+- Przykłady użycia: generowanie kodu, konwersje, automatyzacja poleceń shell, obsługa wielu języków
+- Integracja z LLM (np. DeepSeek, Ollama) do generowania i poprawy kodu
 
-Evopy ewoluuje z prostego skryptu konsolowego do pełnego środowiska z wieloma piaskownicami Docker, dostosowując się do rosnących potrzeb użytkownika i zespołu.
+## Jak zacząć?
+
+### 1. Instalacja i uruchomienie
+
+```bash
+# Sklonuj repozytorium
+git clone ...
+cd devopy
+
+# Uruchom (Linux/macOS)
+./run.sh
+# lub (Windows)
+run.bat
+```
+
+Devopy sam utworzy środowisko `.devopy_venv`, zainstaluje zależności i uruchomi shell.
+
+### 2. Praca w shellu devopy
+
+```text
+devopy> użyj text2python
+[LLM]: Moduł 'text2python' nie jest zainstalowany. Instaluję...
+[LLM]: Instalacja zakończona. Moduł 'text2python' gotowy do użycia!
+
+devopy> stwórz funkcję sumującą dwie liczby
+[LLM]: Generuję kod za pomocą 'text2python'...
+def suma(a, b):
+    return a + b
+
+devopy> użyj text2shell
+[LLM]: Moduł 'text2shell' nie jest zainstalowany. Instaluję...
+[LLM]: Instalacja zakończona. Moduł 'text2shell' gotowy do użycia!
+
+devopy> utwórz katalog testowy w bashu
+[LLM]: Generuję polecenie za pomocą 'text2shell'...
+mkdir testowy
+```
+
+### 3. Przykład użycia modularnych bibliotek w kodzie
+
+```python
+from text2python import Text2Python
+from text2shell import Text2Shell
+
+gen = Text2Python()
+print(gen.generate("stwórz funkcję liczącą średnią"))
+
+shell = Text2Shell()
+print(shell.convert("utwórz katalog testowy"))
+```
+
+### 4. Automatyzacja testów i jakości
+
+- Uruchom testy: `pytest tests/`
+- Sprawdź jakość: `flake8 devopy/`, `black --check devopy/`, `mypy devopy/`
 
 ## Dokumentacja
 
