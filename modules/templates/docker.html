@@ -88,6 +88,11 @@
                                 <button class="btn btn-outline-danger" onclick="stopContainer('{{ container.id }}')" title="Zatrzymaj kontener">
                                     <i class="fas fa-stop-circle"></i>
                                 </button>
+                                {% if container.task_id %}
+                                <button onclick="confirmDelete('{{ container.task_id }}')" class="btn btn-outline-danger" title="Usuń zadanie">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -104,28 +109,46 @@
 {% endif %}
 
 {% if docker_tasks %}
-<div class="card mb-4 mt-5">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0">Zadania Docker z zapytań użytkownika</h5>
+<div class="card mb-4 mt-5 shadow-sm border-0">
+    <div class="card-header bg-primary text-white py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-docker me-2"></i>Zadania Docker z zapytań użytkownika</h5>
+            <span class="badge bg-light text-primary px-3 py-2">{{ docker_tasks|length }} zadań</span>
+        </div>
     </div>
     <div class="card-body p-0">
         <div class="row m-0">
-            {% for task_id, task_info in docker_tasks.items() %}
+            {% for task_id, task_info in docker_tasks.items()|sort(attribute='1.timestamp', reverse=True) %}
             <div class="col-md-6 col-lg-4 p-2">
-                <div class="card h-100 shadow-sm">
-                    <div class="card-header bg-light py-2 d-flex justify-content-between align-items-center">
-                        <small class="text-muted">
-                            <i class="fas fa-calendar-alt"></i> {{ task_info.timestamp.split('T')[0] }} 
-                            <i class="fas fa-clock ms-2"></i> {{ task_info.timestamp.split('T')[1].split('.')[0] }}
-                        </small>
-                        <div>
+                <div class="card h-100 shadow-sm border-0" data-task-id="{{ task_id }}">
+                    <div class="card-header bg-primary bg-opacity-10 py-2 d-flex justify-content-between align-items-center border-bottom border-primary">
+                        <div class="d-flex align-items-center">
                             {% if task_info.is_service %}
-                            <span class="badge bg-success">Serwis</span>
+                            <span class="badge bg-success me-2 px-3 py-2">Serwis</span>
                             {% else %}
-                            <span class="badge bg-secondary">Kontener</span>
+                            <span class="badge bg-info me-2 px-3 py-2">Kontener</span>
                             {% endif %}
+                            <small class="text-dark fw-bold">
+                                <i class="fas fa-calendar-alt me-1"></i> 
+                                {% if task_info.timestamp %}
+                                    {{ task_info.timestamp.split('T')[0] if 'T' in task_info.timestamp else task_info.timestamp }}
+                                    <i class="fas fa-clock ms-2 me-1"></i> 
+                                    {% if 'T' in task_info.timestamp %}
+                                        {{ task_info.timestamp.split('T')[1].split('.')[0] if '.' in task_info.timestamp.split('T')[1] else task_info.timestamp.split('T')[1] }}
+                                    {% endif %}
+                                {% else %}
+                                    Brak daty
+                                {% endif %}
+                            </small>
                         </div>
-                    </div>
+                        <div class="d-flex align-items-center">
+                            <a href="/docker/{{ task_id }}" class="btn btn-sm btn-outline-primary me-1" title="Szczegóły zadania">
+                                <i class="fas fa-info-circle"></i>
+                            </a>
+                            <button onclick="confirmDelete('{{ task_id }}')" class="btn btn-sm btn-outline-danger" title="Usuń zadanie">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
                     <div class="card-body p-0">
                         {% if task_info.user_prompt %}
                         <!-- Prompt użytkownika w jednej linii z możliwością rozwijania -->
@@ -152,17 +175,22 @@
                         </div>
                         {% endif %}
                         
-                        <!-- Kod jako główny element z kontrolką wysokości -->
-                        <div class="code-header bg-dark bg-opacity-10 p-2 d-flex justify-content-between align-items-center">
-                            <small class="fw-bold"><i class="fas fa-code me-2"></i> Kod Python</small>
-                            <button class="btn btn-sm btn-link p-0" 
-                                    onclick="toggleCodeHeight('{{ task_id }}')" 
-                                    id="code-toggle-{{ task_id }}">
-                                <i class="fas fa-expand"></i>
-                            </button>
-                        </div>
-                        <div class="code-container" id="code-container-{{ task_id }}" style="max-height: 150px; overflow-y: auto;">
-                            <pre class="language-python m-0 p-3" style="border-radius: 0;"><code>{{ task_info.code }}</code></pre>
+                        <!-- Kod jako główny element z kontrolą wysokości -->
+                        <div class="p-2 bg-dark bg-opacity-10 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-code me-2 text-primary"></i>
+                                    <span class="fw-bold small">Kod Python</span>
+                                </div>
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" 
+                                        onclick="toggleCodeHeight('{{ task_id }}')" 
+                                        title="Rozwiń/zwiń kod">
+                                    <i class="fas fa-expand-alt"></i>
+                                </button>
+                            </div>
+                            <div class="code-container position-relative rounded" style="max-height: 150px; overflow-y: auto; background-color: #272822;">
+                                <pre class="line-numbers m-0 p-2"><code class="language-python">{% if task_info.code %}{{ task_info.code }}{% else %}# Brak kodu{% endif %}</code></pre>
+                            </div>
                         </div>
                         
                         {% if task_info.agent_explanation %}
@@ -190,13 +218,23 @@
                             </div>
                         </div>
                     </div>
-                    <div class="card-footer bg-white p-2 border-top">
+                    <div class="card-footer bg-light p-2 border-top">
+                        <div class="small text-muted mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span><strong>ID zadania:</strong></span>
+                                <span class="text-truncate ms-2" style="max-width: 180px;" title="{{ task_id }}">{{ task_id }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span><strong>ID kontenera:</strong></span>
+                                <span class="text-truncate ms-2" style="max-width: 180px;" title="{{ task_info.container_id }}">{{ task_info.container_id }}</span>
+                            </div>
+                        </div>
                         <div class="btn-group btn-group-sm w-100" role="group">
-                            <a href="/docker/{{ task_id }}" class="btn btn-outline-primary" title="Szczegóły zadania">
+                            <a href="/docker/{{ task_id }}" class="btn btn-primary" title="Szczegóły zadania">
                                 <i class="fas fa-info-circle"></i> Szczegóły
                             </a>
                             {% if task_info.is_service and task_info.service_url %}
-                            <a href="{{ task_info.service_url }}" target="_blank" class="btn btn-outline-success" title="Otwórz serwis">
+                            <a href="{{ task_info.service_url }}" target="_blank" class="btn btn-success" title="Otwórz serwis">
                                 <i class="fas fa-external-link-alt"></i> Otwórz
                             </a>
                             {% endif %}
@@ -325,15 +363,230 @@ function togglePrompt(taskId) {
 
 // Funkcja do przełączania wysokości kontenera z kodem
 function toggleCodeHeight(taskId) {
-    const codeContainer = document.getElementById('code-container-' + taskId);
-    const codeToggle = document.getElementById('code-toggle-' + taskId);
+    // Znajdź kontener kodu bezpośrednio po atrybucie data-task-id
+    const card = document.querySelector(`.card[data-task-id="${taskId}"]`);
+    if (!card) {
+        console.error('Nie znaleziono karty dla zadania:', taskId);
+        return;
+    }
     
-    if (codeContainer.style.maxHeight === '150px') {
-        codeContainer.style.maxHeight = '500px';
-        codeToggle.innerHTML = '<i class="fas fa-compress"></i>';
+    const container = card.querySelector('.code-container');
+    if (!container) {
+        console.error('Nie znaleziono kontenera kodu dla zadania:', taskId);
+        return;
+    }
+    
+    const button = card.querySelector('button[onclick*="toggleCodeHeight"]');
+    if (!button) {
+        console.error('Nie znaleziono przycisku dla zadania:', taskId);
+        return;
+    }
+    
+    const icon = button.querySelector('i');
+    
+    if (container.style.maxHeight === '150px' || container.style.maxHeight === '') {
+        container.style.maxHeight = '500px';
+        if (icon) {
+            icon.classList.remove('fa-expand-alt');
+            icon.classList.add('fa-compress-alt');
+        }
     } else {
-        codeContainer.style.maxHeight = '150px';
-        codeToggle.innerHTML = '<i class="fas fa-expand"></i>';
+        container.style.maxHeight = '150px';
+        if (icon) {
+            icon.classList.remove('fa-compress-alt');
+            icon.classList.add('fa-expand-alt');
+        }
+    }
+}
+
+function deleteDockerTask(taskId) {
+    console.log('Usuwanie zadania Docker:', taskId);
+    
+    // Wyświetl alert z potwierdzeniem
+    if (!confirm('Czy na pewno chcesz usunąć to zadanie Docker?')) {
+        return; // Anulowano
+    }
+    
+    // Pokaż komunikat o trwającym usuwaniu
+    const taskCard = document.querySelector(`.card[data-task-id="${taskId}"]`);
+    if (taskCard) {
+        taskCard.style.opacity = '0.5';
+    }
+    
+    fetch('/docker/delete/' + taskId, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}) // Dodaj puste ciało żądania
+    })
+    .then(response => {
+        console.log('Odpowiedź otrzymana:', response.status);
+        return response.json();
+    })
+    .then(data => {
+        console.log('Dane odpowiedzi:', data);
+        if (data.success) {
+            alert('Zadanie Docker zostało usunięte!');
+            location.reload();
+        } else {
+            alert('Błąd podczas usuwania zadania Docker: ' + (data.error || data.message || 'Nieznany błąd'));
+            console.error('Błąd podczas usuwania zadania Docker:', data.error || data.message || 'Nieznany błąd');
+            if (taskCard) {
+                taskCard.style.opacity = '1';
+            }
+        }
+    })
+    .catch(error => {
+        alert('Błąd podczas usuwania zadania Docker: ' + error);
+        console.error('Błąd:', error);
+        if (taskCard) {
+            taskCard.style.opacity = '1';
+        }
+    });
+}
+
+// Funkcja do debugowania - wyświetla wszystkie dostępne zadania Docker
+function showAllTasks() {
+    console.log('Pobieranie wszystkich zadań Docker...');
+    
+    // Pobierz wszystkie karty zadań
+    const taskCards = document.querySelectorAll('.card[data-task-id]');
+    console.log(`Znaleziono ${taskCards.length} kart zadań na stronie`);
+    
+    // Wyświetl ID wszystkich zadań
+    const taskIds = [];
+    taskCards.forEach(card => {
+        const taskId = card.getAttribute('data-task-id');
+        taskIds.push(taskId);
+        console.log(`Zadanie na stronie: ${taskId}`);
+    });
+    
+    // Wyślij żądanie do API, aby pobrać wszystkie zadania z serwera
+    fetch('/api/docker/tasks', {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Zadania Docker z serwera:', data);
+    })
+    .catch(error => {
+        console.error('Błąd podczas pobierania zadań:', error);
+    });
+    
+    return taskIds;
+}
+
+// Funkcja do potwierdzenia usunięcia zadania Docker
+function confirmDelete(taskId) {
+    console.group('Usuwanie zadania Docker');
+    console.log('ID zadania do usunięcia:', taskId);
+    console.log('Typ ID zadania:', typeof taskId);
+    console.log('Długość ID zadania:', taskId.length);
+    
+    // Sprawdź, czy element z tym ID istnieje na stronie
+    const taskCard = document.querySelector(`.card[data-task-id="${taskId}"]`);
+    console.log('Znaleziono kartę zadania na stronie:', !!taskCard);
+    
+    // Pobierz listę wszystkich zadań dla porównania
+    const allTasks = showAllTasks();
+    console.log('Czy ID zadania znajduje się na liście wszystkich zadań:', allTasks.includes(taskId));
+    
+    if (confirm(`Czy na pewno chcesz usunąć zadanie Docker o ID: ${taskId}?`)) {
+        console.log('Użytkownik potwierdził usunięcie zadania');
+        
+        // Pokaż wizualną informację o trwającym usuwaniu
+        if (taskCard) {
+            taskCard.style.opacity = '0.5';
+            taskCard.style.position = 'relative';
+            
+            // Dodaj nakładkę z informacją o usuwaniu
+            const overlay = document.createElement('div');
+            overlay.style.position = 'absolute';
+            overlay.style.top = '0';
+            overlay.style.left = '0';
+            overlay.style.width = '100%';
+            overlay.style.height = '100%';
+            overlay.style.display = 'flex';
+            overlay.style.alignItems = 'center';
+            overlay.style.justifyContent = 'center';
+            overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+            overlay.style.color = 'white';
+            overlay.style.fontSize = '16px';
+            overlay.style.fontWeight = 'bold';
+            overlay.style.zIndex = '1000';
+            overlay.textContent = 'Usuwanie...';
+            taskCard.appendChild(overlay);
+        }
+        
+        // Wyślij żądanie AJAX do usunięcia zadania
+        console.log('Wysyłanie żądania do endpointu:', `/api/docker/delete/${taskId}`);
+        fetch('/api/docker/delete/' + taskId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ taskId: taskId }) // Dodaj ID zadania w ciele żądania
+        })
+        .then(response => {
+            console.log('Status odpowiedzi HTTP:', response.status);
+            console.log('Nagłówki odpowiedzi:', response.headers);
+            console.log('Typ odpowiedzi:', response.type);
+            console.log('URL odpowiedzi:', response.url);
+            return response.json().catch(error => {
+                console.error('Błąd podczas parsowania JSON:', error);
+                throw new Error('Błąd parsowania odpowiedzi JSON');
+            });
+        })
+        .then(data => {
+            console.log('Pełna odpowiedź serwera:', data);
+            if (data.success) {
+                console.log('Zadanie zostało pomyślnie usunięte');
+                alert(`Zadanie Docker ${taskId} zostało usunięte!\n\nSzczegóły:\n- ID kontenera: ${data.container_id || 'brak'}\n- Kontener zatrzymany: ${data.container_stopped ? 'Tak' : 'Nie'}`);
+                
+                // Odśwież stronę po krótkim opóźnieniu
+                setTimeout(() => {
+                    console.log('Odświeżanie strony...');
+                    window.location.reload();
+                }, 500);
+            } else {
+                const errorMsg = data.error || 'Nieznany błąd';
+                console.error('Błąd podczas usuwania zadania:', errorMsg);
+                console.log('Dostępne zadania:', data.available_tasks || []);
+                alert(`Błąd podczas usuwania zadania: ${errorMsg}`);
+                
+                // Przywróć wygląd karty
+                if (taskCard) {
+                    taskCard.style.opacity = '1';
+                    const overlay = taskCard.querySelector('div[style*="position: absolute"]');
+                    if (overlay) {
+                        overlay.remove();
+                    }
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Błąd podczas wysyłania żądania:', error);
+            alert(`Błąd podczas usuwania zadania: ${error.message || error}`);
+            
+            // Przywróć wygląd karty
+            if (taskCard) {
+                taskCard.style.opacity = '1';
+                const overlay = taskCard.querySelector('div[style*="position: absolute"]');
+                if (overlay) {
+                    overlay.remove();
+                }
+            }
+        })
+        .finally(() => {
+            console.groupEnd();
+        });
+    } else {
+        console.log('Użytkownik anulował usunięcie zadania');
+        console.groupEnd();
     }
 }
 
@@ -342,6 +595,11 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Prism !== 'undefined') {
         Prism.highlightAll();
     }
+    
+    // Wyłączamy automatyczne odświeżanie, aby nie przeszkadzało w debugowaniu
+    // setTimeout(function() {
+    //     location.reload();
+    // }, 10000);
 });
 
 </script>

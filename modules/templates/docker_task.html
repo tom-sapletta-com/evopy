@@ -50,6 +50,9 @@
                         <a href="http://localhost:5000/docker" class="btn btn-outline-primary">
                             <i class="fas fa-arrow-left"></i> Powrót do listy kontenerów
                         </a>
+                        <button class="btn btn-outline-danger" onclick="deleteTask()">
+                            <i class="fas fa-trash-alt"></i> Usuń zadanie
+                        </button>
                         
                         {% if container_exists %}
                         <button class="btn btn-outline-danger" onclick="stopContainer('{{ task_info.container_id }}')">
@@ -79,8 +82,47 @@
             <div class="mt-4">
                 <h5>Wynik wykonania</h5>
                 <div class="bg-light p-3 rounded">
+                    {% if task_info.output.success %}
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle me-2"></i> Kod wykonany pomyślnie
+                    </div>
+                    {% if task_info.output.output %}
+                    <h6 class="mt-3">Wynik:</h6>
+                    <pre>{{ task_info.output.output }}</pre>
+                    {% endif %}
+                    {% else %}
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-circle me-2"></i> Błąd podczas wykonania kodu
+                    </div>
+                    {% if task_info.output.error %}
+                    <h6 class="mt-3">Błąd:</h6>
+                    <pre class="text-danger">{{ task_info.output.error }}</pre>
+                    {% endif %}
+                    {% endif %}
+                    
+                    <h6 class="mt-3">Szczegóły wykonania:</h6>
                     <pre>{{ execution_result }}</pre>
                 </div>
+            </div>
+
+            <div class="mt-4">
+                <h5>Kontynuuj konwersację</h5>
+                <form id="promptForm" action="/docker/{{ task_id }}/continue" method="post" class="mb-3">
+                    <div class="form-group">
+                        <textarea class="form-control" id="prompt" name="prompt" rows="3" placeholder="Wprowadź nowy prompt..."></textarea>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center mt-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i> Wyślij
+                        </button>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="true" id="use_sandbox" name="use_sandbox" checked>
+                            <label class="form-check-label" for="use_sandbox">
+                                Uruchom w kontenerze Docker
+                            </label>
+                        </div>
+                    </div>
+                </form>
             </div>
             
             {% if is_service and service_url is defined %}
@@ -110,9 +152,15 @@
         <div class="card-footer">
             <p class="mb-0">
                 <i class="bi bi-link-45deg"></i> Link do tego zadania: 
-                <a href="http://localhost:5000/docker/{{ task_id }}" class="text-decoration-none">
-                    http://localhost:5000/docker/{{ task_id }}
-                </a>
+                <div class="input-group">
+                    <input type="text" class="form-control" value="{{ task_info.web_interface_url|default('http://localhost:5000/docker/' + task_id) }}" readonly id="containerUrl">
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('containerUrl')">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                    <a href="{{ task_info.web_interface_url|default('http://localhost:5000/docker/' + task_id) }}" class="btn btn-primary">
+                        <i class="fas fa-external-link-alt"></i> Otwórz
+                    </a>
+                </div>
             </p>
         </div>
     </div>
@@ -150,6 +198,26 @@ function copyToClipboard(elementId) {
     element.select();
     document.execCommand('copy');
     alert('Skopiowano do schowka: ' + element.value);
+}
+
+function deleteTask() {
+    fetch('/docker/delete/{{ task_id }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '/docker';
+        } else {
+            console.error('Błąd podczas usuwania zadania Docker:', data.error || data.message || 'Nieznany błąd');
+        }
+    })
+    .catch(error => {
+        console.error('Błąd:', error);
+    });
 }
 </script>
 {% endblock %}

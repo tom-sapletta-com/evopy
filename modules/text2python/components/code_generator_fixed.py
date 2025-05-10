@@ -342,79 +342,11 @@ Zawsze zwracaj wynik działania funkcji za pomocą instrukcji return."""
         Returns:
             str: Wygenerowany kod
         """
-        # Sprawdź, czy mamy wykryte zmienne
-        if hasattr(self, 'detected_variables') and self.detected_variables:
-            # Przygotuj parametry funkcji
-            params = []
-            for var_name in self.detected_variables:
-                if var_name in self.variable_values:
-                    params.append(f"{var_name}={self.variable_values[var_name]}")
-                else:
-                    params.append(var_name)
-            
-            params_str = ", ".join(params)
-            
-            # Sprawdź, czy mamy do czynienia z prostym wyrażeniem matematycznym
-            math_expr_pattern = re.compile(r'^\s*([a-zA-Z0-9]+)\s*([+\-*/])\s*([a-zA-Z0-9]+)\s*$')
-            math_match = math_expr_pattern.match(user_prompt)
-            
-            if math_match:
-                left_operand, operator, right_operand = math_match.groups()
-                
-                # Sprawdź, czy operandy są liczbami czy zmiennymi
-                left_is_var = not left_operand.isdigit()
-                right_is_var = not right_operand.isdigit()
-                
-                if left_is_var and right_is_var:
-                    # Jeśli oba operandy są zmiennymi, użyj ich nazw
-                    return f"""```python
-def execute({params_str}):
-    return {left_operand} {operator} {right_operand}
-```"""
-                elif left_is_var:
-                    # Jeśli tylko lewy operand jest zmienną
-                    return f"""```python
-def execute({params_str}):
-    return {left_operand} {operator} {right_operand}
-```"""
-                elif right_is_var:
-                    # Jeśli tylko prawy operand jest zmienną
-                    return f"""```python
-def execute({params_str}):
-    return {left_operand} {operator} {right_operand}
-```"""
-                else:
-                    # Jeśli oba operandy są liczbami, użyj x i y jako zmiennych
-                    return f"""```python
-def execute(x={left_operand}, y={right_operand}):
-    return x {operator} y
-```"""
-            else:
-                # Dla innych przypadków z wykrytymi zmiennymi
-                return f"""```python
-def execute({params_str}):
+        # Tutaj można zaimplementować wywołanie lokalnego modelu llama3
+        # Na potrzeby tego przykładu zwracamy prosty kod
+        return f"""```python
+def execute():
     # Kod wygenerowany na podstawie zapytania: {user_prompt}
-    result = 0
-    # Tutaj powinien być kod implementujący zapytanie
-    return result
-```"""
-        else:
-            # Jeśli nie mamy wykrytych zmiennych, sprawdź, czy to proste wyrażenie matematyczne
-            math_expr_pattern = re.compile(r'^\s*([a-zA-Z0-9]+)\s*([+\-*/])\s*([a-zA-Z0-9]+)\s*$')
-            math_match = math_expr_pattern.match(user_prompt)
-            
-            if math_match:
-                left_operand, operator, right_operand = math_match.groups()
-                return f"""```python
-def execute(x={left_operand}, y={right_operand}):
-    return x {operator} y
-```"""
-            else:
-                # Dla innych przypadków bez wykrytych zmiennych
-                return f"""```python
-def execute(x=1, y=1):
-    # Kod wygenerowany na podstawie zapytania: {user_prompt}
-    # Domyślne parametry x i y dla kompatybilności
     return 42
 ```"""
     

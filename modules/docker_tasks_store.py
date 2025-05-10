@@ -89,7 +89,16 @@ def register_docker_container(task_id, container_id, code, output, is_service=Fa
         user_prompt: Zapytanie użytkownika, które doprowadziło do wygenerowania kodu
         agent_explanation: Wyjaśnienie asystenta dotyczące wygenerowanego kodu
         container_exists: Czy kontener nadal istnieje w systemie
+    
+    Returns:
+        Dict: Informacje o zarejestrowanym zadaniu Docker
     """
+    # Generuj linki do kontenera Docker
+    container_link = f"/docker/{task_id}"
+    web_interface_url = f"http://localhost:5000/docker/{task_id}"
+    continue_url = f"http://localhost:5000/docker/{task_id}/continue"
+    continue_info = f"Możesz kontynuować konwersację pod adresem: {web_interface_url}"
+    
     DOCKER_TASKS[task_id] = {
         "container_id": container_id,
         "timestamp": datetime.now().isoformat(),
@@ -100,27 +109,22 @@ def register_docker_container(task_id, container_id, code, output, is_service=Fa
         "service_name": service_name,
         "user_prompt": user_prompt,
         "agent_explanation": agent_explanation,
-        "container_exists": container_exists
+        "container_exists": container_exists,
+        "container_link": container_link,
+        "web_interface_url": web_interface_url
     }
     
     # Jeśli to serwis webowy, dodaj go również do słownika serwisów niezależnie od tego, czy kontener istnieje
-    if is_service:
-        service_info = {
+    if is_service and service_url:
+        web_services[task_id] = {
             "container_id": container_id,
             "timestamp": datetime.now().isoformat(),
-            "container_exists": container_exists
+            "service_url": service_url,
+            "service_name": service_name or f"Serwis {task_id[:8]}",
+            "status": "running" if container_exists else "stopped",
+            "container_link": container_link,
+            "web_interface_url": web_interface_url
         }
-        
-        if service_url:
-            service_info["service_url"] = service_url
-            logger.info(f"Zarejestrowano URL serwisu: {service_url} dla zadania {task_id}")
-        
-        if service_name:
-            service_info["service_name"] = service_name
-        else:
-            service_info["service_name"] = f"Serwis {task_id[:8]}"
-            
-        web_services[task_id] = service_info
     
     # Zapisz zadania do pliku
     save_tasks()
@@ -130,7 +134,26 @@ def register_docker_container(task_id, container_id, code, output, is_service=Fa
 
 def get_docker_task(task_id):
     """Pobiera informacje o zadaniu Docker"""
-    return DOCKER_TASKS.get(task_id, {})
+    logger.info(f"Próba pobrania zadania Docker o ID: {task_id}")
+    logger.info(f"Typ ID zadania: {type(task_id)}, Długość: {len(task_id) if task_id else 0}")
+    logger.info(f"Dostępne klucze w DOCKER_TASKS: {list(DOCKER_TASKS.keys())}")
+    
+    # Spróbuj znaleźć zadanie bezpośrednio
+    task = DOCKER_TASKS.get(task_id)
+    
+    if task:
+        logger.info(f"Zadanie Docker {task_id} znalezione bezpośrednio")
+    else:
+        # Spróbuj znaleźć zadanie przez porównanie stringów
+        logger.info(f"Zadanie Docker {task_id} nie znalezione bezpośrednio, próba porównania stringów")
+        for key in DOCKER_TASKS.keys():
+            if str(key) == str(task_id):
+                task = DOCKER_TASKS[key]
+                logger.info(f"Zadanie Docker znalezione przez porównanie stringów: {key}")
+                break
+    
+    logger.info(f"Wynik pobierania zadania Docker {task_id}: {'znaleziono' if task else 'nie znaleziono'}")
+    return task
 
 def get_all_docker_tasks():
     """Pobiera wszystkie zadania Docker"""

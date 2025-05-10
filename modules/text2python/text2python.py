@@ -283,16 +283,48 @@ class Text2Python(BaseText2XModule):
         self.logger.info(f"Wykonywanie kodu (use_sandbox={use_sandbox})...")
         
         if use_sandbox:
-            # W rzeczywistej implementacji tutaj byłoby wywołanie piaskownicy Docker
+            # Uruchomienie kodu w piaskownicy Docker
             try:
-                from modules.docker_sandbox import DockerSandbox
-                sandbox = DockerSandbox()
-                return sandbox.run_code(code)
-            except ImportError:
-                self.logger.error("Nie można zaimportować modułu DockerSandbox")
+                # Poprawny import z głównego katalogu projektu
+                import sys
+                import os
+                from pathlib import Path
+                import tempfile
+                
+                # Dodaj główny katalog projektu do ścieżki importów
+                project_root = Path(__file__).parent.parent.parent
+                if str(project_root) not in sys.path:
+                    sys.path.append(str(project_root))
+                
+                # Importuj DockerSandbox z głównego katalogu projektu
+                from docker_sandbox import DockerSandbox
+                
+                # Utwórz katalog tymczasowy dla piaskownicy
+                sandbox_dir = Path(tempfile.gettempdir()) / "evopy_sandbox"
+                os.makedirs(sandbox_dir, exist_ok=True)
+                
+                # Inicjalizacja piaskownicy z odpowiednimi parametrami
+                sandbox = DockerSandbox(base_dir=sandbox_dir)
+                
+                # Uruchom kod w piaskownicy
+                self.logger.info(f"Uruchamianie kodu w piaskownicy Docker...")
+                result = sandbox.run(code)
+                
+                # Dodaj identyfikator piaskownicy do wyniku
+                result["sandbox_id"] = sandbox.sandbox_id
+                
+                return result
+            except ImportError as e:
+                self.logger.error(f"Nie można zaimportować modułu DockerSandbox: {e}")
                 return {
                     "success": False,
-                    "error": "Moduł DockerSandbox nie jest dostępny"
+                    "error": f"Moduł DockerSandbox nie jest dostępny: {e}"
+                }
+            except Exception as e:
+                self.logger.error(f"Błąd podczas uruchamiania kodu w piaskownicy Docker: {e}")
+                return {
+                    "success": False,
+                    "error": f"Błąd podczas uruchamiania kodu w piaskownicy Docker: {e}"
                 }
         else:
             # Wykonanie kodu bezpośrednio (niebezpieczne!)

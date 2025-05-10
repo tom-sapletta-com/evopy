@@ -17,10 +17,60 @@ import subprocess
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Union, Tuple
 
+# Sprawdź, czy moduł docker_tasks_store jest dostępny
+try:
+    from modules.docker_tasks_store import register_docker_container
+    docker_tasks_available = True
+except ImportError:
+    docker_tasks_available = False
+    print("Moduł docker_tasks_store nie jest dostępny. Kontenery Docker nie będą rejestrowane w interfejsie webowym.")
+    # Pusta funkcja zastępcza
+    def register_docker_container(*args, **kwargs):
+        return {}
+
 # Import menedżera zależności
 from dependency_manager import fix_code_dependencies
 
 logger = logging.getLogger("evo-assistant.docker-sandbox")
+
+
+def check_docker_available() -> Tuple[bool, str]:
+    """
+    Sprawdza, czy Docker jest dostępny i działa poprawnie
+    
+    Returns:
+        Tuple[bool, str]: (czy_dostępny, komunikat)
+    """
+    try:
+        # Sprawdź, czy komenda docker jest dostępna
+        result = subprocess.run(
+            ["docker", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if result.returncode != 0:
+            return False, f"Docker nie jest dostępny: {result.stderr}"
+        
+        # Sprawdź, czy możemy uruchomić kontener
+        result = subprocess.run(
+            ["docker", "info"],
+            capture_output=True,
+            text=True,
+            timeout=5
+        )
+        
+        if result.returncode != 0:
+            return False, f"Docker nie działa poprawnie: {result.stderr}"
+        
+        return True, "Docker jest dostępny i działa poprawnie"
+    except FileNotFoundError:
+        return False, "Komenda docker nie została znaleziona"
+    except subprocess.TimeoutExpired:
+        return False, "Timeout podczas sprawdzania dostępności Dockera"
+    except Exception as e:
+        return False, f"Błąd podczas sprawdzania dostępności Dockera: {e}"
 
 
 class DockerSandbox:
@@ -197,6 +247,17 @@ print(json.dumps(result))
         Returns:
             Dict: Wynik wykonania kodu
         """
+        # Sprawdź, czy Docker jest dostępny
+        docker_available, docker_message = check_docker_available()
+        if not docker_available:
+            logger.error(f"Docker nie jest dostępny: {docker_message}")
+            return {
+                "success": False,
+                "error": f"Docker nie jest dostępny: {docker_message}",
+                "output": "",
+                "execution_time": 0
+            }
+        
         try:
             # Przygotuj kod
             code_file = self.prepare_code(code)
@@ -234,46 +295,141 @@ print(json.dumps(result))
                 # Sprawdź wynik
                 if process.returncode != 0:
                     logger.warning(f"Kod zakończył się z błędem: {stderr}")
-                    return {
+                    result = {
                         "success": False,
                         "output": stdout,
                         "error": stderr,
-                        "execution_time": self.timeout
+                        "execution_time": self.timeout,
+                        "container_name": container_name,
+                        "sandbox_id": self.sandbox_id
                     }
+                    
+                    # Zarejestruj kontener w module docker_tasks_store, jeśli jest dostępny
+                    if docker_tasks_available:
+                        try:
+                            task_id = self.sandbox_id
+                            register_docker_container(
+                                task_id=task_id,
+                                container_id=container_name,
+                                code=code,
+                                output=result,
+                                is_service=False,
+                                container_exists=True
+                            )
+                            # Dodaj link do kontenera w interfejsie webowym
+                            result["container_link"] = f"/docker/{task_id}"
+                            result["web_interface_url"] = "http://localhost:5000/docker/{}".format(task_id)
+                            logger.info(f"Zarejestrowano kontener {container_name} w interfejsie webowym")
+                        except Exception as e:
+                            logger.warning(f"Nie można zarejestrować kontenera w interfejsie webowym: {e}")
+                    
+                    return result
 
                 # Parsuj wynik JSON
                 try:
                     result = json.loads(stdout)
+                    # Dodaj informacje o kontenerze
+                    result["container_name"] = container_name
+                    result["sandbox_id"] = self.sandbox_id
+                    
+                    # Zarejestruj kontener w module docker_tasks_store, jeśli jest dostępny
+                    if docker_tasks_available:
+                        try:
+                            task_id = self.sandbox_id
+                            register_docker_container(
+                                task_id=task_id,
+                                container_id=container_name,
+                                code=code,
+                                output=result,
+                                is_service=False,
+                                container_exists=True
+                            )
+                            # Dodaj link do kontenera w interfejsie webowym
+                            result["container_link"] = f"/docker/{task_id}"
+                            result["web_interface_url"] = "http://localhost:5000/docker/{}".format(task_id)
+                            logger.info(f"Zarejestrowano kontener {container_name} w interfejsie webowym")
+                        except Exception as e:
+                            logger.warning(f"Nie można zarejestrować kontenera w interfejsie webowym: {e}")
+                    
                     return result
                 except json.JSONDecodeError:
-                    return {
+                    logger.warning(f"Nie można sparsować wyniku jako JSON: {stdout}")
+                    result = {
                         "success": True,
                         "output": stdout,
                         "error": "",
-                        "execution_time": 0
+                        "execution_time": 0.1,  # Przybliżony czas wykonania
+                        "container_name": container_name,
+                        "sandbox_id": self.sandbox_id
                     }
-
+                    
+                    # Zarejestruj kontener w module docker_tasks_store, jeśli jest dostępny
+                    if docker_tasks_available:
+                        try:
+                            task_id = self.sandbox_id
+                            register_docker_container(
+                                task_id=task_id,
+                                container_id=container_name,
+                                code=code,
+                                output=result,
+                                is_service=False,
+                                container_exists=True
+                            )
+                            # Dodaj link do kontenera w interfejsie webowym
+                            result["container_link"] = f"/docker/{task_id}"
+                            result["web_interface_url"] = "http://localhost:5000/docker/{}".format(task_id)
+                            logger.info(f"Zarejestrowano kontener {container_name} w interfejsie webowym")
+                        except Exception as e:
+                            logger.warning(f"Nie można zarejestrować kontenera w interfejsie webowym: {e}")
+                    
+                    return result
             except subprocess.TimeoutExpired:
-                # Zabij kontener jeśli przekroczył limit czasu
-                subprocess.run(["docker", "kill", container_name],
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
-
-                logger.warning(f"Kod przekroczył limit czasu ({self.timeout}s)")
+                # Zabij proces, jeśli przekroczył limit czasu
+                process.kill()
+                logger.warning(f"Kod przekroczył limit czasu wykonania: {self.timeout}s")
+                
+                # Spróbuj zatrzymać kontener, jeśli nadal działa
+                try:
+                    subprocess.run(["docker", "stop", container_name], timeout=5, capture_output=True)
+                    logger.info(f"Zatrzymano kontener: {container_name}")
+                except Exception as container_error:
+                    logger.warning(f"Nie można zatrzymać kontenera: {container_error}")
+                
                 return {
                     "success": False,
                     "output": "",
-                    "error": f"Kod przekroczył limit czasu ({self.timeout}s)",
-                    "execution_time": self.timeout
+                    "error": f"Kod przekroczył limit czasu wykonania: {self.timeout}s",
+                    "execution_time": self.timeout,
+                    "container_name": container_name,
+                    "sandbox_id": self.sandbox_id,
+                    "timeout": True
                 }
-
-        except Exception as e:
-            logger.error(f"Błąd podczas uruchamiania kodu: {e}")
+        except FileNotFoundError as e:
+            logger.error(f"Nie znaleziono pliku lub komendy: {e}")
             return {
                 "success": False,
                 "output": "",
-                "error": f"Błąd piaskownicy: {str(e)}",
-                "execution_time": 0
+                "error": f"Nie znaleziono pliku lub komendy: {e}",
+                "execution_time": 0,
+                "sandbox_id": self.sandbox_id
+            }
+        except PermissionError as e:
+            logger.error(f"Brak uprawnień: {e}")
+            return {
+                "success": False,
+                "output": "",
+                "error": f"Brak uprawnień do uruchomienia kontenera Docker: {e}",
+                "execution_time": 0,
+                "sandbox_id": self.sandbox_id
+            }
+        except Exception as e:
+            logger.error(f"Błąd podczas uruchamiania kodu w piaskownicy: {e}")
+            return {
+                "success": False,
+                "output": "",
+                "error": str(e),
+                "execution_time": 0,
+                "sandbox_id": self.sandbox_id
             }
         finally:
             # Spróbuj wyczyścić kontener
@@ -289,8 +445,38 @@ print(json.dumps(result))
     def cleanup(self):
         """Czyści zasoby piaskownicy"""
         try:
+            # Sprawdź, czy kontener nadal istnieje i zatrzymaj go
+            if self.container_id:
+                try:
+                    subprocess.run(
+                        ["docker", "stop", self.container_id],
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=5
+                    )
+                    logger.info(f"Zatrzymano kontener: {self.container_id}")
+                except Exception as e:
+                    logger.warning(f"Nie można zatrzymać kontenera {self.container_id}: {e}")
+            
+            # Sprawdź, czy istnieją kontenery z nazwą zawierającą sandbox_id i zatrzymaj je
+            try:
+                container_name = f"evopy-sandbox-{self.sandbox_id}"
+                subprocess.run(
+                    ["docker", "stop", container_name],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    timeout=5
+                )
+                logger.info(f"Zatrzymano kontener: {container_name}")
+            except Exception:
+                # Ignoruj błędy - kontener może już nie istnieć
+                pass
+            
             # Usuń katalog piaskownicy
-            shutil.rmtree(self.sandbox_dir, ignore_errors=True)
-            logger.info(f"Wyczyszczono piaskownicę: {self.sandbox_id}")
+            if os.path.exists(self.sandbox_dir):
+                shutil.rmtree(self.sandbox_dir, ignore_errors=True)
+                logger.info(f"Wyczyszczono piaskownicę: {self.sandbox_id}")
         except Exception as e:
             logger.error(f"Błąd podczas czyszczenia piaskownicy: {e}")
+        
+        return {"success": True, "message": f"Wyczyszczono piaskownicę: {self.sandbox_id}"}

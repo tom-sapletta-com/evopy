@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block title %}Logi systemu{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-primary text-white py-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-list-alt me-2"></i>Logi systemu</h5>
+                        <div>
+                            <button id="refreshLogsBtn" class="btn btn-light btn-sm">
+                                <i class="fas fa-sync-alt me-1"></i> Odśwież
+                            </button>
+                            <div class="form-check form-switch d-inline-block ms-2">
+                                <input class="form-check-input" type="checkbox" id="autoRefreshSwitch">
+                                <label class="form-check-label text-white" for="autoRefreshSwitch">Auto-odświeżanie</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if error %}
+                    <div class="alert alert-danger m-3">
+                        <strong>Błąd:</strong> {{ error }}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="p-3">
+                        <div class="form-group mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                <input type="text" id="logFilter" class="form-control" placeholder="Filtruj logi...">
+                                <button class="btn btn-outline-secondary" type="button" id="clearFilterBtn">Wyczyść</button>
+                            </div>
+                        </div>
+                        
+                        <div class="btn-group mb-3" role="group">
+                            <button type="button" class="btn btn-sm btn-outline-secondary filter-btn" data-level="all">Wszystkie</button>
+                            <button type="button" class="btn btn-sm btn-outline-danger filter-btn" data-level="ERROR">Błędy</button>
+                            <button type="button" class="btn btn-sm btn-outline-warning filter-btn" data-level="WARNING">Ostrzeżenia</button>
+                            <button type="button" class="btn btn-sm btn-outline-info filter-btn" data-level="INFO">Informacje</button>
+                            <button type="button" class="btn btn-sm btn-outline-success filter-btn" data-level="DEBUG">Debug</button>
+                        </div>
+                    </div>
+                    
+                    <div class="logs-container bg-dark p-3" style="height: 600px; overflow-y: auto; font-family: monospace; font-size: 14px;">
+                        <pre id="logsContent" class="text-light">{% for log in logs %}{{ log }}{% endfor %}</pre>
+                    </div>
+                </div>
+                <div class="card-footer bg-light py-2">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">Ostatnia aktualizacja: <span id="lastUpdateTime">{{ now }}</span></small>
+                        <span class="badge bg-secondary" id="logCount">{{ logs|length }} wpisów</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const logsContent = document.getElementById('logsContent');
+        const logFilter = document.getElementById('logFilter');
+        const clearFilterBtn = document.getElementById('clearFilterBtn');
+        const refreshLogsBtn = document.getElementById('refreshLogsBtn');
+        const autoRefreshSwitch = document.getElementById('autoRefreshSwitch');
+        const lastUpdateTime = document.getElementById('lastUpdateTime');
+        const logCount = document.getElementById('logCount');
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        
+        let autoRefreshInterval;
+        let currentFilter = '';
+        let currentLevel = 'all';
+        
+        // Funkcja do filtrowania logów
+        function filterLogs() {
+            const filterText = logFilter.value.toLowerCase();
+            const logLines = logsContent.textContent.split('\n');
+            let filteredLogs = [];
+            let count = 0;
+            
+            for (const line of logLines) {
+                let shouldShow = true;
+                
+                // Filtruj po tekście
+                if (filterText && !line.toLowerCase().includes(filterText)) {
+                    shouldShow = false;
+                }
+                
+                // Filtruj po poziomie logowania
+                if (currentLevel !== 'all') {
+                    if (!line.includes(currentLevel)) {
+                        shouldShow = false;
+                    }
+                }
+                
+                if (shouldShow) {
+                    // Dodaj kolorowanie w zależności od poziomu logowania
+                    let coloredLine = line;
+                    if (line.includes('ERROR')) {
+                        coloredLine = `<span class="text-danger">${line}</span>`;
+                    } else if (line.includes('WARNING')) {
+                        coloredLine = `<span class="text-warning">${line}</span>`;
+                    } else if (line.includes('INFO')) {
+                        coloredLine = `<span class="text-info">${line}</span>`;
+                    } else if (line.includes('DEBUG')) {
+                        coloredLine = `<span class="text-success">${line}</span>`;
+                    }
+                    
+                    filteredLogs.push(coloredLine);
+                    count++;
+                }
+            }
+            
+            logsContent.innerHTML = filteredLogs.join('\n');
+            logCount.textContent = `${count} wpisów`;
+        }
+        
+        // Funkcja do pobierania logów z serwera
+        function refreshLogs() {
+            fetch('/api/logs')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        logsContent.textContent = data.logs.join('');
+                        lastUpdateTime.textContent = new Date().toLocaleTimeString();
+                        logCount.textContent = `${data.logs.length} wpisów`;
+                        filterLogs(); // Zastosuj filtry do nowych logów
+                    } else {
+                        console.error('Błąd podczas pobierania logów:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Błąd podczas pobierania logów:', error);
+                });
+        }
+        
+        // Obsługa filtrowania
+        logFilter.addEventListener('input', function() {
+            currentFilter = this.value.toLowerCase();
+            filterLogs();
+        });
+        
+        // Obsługa przycisku czyszczenia filtra
+        clearFilterBtn.addEventListener('click', function() {
+            logFilter.value = '';
+            currentFilter = '';
+            filterLogs();
+        });
+        
+        // Obsługa przycisków filtrowania po poziomie logowania
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                filterButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                currentLevel = this.getAttribute('data-level');
+                filterLogs();
+            });
+        });
+        
+        // Obsługa przycisku odświeżania
+        refreshLogsBtn.addEventListener('click', refreshLogs);
+        
+        // Obsługa auto-odświeżania
+        autoRefreshSwitch.addEventListener('change', function() {
+            if (this.checked) {
+                autoRefreshInterval = setInterval(refreshLogs, 5000); // Odświeżaj co 5 sekund
+            } else {
+                clearInterval(autoRefreshInterval);
+            }
+        });
+        
+        // Zastosuj kolorowanie do początkowych logów
+        filterLogs();
+        
+        // Przewiń do najnowszych logów
+        const logsContainer = document.querySelector('.logs-container');
+        logsContainer.scrollTop = logsContainer.scrollHeight;
+    });
+</script>
+{% endblock %}

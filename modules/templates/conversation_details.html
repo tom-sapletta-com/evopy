@@ -8,9 +8,14 @@
         <div class="col-12">
             <div class="d-flex justify-content-between align-items-center">
                 <h1 class="mb-0">{{ conversation.title }}</h1>
-                <a href="/conversations" class="btn btn-outline-secondary">
-                    <i class="fas fa-arrow-left me-2"></i> Powrót do listy konwersacji
-                </a>
+                <div class="d-flex">
+                    <button class="btn btn-danger me-2" onclick="deleteConversation('{{ conversation.id }}')">
+                        <i class="fas fa-trash-alt me-2"></i> Usuń konwersację
+                    </button>
+                    <a href="/conversations" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left me-2"></i> Powrót do listy konwersacji
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -236,5 +241,25 @@
             });
         });
     });
+    
+    function deleteConversation(conversationId) {
+        fetch('/conversation/delete/' + conversationId, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.href = '/conversations';
+            } else {
+                console.error('Błąd podczas usuwania konwersacji:', data.error || data.message || 'Nieznany błąd');
+            }
+        })
+        .catch(error => {
+            console.error('Błąd:', error);
+        });
+    }
 </script>
 {% endblock %}
