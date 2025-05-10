@@ -1,14 +1,30 @@
-# Devopy - Modularny asystent AI do automatyzacji kodu
+# Evopy - Modularny asystent AI do automatyzacji kodu
 
-Devopy to modularny system AI do automatyzacji zadań programistycznych, konwersji tekstu na kod, zarządzania zależnościami i uruchamiania modularnych bibliotek Python. Pozwala na interaktywną pracę w shellu, automatyczną instalację wymaganych modułów oraz szybkie prototypowanie, testowanie i integrację z narzędziami DevOps.
+Evopy to modularny system AI do automatyzacji zadań programistycznych, konwersji tekstu na kod, zarządzania zależnościami i uruchamiania modularnych bibliotek Python. Pozwala na interaktywną pracę w shellu, automatyczną instalację wymaganych modułów oraz szybkie prototypowanie, testowanie i integrację z narzędziami DevOps.
 
-**Główne możliwości Devopy:**
+**Główne możliwości Evopy:**
 
 - Interaktywny shell z automatyczną instalacją zależności Python
 - Modularna architektura: każda funkcjonalność jako osobna paczka (np. text2python, python2text, text2shell)
 - Automatyczne zarządzanie środowiskiem wirtualnym i katalogiem zależności
 - Przykłady użycia: generowanie kodu, konwersje, automatyzacja poleceń shell, obsługa wielu języków
 - Integracja z LLM (np. DeepSeek, Ollama) do generowania i poprawy kodu
+
+## Struktura projektu
+
+Projekt Evopy ma nową przejrzystą strukturę katalogów:
+
+```
+evopy/
+├── bin/                # Skrypty wykonywalne do uruchamiania głównych komponentów
+├── modules/            # Moduły funkcjonalne (text2python, text2sql, itp.)
+├── docs/               # Dokumentacja
+├── tests/              # Testy jednostkowe i integracyjne
+├── tools/              # Narzędzia i skrypty pomocnicze
+    ├── docker/         # Narzędzia związane z konteneryzacją
+    ├── monitoring/     # Narzędzia do monitorowania zasobów
+    ├── scripts/        # Różne skrypty pomocnicze
+```
 
 ## Jak zacząć?
 
@@ -27,25 +43,32 @@ Devopy to modularny system AI do automatyzacji zadań programistycznych, konwers
 git clone https://github.com/tom-sapletta-com/evopy.git
 cd evopy
 
-# (Opcjonalnie) Utwórz środowisko wirtualne
-python3 -m venv .venv
-source .venv/bin/activate
+# Utwórz środowisko wirtualne
+python3 -m venv venv
+source venv/bin/activate
+
+# Zainstaluj wymagane zależności
 pip install -r requirements.txt
 ```
 
 ### 3. Uruchamianie zadań przez CLI
 
 ```bash
-python3 -m devopy.cli run "pobierz dane z api i zapisz do excela"
-python3 -m devopy.cli run "stwórz wykres z pliku excel" --docker
+# Użyj skryptu z katalogu bin
+./bin/run.sh
+
+# Lub bezpośrednio przez moduł Python
+python3 evo.py "stwórz wykres z pliku excel" --docker
 ```
 
-### 4. API REST (Flask)
+### 4. Uruchamianie serwera
 
 ```bash
-python3 devopy/api.py
-# lub
-FLASK_APP=devopy/api.py flask run --host=0.0.0.0 --port=5001
+# Uruchomienie serwera z modułami
+./bin/run_with_modules.sh
+
+# Lub bezpośrednio
+python3 modules/server.py
 ```
 
 Wyślij zadanie przez curl:

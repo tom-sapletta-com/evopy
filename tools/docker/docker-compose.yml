@@ -1,0 +1,21 @@
+version: '3.8'
+services:
+  devopy-ubuntu:
+    image: ubuntu:22.04
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DEBIAN_FRONTEND=noninteractive
+      - TZ=Europe/Warsaw
+    command: ["/bin/bash", "-c", "export DEBIAN_FRONTEND=noninteractive && apt-get update && apt-get install -y tzdata && ln -fs /usr/share/zoneinfo/Europe/Warsaw /etc/localtime && dpkg-reconfigure --frontend noninteractive tzdata && apt-get install -y python3 python3-pip git && pip3 install . && pip3 install pytest && pytest tests/test_e2e_ubuntu.py"]
+
+  devopy-fedora:
+    image: fedora:latest
+    volumes:
+      - .:/workspace
+    working_dir: /workspace
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: bash -c "dnf install -y python3 python3-pip git && pip3 install . && pip3 install pytest && pytest tests/"
